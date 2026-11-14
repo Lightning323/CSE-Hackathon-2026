@@ -1,11 +1,15 @@
 
-
+using Godot;
 
 namespace GridQuest.Map.MapFloors;
 
 public static class FloorTiles
 {
-	public static readonly FloorTileFactory GrassFloorTile = new("res://assets/images/map_tiles/floor/grass.png");
-	public static readonly FloorTileFactory StoneFloorTile = new("res://assets/images/map_tiles/floor/stone.png");
-	public static readonly FloorTileFactory PathFloorTile = StoneFloorTile;
+	public static TileMapLayer CreateLayer(string name = "Floor") => FloorTileMapFactory.CreateFloorLayer(name);
+
+	public static void SetGrass(TileMapLayer layer, int x, int y) => FloorTileMapFactory.SetFloorCell(layer, x, y, FloorTileType.Grass);
+
+	public static void SetStone(TileMapLayer layer, int x, int y) => FloorTileMapFactory.SetFloorCell(layer, x, y, FloorTileType.Stone);
+
+	public static void SetPath(TileMapLayer layer, int x, int y) => SetStone(layer, x, y);
 }

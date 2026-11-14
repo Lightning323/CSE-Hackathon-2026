@@ -239,16 +239,18 @@ public partial class Map : Node2D
 			node.QueueFree();
 	}
 
-	private Node2D FloorLayer(int width, int height)
+	private TileMapLayer FloorLayer(int width, int height)
 	{
-		Node2D floorLayer = new() { Name = "Floor" };
+		TileMapLayer floorLayer = FloorTiles.CreateLayer("Floor");
 
 		for (int y = 0; y < height; y++)
 		{
 			for (int x = 0; x < width; x++)
 			{
-				FloorTileFactory tileFactory = _pathCells[x, y] ? FloorTiles.PathFloorTile : FloorTiles.GrassFloorTile;
-				floorLayer.AddChild(tileFactory.MakeTile(x, y));
+				if (_pathCells[x, y])
+					FloorTiles.SetPath(floorLayer, x, y);
+				else
+					FloorTiles.SetGrass(floorLayer, x, y);
 			}
 		}
 

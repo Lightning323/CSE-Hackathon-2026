@@ -1,4 +1,5 @@
 using Godot;
+using GridQuest.Map.MapFloors;
 using GridQuest.Map.MapObjects;
 using System;
 using System.Collections.Generic;
@@ -63,11 +64,11 @@ public static class RoomGenerator
 		}
 		if (includeFloor)
 		{
-			var floor = new Node2D { Name = "Floor" };
+			var floor = FloorTiles.CreateLayer("Floor");
 			for (int y = originY; y < originY + height; y++)
 				for (int x = originX; x < originX + width; x++)
 					if (context.AddFloor(new Vector2I(x, y)))
-						floor.AddChild(MapFloors.FloorTiles.StoneFloorTile.MakeTile(x, y));
+						FloorTiles.SetStone(floor, x, y);
 			room.AddChild(floor);
 		}
 
