@@ -14,6 +14,7 @@ public partial class Player : CharacterBody2D
 
 	private const int FrameSize = 32;
 	private const string PlayerTexturePath = "res://assets/images/characters/cute_Player.png";
+	private static readonly PackedScene FireballScene = GD.Load<PackedScene>("res://items/fireball.tscn");
 
 	private AnimatedSprite2D _sprite;
 	private ProgressBar _healthBar;
@@ -35,7 +36,7 @@ public partial class Player : CharacterBody2D
 
 	public int Health { get; private set; }
 	public int Gold { get; private set; }
-	public bool HasWeaponEquipped { get; set; } = true;
+	public string EquippedWeapon { get; set; } = "sword";
 	public bool IsDead => _state == State.Dead;
 
 	public override void _Ready()
@@ -93,7 +94,7 @@ public partial class Player : CharacterBody2D
 
 		_attackTimer = Mathf.Max(0.0f, _attackTimer - (float)delta);
 
-		if (_state != State.Attack && HasWeaponEquipped && (Input.IsKeyPressed(Key.Space) || Input.IsJoyButtonPressed(0, JoyButton.A)) && _attackTimer <= 0.0f)
+		if (_state != State.Attack && EquippedWeapon != "none" && (Input.IsKeyPressed(Key.Space) || Input.IsJoyButtonPressed(0, JoyButton.A)) && _attackTimer <= 0.0f)
 		{
 			StartAttack();
 		}
@@ -166,13 +167,43 @@ public partial class Player : CharacterBody2D
 		EmitSignal(SignalName.Died);
 	}
 
-	private void StartAttack()
+	private void ShootFireball()
+		{
+				if (FireballScene == null)
+				{
+						GD.PushError("Fireball scene could not be loaded.");
+						return;
+				}
+
+				var fireball = FireballScene.Instantiate<Fireball>();
+
+				Vector2 direction = _facing switch
+				{
+						"up" => Vector2.Up,
+						"down" => Vector2.Down,
+						"side" => _faceLeft ? Vector2.Left : Vector2.Right,
+						_ => Vector2.Down
+				};
+
+				GetTree().CurrentScene.AddChild(fireball);
+				fireball.Init(direction, GlobalPosition + direction * 16.0f);
+		}
+
+		private void StartAttack()
 	{
-		_state = State.Attack;
 		_attackTimer = AttackCooldown;
 		_sprite.FlipH = _facing == "side" && _faceLeft;
-		PlayAnimation($"attack_{_facing}");
-		DamageEnemiesInRange();
+		if (EquippedWeapon == "fire_staff")
+		{
+			ShootFireball();
+			// keep current walk/idle anim, don't play attack anim
+		}
+		else
+		{
+			_state = State.Attack;
+			PlayAnimation($"attack_{_facing}");
+			DamageEnemiesInRange();
+		}
 	}
 
 	private void DamageEnemiesInRange()

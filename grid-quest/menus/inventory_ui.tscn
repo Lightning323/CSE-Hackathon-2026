@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://inv_ui_001"]
 
 [ext_resource type="Script" path="res://menus/InventoryUi.cs" id="1_script"]
-[ext_resource type="Texture2D" path="res://assets/images/items/meta_sword.png" id="2_sword"]
+[ext_resource type="Texture2D" path="res://assets/images/items/base_sword.png" id="2_sword"]
 
 [node name="InventoryUi" type="Control"]
 process_mode = 3

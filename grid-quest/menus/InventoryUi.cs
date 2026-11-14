@@ -8,8 +8,10 @@ public partial class InventoryUi : Control
 	private TextureRect[] _icons = new TextureRect[16];
 	private Button[] _slotButtons = new Button[16];
 	private string _swordLocation = "weapon";
-	private string _selectedSource = null; // null or "weapon" or "0".."15"
-	private static readonly Texture2D SwordTex = GD.Load<Texture2D>("res://assets/images/items/meta_sword.png");
+	private string _fireStaffLocation = "1";
+	private string _selectedSource = null;
+	private static readonly Texture2D SwordTex = GD.Load<Texture2D>("res://assets/images/items/base_sword.png");
+	private static readonly Texture2D StaffTex = GD.Load<Texture2D>("res://assets/images/items/fire-staff.png");
 
 	public override void _Ready()
 	{
@@ -47,40 +49,41 @@ public partial class InventoryUi : Control
 	{
 		var playerNode = GetTree().GetFirstNodeInGroup("player");
 		int gold = 0;
-		if (playerNode is Player p)
-		{
-			gold = p.Gold;
-			if (!p.HasWeaponEquipped && _swordLocation == "weapon") _swordLocation = "0";
-			if (p.HasWeaponEquipped) _swordLocation = "weapon";
-		}
+		if (playerNode is Player p) gold = p.Gold;
 		_goldLabel.Text = $"Coins: {gold}";
 		RefreshSlots();
 	}
 
-	private void OnWeaponSlotPressed()
-	{
-		HandleSlotClick("weapon");
-	}
+	private void OnWeaponSlotPressed() => HandleSlotClick("weapon");
+	private void OnInvSlotPressed(int idx) => HandleSlotClick(idx.ToString());
 
-	private void OnInvSlotPressed(int idx)
+	private string GetItemAt(string loc)
 	{
-		HandleSlotClick(idx.ToString());
+		if (_swordLocation == loc) return "sword";
+		if (_fireStaffLocation == loc) return "staff";
+		return null;
 	}
 
 	private void HandleSlotClick(string loc)
 	{
 		if (_selectedSource == null)
 		{
-			// select if this slot has sword
-			if (_swordLocation == loc)
-			{
-				_selectedSource = loc;
-			}
+			string item = GetItemAt(loc);
+			if (item != null) _selectedSource = item + "_" + loc;
 		}
 		else
 		{
-			// move sword to clicked location
-			_swordLocation = loc;
+			string[] parts = _selectedSource.Split('_');
+			string selItem = parts[0];
+			string selLoc = string.Join("_", parts[1..]); // in case
+			// if clicking same source, deselect
+			if (selLoc == loc) { _selectedSource = null; RefreshSlots(); return; }
+			// if target occupied by different item, block
+			string targetItem = GetItemAt(loc);
+			if (targetItem != null && targetItem != selItem) { return; } // blocked
+			// move
+			if (selItem == "sword") _swordLocation = loc;
+			else if (selItem == "staff") _fireStaffLocation = loc;
 			_selectedSource = null;
 			ApplyWeaponState();
 		}
@@ -92,28 +95,25 @@ public partial class InventoryUi : Control
 		var playerNode = GetTree().GetFirstNodeInGroup("player");
 		if (playerNode is Player p)
 		{
-			p.HasWeaponEquipped = (_swordLocation == "weapon");
+			if (_swordLocation == "weapon") p.EquippedWeapon = "sword";
+			else if (_fireStaffLocation == "weapon") p.EquippedWeapon = "fire_staff";
+			else p.EquippedWeapon = "none";
 		}
 	}
 
 	private void RefreshSlots()
 	{
-		// weapon slot
-		_weaponIcon.Visible = (_swordLocation == "weapon");
-		if (_selectedSource == "weapon")
-			_weaponSlotBtn.Modulate = new Color(1f, 1f, 0.4f); // highlighted selected
-		else
-			_weaponSlotBtn.Modulate = Colors.White;
+		string wItem = GetItemAt("weapon");
+		_weaponIcon.Texture = wItem == "sword" ? SwordTex : (wItem == "staff" ? StaffTex : null);
+		_weaponIcon.Visible = wItem != null;
+		_weaponSlotBtn.Modulate = (_selectedSource != null && _selectedSource.EndsWith("_weapon")) ? new Color(1f, 1f, 0.4f) : Colors.White;
 
 		for (int i = 0; i < 16; i++)
 		{
-			bool hasSword = _swordLocation == i.ToString();
-			_icons[i].Texture = hasSword ? SwordTex : null;
-			_icons[i].Visible = hasSword;
-			if (_selectedSource == i.ToString())
-				_slotButtons[i].Modulate = new Color(1f, 1f, 0.4f);
-			else
-				_slotButtons[i].Modulate = Colors.White;
+			string item = GetItemAt(i.ToString());
+			_icons[i].Texture = item == "sword" ? SwordTex : (item == "staff" ? StaffTex : null);
+			_icons[i].Visible = item != null;
+			_slotButtons[i].Modulate = (_selectedSource != null && _selectedSource.EndsWith("_" + i)) ? new Color(1f, 1f, 0.4f) : Colors.White;
 		}
 	}
 }
