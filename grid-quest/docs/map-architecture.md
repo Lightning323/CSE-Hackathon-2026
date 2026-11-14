@@ -33,8 +33,8 @@ Decisions for how Grid Quest represents floor tiles, walls/fences, large props (
 
 ## Current Implementation
 
-- `map/` contains one C# file per map tile/item type defining its texture/path and node/layer factory (e.g. `GrassFloor`, `TownTree2`, `TownPlant1..3`).
-- `level/MapGrid.cs` (`MapGrid` in `level/map.tscn`) owns the logical grid (`Width`×`Height`, `CellSize`), an occupancy map, and composes layers by delegating to `map/*` factories: `Floor` (grass), `Objects` (collidable tree at center, occupying its cell), and `Items` (random plants placed only on empty cells).
+- `map/` contains one C# file per map tile/item type defining its texture/path and node/layer factory (e.g. `GrassFloor`, `TownTree2`, `TownPlant1..3`) plus the grid script/scene.
+- `map/map_grid.cs` is attached as an external script to the `MapGrid` node (`map/map_grid.tscn`, instanced/used in `level/map.tscn`). It owns the logical grid (`Width`×`Height`, `CellSize`), an occupancy map, and composes layers by delegating to `map/*` factories: `Floor` (grass), `Objects` (collidable tree at center, occupying its cell), and `Items` (random plants placed only on empty cells).
 - The grid exposes helpers for future systems: `CellToWorldCenter`, `WorldToCell`, `IsInBounds`, `GetOccupant`, `TryPlaceOccupant`.
 
 This is a pragmatic, node-based/grid-occupancy approach. As content grows, static/dense layers (floor, walls/fences, bridges, static trees) can migrate to `TileMapLayer`+`TileSet` for batching while interactive objects remain grid-placed nodes tracked in occupancy.

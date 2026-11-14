@@ -25,11 +25,12 @@ grid-quest/
 │   ├── skeleton_enemy.tscn    # Medium skeleton variant
 │   └── elite_skeleton_enemy.tscn # Hard skeleton variant
 ├── level/
-│   ├── MapGrid.cs             # Grid/occupancy and map layer composition
 │   ├── EnemyTestSpawner.cs    # Temporary number-key enemy spawner
 │   ├── KnightSpawnInput.cs    # Spawns an allied knight helper on G
 │   └── map.tscn               # Gameplay map, player, enemies, and test helpers
-├── map/                       # Map tile/item definitions and factories
+├── map/                       # Map tile/item definitions, factories, and grid scene/script
+│   ├── map_grid.cs            # Grid/occupancy and map layer composition (attached script)
+│   ├── map_grid.tscn          # Reusable MapGrid scene
 │   ├── GrassFloor.cs
 │   ├── TownTree2.cs
 │   ├── TownPlant1.cs
@@ -42,9 +43,9 @@ grid-quest/
 │       ├── KnightNpc.cs       # Allied knight AI, combat, and regeneration
 │       └── knight_npc.tscn    # Knight character scene
 └── player/
-    ├── Player.cs              # Player movement, combat, health, and animations
-    ├── Player.cs.uid          # Godot-generated script UID
-    └── player.tscn            # Player character scene
+	├── Player.cs              # Player movement, combat, health, and animations
+	├── Player.cs.uid          # Godot-generated script UID
+	└── player.tscn            # Player character scene
 ```
 
 ## Player
@@ -64,7 +65,7 @@ temporary debug invulnerability (remove when no longer needed).
 
 ## Map and Tiles
 
-- `level/MapGrid.cs` (`MapGrid` in `level/map.tscn`) owns a logical 2D grid (`Width`×`Height`,
+- `map/map_grid.cs` (attached to the `MapGrid` node/scene, used in `level/map.tscn` and defined in `map/map_grid.tscn`) owns a logical 2D grid (`Width`×`Height`,
   `CellSize` default 16px) and an occupancy map. The scene configures a 20×20 map.
 - **Floor:** `map/GrassFloor.cs` builds the floor layer from
   `assets/images/map_tiles/grass/grass.png` (48×48), tiled across the map.

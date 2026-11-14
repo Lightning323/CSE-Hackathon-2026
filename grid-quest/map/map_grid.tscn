@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://c27wu00wnjhax"]
+
+[ext_resource type="Script" uid="uid://b2qo5l5nnml0g" path="res://map/map_grid.cs" id="1_script"]
+
+[node name="MapGrid" type="Node2D" unique_id=1592895885]
+script = ExtResource("1_script")
