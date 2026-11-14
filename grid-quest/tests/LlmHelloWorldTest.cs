@@ -33,7 +33,7 @@ public partial class LlmHelloWorldTest : Node
 				GD.Print("[LLM] --- streamed output start ---");
 				response = await api.ChatAsync(
 					"Say hello world.",
-					"You are a helpful assistant. Reply with a story",
+					"You are a helpful assistant. Reply with a simple hi",
 					settings,
 					OnChunk);
 				GD.Print("");

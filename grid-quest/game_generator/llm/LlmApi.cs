@@ -30,6 +30,8 @@ public partial class LlmApi : Node
 
 		if (string.Equals(settings.Provider, "Anthropic", StringComparison.OrdinalIgnoreCase))
 			return await ChatAnthropicAsync(settings, prompt, systemPrompt, onChunk);
+		if (string.Equals(settings.Provider, "Ollama", StringComparison.OrdinalIgnoreCase))
+			return await ChatOllamaAsync(settings, prompt, systemPrompt, onChunk);
 
 		return await ChatOpenAiCompatibleAsync(settings, prompt, systemPrompt, onChunk);
 	}
@@ -177,6 +179,66 @@ public partial class LlmApi : Node
 			}
 			catch
 			{
+			}
+		}
+
+		GD.Print("");
+		if (full.Length == 0)
+			throw new Exception("Empty streamed response.");
+		return full.ToString();
+	}
+
+	private async Task<string> ChatOllamaAsync(LlmSettings settings, string prompt, string systemPrompt, Action<string> onChunk)
+	{
+		var url = settings.BaseUrl.TrimEnd('/') + "/api/generate";
+		using var req = new HttpRequestMessage(HttpMethod.Post, url);
+
+		if (!string.IsNullOrWhiteSpace(settings.ApiKey))
+			req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", settings.ApiKey);
+
+		var payload = new JsonObject
+		{
+			["model"] = settings.Model,
+			["prompt"] = prompt,
+			["stream"] = true,
+		};
+		if (!string.IsNullOrWhiteSpace(systemPrompt))
+			payload["system"] = systemPrompt;
+
+		req.Content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json");
+		using var res = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
+		if (!res.IsSuccessStatusCode)
+		{
+			var errBody = await res.Content.ReadAsStringAsync();
+			throw new Exception($"HTTP {(int)res.StatusCode}: {TrimForStatus(errBody)}");
+		}
+
+		await using var stream = await res.Content.ReadAsStreamAsync();
+		using var reader = new StreamReader(stream);
+		var full = new StringBuilder();
+		string line;
+		while ((line = await reader.ReadLineAsync()) != null)
+		{
+			if (string.IsNullOrWhiteSpace(line))
+				continue;
+			try
+			{
+				using var doc = JsonDocument.Parse(line);
+				var root = doc.RootElement;
+				if (root.TryGetProperty("response", out var responseEl))
+				{
+					var chunk = responseEl.GetString();
+					if (!string.IsNullOrEmpty(chunk))
+						EmitChunk(chunk, full, onChunk);
+				}
+				if (root.TryGetProperty("done", out var doneEl) && doneEl.ValueKind == JsonValueKind.True)
+					break;
+				if (root.TryGetProperty("error", out var errEl))
+					throw new Exception(errEl.GetString() ?? "Ollama error");
+			}
+			catch (Exception e) when (e is not Exception || e.Message == "Ollama error" ? false : true)
+			{
+				// ignore malformed partial lines unless explicit error handled above
 			}
 		}
 

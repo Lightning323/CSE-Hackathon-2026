@@ -32,6 +32,7 @@ public partial class SettingsMenu : Control
 		_providerOption.AddItem("OpenAI");
 		_providerOption.AddItem("Anthropic");
 		_providerOption.AddItem("LM Studio");
+		_providerOption.AddItem("Ollama");
 		_providerOption.AddItem("Custom (OpenAI-compatible)");
 
 		_providerOption.ItemSelected += _ => ApplyProviderDefaultsIfEmptyOrMatching();
@@ -94,12 +95,12 @@ public partial class SettingsMenu : Control
 	private static bool IsKnownDefaultBaseUrl(string url)
 	{
 		url = (url ?? "").Trim().TrimEnd('/');
-		return url is "https://api.openai.com/v1" or "https://api.anthropic.com/v1" or "http://localhost:1234/v1";
+		return url is "https://api.openai.com/v1" or "https://api.anthropic.com/v1" or "http://localhost:1234/v1" or "http://localhost:11434";
 	}
 
 	private static bool IsKnownDefaultModel(string model)
 	{
-		return model is "gpt-4o-mini" or "claude-3-5-haiku-latest" or "local-model";
+		return model is "gpt-4o-mini" or "claude-3-5-haiku-latest" or "local-model" or "qwen3:8b";
 	}
 
 	private void OnSavePressed()

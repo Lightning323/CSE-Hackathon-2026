@@ -1,6 +1,6 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://dcrqkmlemcyjy"]
 
-[ext_resource type="Script" path="res://tests/LlmHelloWorldTest.cs" id="1_test"]
+[ext_resource type="Script" uid="uid://b4bjwa2jt1o4y" path="res://tests/LlmHelloWorldTest.cs" id="1_test"]
 
-[node name="LlmHelloWorldTest" type="Node"]
+[node name="LlmHelloWorldTest" type="Node" unique_id=688980122]
 script = ExtResource("1_test")
