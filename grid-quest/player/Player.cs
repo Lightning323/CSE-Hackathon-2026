@@ -34,6 +34,7 @@ public partial class Player : CharacterBody2D
 	}
 
 	public int Health { get; private set; }
+	public int Gold { get; private set; }
 	public bool IsDead => _state == State.Dead;
 
 	public override void _Ready()
@@ -46,6 +47,13 @@ public partial class Player : CharacterBody2D
 		_sprite.AnimationFinished += OnAnimationFinished;
 		_sprite.Play("idle_down");
 		UpdateHealthBar();
+	}
+
+	public void AddGold(int amount)
+	{
+		if (amount <= 0) return;
+		Gold += amount;
+		GD.Print($"Gold: {Gold}");
 	}
 
 	public override void _UnhandledInput(InputEvent @event)

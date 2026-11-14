@@ -7,6 +7,8 @@ public partial class Enemy : CharacterBody2D
 	[Export] public int AttackDamage { get; set; } = 1;
 	[Export] public float AttackRange { get; set; } = 24.0f;
 	[Export] public float AttackCooldown { get; set; } = 0.8f;
+	[Export] public float AgroRange { get; set; } = 180.0f;
+	[Export] public int CoinDropCount { get; set; } = 1;
 	[Export(PropertyHint.File, "*.png")] public string TexturePath { get; set; } = "res://assets/images/enemies/skeleton/cute_Skeleton.png";
 	[Export] public int IdleFrameCount { get; set; } = 6;
 	[Export] public int WalkFrameCount { get; set; } = 6;
@@ -16,6 +18,7 @@ public partial class Enemy : CharacterBody2D
 	[Export] public float AttackFps { get; set; } = 10.0f;
 
 	private const int FrameSize = 32;
+	private static readonly PackedScene CoinScene = GD.Load<PackedScene>("res://items/coin.tscn");
 
 	private AnimatedSprite2D _sprite;
 	private ProgressBar _healthBar;
@@ -79,7 +82,7 @@ public partial class Enemy : CharacterBody2D
 
 		Vector2 toPlayer = _player.GlobalPosition - GlobalPosition;
 		float distance = toPlayer.Length();
-		if (distance <= 0.001f)
+		if (distance > AgroRange || distance <= 0.001f)
 		{
 			Velocity = Vector2.Zero;
 			_state = State.Idle;
@@ -124,7 +127,26 @@ public partial class Enemy : CharacterBody2D
 		UpdateHealthBar();
 		if (Health == 0)
 		{
+			DropCoins();
 			QueueFree();
+		}
+	}
+
+	private void DropCoins()
+	{
+		for (int i = 0; i < CoinDropCount; i++)
+		{
+			Node coinNode = CoinScene.Instantiate();
+			if (coinNode is Node2D coin)
+			{
+				Vector2 offset = new Vector2((float)GD.RandRange(-8, 8), (float)GD.RandRange(-8, 8));
+				coin.GlobalPosition = GlobalPosition + offset;
+				GetParent().AddChild(coin);
+			}
+			else
+			{
+				coinNode.QueueFree();
+			}
 		}
 	}
 

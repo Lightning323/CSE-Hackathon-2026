@@ -28,6 +28,7 @@ MaxHealth = 6
 AttackDamage = 2
 AttackRange = 26.0
 AttackCooldown = 0.7
+CoinDropCount = 3
 TexturePath = "res://assets/images/enemies/skeleton/cute_Skeleton.png"
 IdleFrameCount = 6
 WalkFrameCount = 6
