@@ -4,6 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://bpm8hcch01q51" path="res://assets/images/map_tiles/trees/town_bush-1.png" id="2_mj284"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_tph22"]
+radius = 7.0
 
 [node name="TownTree2" type="Node2D" unique_id=212392629]
 y_sort_enabled = true
@@ -17,4 +18,5 @@ texture = ExtResource("2_mj284")
 [node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=1803623395]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D" unique_id=243873483]
+position = Vector2(0, -21)
 shape = SubResource("CircleShape2D_tph22")

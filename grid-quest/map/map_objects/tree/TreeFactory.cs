@@ -4,7 +4,7 @@ namespace GridQuest.Map.MapObjects;
 
 public partial class TreeFactory : MapObjectFactory
 {
-	public const string ScenePath = "res://map/map_objects/town_tree_2.tscn";
+	public const string ScenePath = "res://map/map_objects/tree/town_tree_2.tscn";
 	private static readonly PackedScene Scene = GD.Load<PackedScene>(ScenePath);
 
 	public static TreeFactory Instantiate(Vector2 worldPosition)

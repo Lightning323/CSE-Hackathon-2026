@@ -48,11 +48,10 @@ public partial class Map : Node2D
 
 	private static Node2D ObjectLayer(int width, int height)
 	{
-		Node2D itemsLayer = new() { Name = "Objects", YSortEnabled = true };
+		Node2D objectsRoot = new() { Name = "Objects", YSortEnabled = true };
+		Node2D plantsLayer = new() { Name = "Plants", YSortEnabled = false };
+		Node2D treesLayer = new() { Name = "Trees", YSortEnabled = true };
 		var rng = new RandomNumberGenerator();
-
-		int cx = width / 2;
-		int cy = height / 2;
 
 		for (int y = 0; y < height; y++)
 		{
@@ -60,14 +59,16 @@ public partial class Map : Node2D
 			{
 				if (MiscUtils.isCheckerboard(x, y) && rng.RandiRange(0, 100) < 1)
 				{
-					itemsLayer.AddChild(TreeFactory.Create(x, y));
+					treesLayer.AddChild(TreeFactory.Create(x, y));
 				}
-				 if (!MiscUtils.isCheckerboard(x, y) && rng.RandiRange(0, 10) < 3)
+				if (!MiscUtils.isCheckerboard(x, y) && rng.RandiRange(0, 10) < 3)
 				{
-					itemsLayer.AddChild(PlantFactory.CreateVariant(x, y, rng.RandiRange(1, 3)));
+					plantsLayer.AddChild(PlantFactory.CreateVariant(x, y, rng.RandiRange(1, 3)));
 				}
 			}
 		}
-		return itemsLayer;
+		objectsRoot.AddChild(plantsLayer);
+		objectsRoot.AddChild(treesLayer);
+		return objectsRoot;
 	}
 }

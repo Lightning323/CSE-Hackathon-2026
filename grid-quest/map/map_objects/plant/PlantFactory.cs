@@ -17,7 +17,7 @@ public partial class PlantFactory : MapObjectFactory
 			Name = name,
 			Position = new Vector2(x * MapConstants.CELL_SIZE + MapConstants.CELL_SIZE / 2.0f, y * MapConstants.CELL_SIZE + MapConstants.CELL_SIZE),
 			BlocksMovement = false,
-			YSortEnabled = true,
+			YSortEnabled = false,
 		};
 
 		var sprite = new Sprite2D
@@ -26,7 +26,7 @@ public partial class PlantFactory : MapObjectFactory
 			Texture = texture,
 			TextureFilter = CanvasItem.TextureFilterEnum.Nearest,
 			Centered = true,
-			Offset = new Vector2(0, -texture.GetHeight() / 2.0f),
+			Offset = Vector2.Zero,
 		};
 
 		plant.AddChild(sprite);
