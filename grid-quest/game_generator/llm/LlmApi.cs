@@ -189,7 +189,7 @@ public partial class LlmApi : Node
 	private void EmitChunk(string chunk, StringBuilder full, Action<string> onChunk)
 	{
 		full.Append(chunk);
-		try { GD.PrintRaw(chunk); } catch { }
+		try { GD.PrintRaw(chunk); } catch { try { GD.Print(chunk); } catch { } }
 		try { StreamChunkReceived?.Invoke(chunk); } catch { }
 		try { onChunk?.Invoke(chunk); } catch { }
 	}

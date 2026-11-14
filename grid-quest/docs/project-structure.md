@@ -204,4 +204,5 @@ sprites under `assets/images/characters/`. Knights are allied village protectors
 ## Tests
 
 - `tests/generation_tests.tscn` + `tests/GenerationTests.cs`: procedural generation/integration checks (run headless with `godot --headless --path . res://tests/generation_tests.tscn`).
-- `tests/llm_hello_test.tscn` + `tests/LlmHelloTest.cs`: loads saved LLM settings from `OS.GetUserDataDir()/llm_settings.json` and sends a "hello world" prompt via `LlmApi`, printing provider/model/response to the terminal then exiting (run headless with `godot --headless --path . res://tests/llm_hello_test.tscn`).
+- `tests/llm_hello_test.tscn` + `tests/LlmHelloTest.cs`: loads saved LLM settings from `OS.GetUserDataDir()/llm_settings.json` and uses `LlmApi`/`StoryGenerator` to run an LLM generation test, printing output to the terminal then exiting (run headless with `godot --headless --path . res://tests/llm_hello_test.tscn`).
+- `tests/llm_hello_world_test.tscn` + `tests/LlmHelloWorldTest.cs`: simple streaming "hello world" test using saved LLM settings; prints streamed chunks as they arrive, reports chunk count/final response, and exits nonzero if no chunks are received (run headless with `godot --headless --path . res://tests/llm_hello_world_test.tscn`).
