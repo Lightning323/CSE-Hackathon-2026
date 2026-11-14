@@ -66,7 +66,7 @@ public partial class SkillsUi : Control
 		_list.AddThemeConstantOverride("separation", 6);
 		scroll.AddChild(_list);
 
-		var hint = new Label { Text = "Press F or Esc to close." };
+		var hint = new Label { Text = "Press F/X to close, Esc/B/Start to back out." };
 		hint.AddThemeFontSizeOverride("font_size", 12);
 		root.AddChild(hint);
 
@@ -129,6 +129,7 @@ public partial class SkillsUi : Control
 		ResolvePlayer();
 		Visible = true;
 		Refresh();
+		CallDeferred(nameof(GrabFirstUpgradeFocus));
 	}
 
 	public void Close()
@@ -136,10 +137,15 @@ public partial class SkillsUi : Control
 		Visible = false;
 	}
 
-	public override void _UnhandledInput(InputEvent @event)
+	public override void _Input(InputEvent @event)
 	{
+		var villagerChat = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
+		if (villagerChat != null && villagerChat.Visible) return;
 		if (!Visible) return;
-		if (@event is InputEventKey key && key.Pressed && !key.Echo && (key.Keycode == Key.F || key.Keycode == Key.Escape))
+		bool closePressed = @event.IsActionPressed("interact") || @event.IsActionPressed("ui_cancel") || @event.IsActionPressed("pause_menu");
+		if (!closePressed && @event is InputEventKey key && key.Pressed && !key.Echo && (key.Keycode == Key.F || key.Keycode == Key.Escape))
+			closePressed = true;
+		if (closePressed)
 		{
 			Close();
 			GetViewport().SetInputAsHandled();
@@ -163,6 +169,25 @@ public partial class SkillsUi : Control
 			_statusLabel.Text = $"Not enough coins for {def.Name} (need {cost}).";
 		}
 		Refresh();
+	}
+
+	private void GrabFirstUpgradeFocus()
+	{
+		if (_list == null) return;
+		foreach (Node child in _list.GetChildren())
+		{
+			Button buy = FindButton(child, "BuyButton");
+			if (buy != null && buy.IsVisibleInTree() && !buy.Disabled)
+			{
+				buy.GrabFocus();
+				return;
+			}
+			if (buy != null && buy.IsVisibleInTree())
+			{
+				buy.GrabFocus();
+				return;
+			}
+		}
 	}
 
 	public void Refresh()

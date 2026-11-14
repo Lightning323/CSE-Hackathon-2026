@@ -75,6 +75,17 @@ public partial class CheatMenu : Control
 		weaponRow.AddChild(staff);
 		root.AddChild(weaponRow);
 
+		root.AddChild(new Label { Text = "Villager Trust (debug):" });
+		var trustRow = new HBoxContainer();
+		trustRow.AddThemeConstantOverride("separation", 6);
+		var trustNear = new Button { Text = "+25 Nearest" };
+		trustNear.Pressed += () => AdjustNearestVillagerTrust(25);
+		var trustAll = new Button { Text = "+25 All Nearby" };
+		trustAll.Pressed += () => AdjustNearbyVillagersTrust(25, 180.0f);
+		trustRow.AddChild(trustNear);
+		trustRow.AddChild(trustAll);
+		root.AddChild(trustRow);
+
 		_statusLabel = new Label { Text = "Press ` to close." };
 		_statusLabel.AutowrapMode = TextServer.AutowrapMode.Word;
 		root.AddChild(_statusLabel);
@@ -87,8 +98,11 @@ public partial class CheatMenu : Control
 		SyncFromPlayer();
 	}
 
-	public override void _UnhandledInput(InputEvent @event)
+	public override void _Input(InputEvent @event)
 	{
+		var villagerChat = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
+		if (villagerChat != null && villagerChat.Visible)
+			return;
 		if (@event is InputEventKey key && key.Pressed && !key.Echo &&
 			(key.Keycode == Key.Quoteleft || key.PhysicalKeycode == Key.Quoteleft))
 		{
@@ -99,7 +113,10 @@ public partial class CheatMenu : Control
 
 		if (!Visible) return;
 
-		if (@event is InputEventKey esc && esc.Pressed && !esc.Echo && esc.Keycode == Key.Escape)
+		bool closePressed = @event.IsActionPressed("ui_cancel") || @event.IsActionPressed("pause_menu");
+		if (!closePressed && @event is InputEventKey esc && esc.Pressed && !esc.Echo && esc.Keycode == Key.Escape)
+			closePressed = true;
+		if (closePressed)
 		{
 			Visible = false;
 			GetViewport().SetInputAsHandled();
@@ -112,7 +129,8 @@ public partial class CheatMenu : Control
 		if (Visible)
 		{
 			ResolvePlayer();
-			_statusLabel.Text = "Cheats enabled. Press ` or Esc to close.";
+			_statusLabel.Text = "Cheats enabled. Press ` or Esc/B to close.";
+			_invincibilityToggle?.GrabFocus();
 		}
 	}
 
@@ -146,5 +164,48 @@ public partial class CheatMenu : Control
 		if (_player == null) return;
 		bool added = _player.AddItem(itemId, 1);
 		_statusLabel.Text = added ? $"Added weapon: {itemId}" : $"Could not add {itemId} (inventory full?)";
+	}
+
+	private void AdjustNearestVillagerTrust(int delta)
+	{
+		ResolvePlayer();
+		if (_player == null) return;
+		Villager nearest = null;
+		float best = float.MaxValue;
+		foreach (Node node in GetTree().GetNodesInGroup("villager_npcs"))
+		{
+			if (node is not Villager villager || !IsInstanceValid(villager))
+				continue;
+			float d = _player.GlobalPosition.DistanceTo(villager.GlobalPosition);
+			if (d < best)
+			{
+				best = d;
+				nearest = villager;
+			}
+		}
+		if (nearest == null)
+		{
+			_statusLabel.Text = "No villager found.";
+			return;
+		}
+		nearest.DebugAdjustTrust(delta);
+		_statusLabel.Text = $"Nearest villager trust: {nearest.Trust}/100";
+	}
+
+	private void AdjustNearbyVillagersTrust(int delta, float radius)
+	{
+		ResolvePlayer();
+		if (_player == null) return;
+		int count = 0;
+		foreach (Node node in GetTree().GetNodesInGroup("villager_npcs"))
+		{
+			if (node is not Villager villager || !IsInstanceValid(villager))
+				continue;
+			if (_player.GlobalPosition.DistanceTo(villager.GlobalPosition) > radius)
+				continue;
+			villager.DebugAdjustTrust(delta);
+			count++;
+		}
+		_statusLabel.Text = count > 0 ? $"Raised trust for {count} nearby villager(s)." : "No nearby villagers.";
 	}
 }

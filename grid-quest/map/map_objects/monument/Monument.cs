@@ -32,10 +32,15 @@ public partial class Monument : Node2D
 		_playerNear = near;
 	}
 
-	public override void _UnhandledInput(InputEvent @event)
+	public override void _Input(InputEvent @event)
 	{
+		var villagerChat = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
+		if (villagerChat != null && villagerChat.Visible) return;
 		if (!_playerNear) return;
-		if (!(@event is InputEventKey key && key.Pressed && !key.Echo && key.Keycode == Key.F))
+		bool interactPressed = @event.IsActionPressed("interact");
+		if (!interactPressed && @event is InputEventKey key && key.Pressed && !key.Echo && key.Keycode == Key.F)
+			interactPressed = true;
+		if (!interactPressed)
 			return;
 
 		// Prefer chest interactions and avoid opening while a chest panel is already open.

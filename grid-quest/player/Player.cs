@@ -318,18 +318,14 @@ public partial class Player : CharacterBody2D
 		_killSpeedBuffTimer = Mathf.Max(0.0f, _killSpeedBuffTimer - dt);
 		ApplyHealthRegen(dt);
 
-		if (_state != State.Attack && EquippedWeapon != "none" && (Input.IsKeyPressed(Key.Space) || Input.IsJoyButtonPressed(0, JoyButton.A)) && _attackTimer <= 0.0f)
+		if (_state != State.Attack && EquippedWeapon != "none" && Input.IsActionPressed("attack") && _attackTimer <= 0.0f)
 		{
 			StartAttack();
 		}
 
-		Vector2 input = Vector2.Zero;
-		if (Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left)) input.X -= 1;
-		if (Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right)) input.X += 1;
-		if (Input.IsKeyPressed(Key.W) || Input.IsKeyPressed(Key.Up)) input.Y -= 1;
-		if (Input.IsKeyPressed(Key.S) || Input.IsKeyPressed(Key.Down)) input.Y += 1;
-		Vector2 joy = Input.GetVector("ui_left", "ui_right", "ui_up", "ui_down");
-		if (joy != Vector2.Zero) input = joy;
+		Vector2 input = Input.GetVector("move_left", "move_right", "move_up", "move_down");
+		if (input.LengthSquared() < 0.0001f)
+			input = Input.GetVector("ui_left", "ui_right", "ui_up", "ui_down");
 		if (input.Length() > 1.0f) input = input.Normalized();
 
 		Vector2 desiredVelocity = input * CurrentMoveSpeed;

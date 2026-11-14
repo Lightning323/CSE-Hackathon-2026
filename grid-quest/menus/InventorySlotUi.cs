@@ -9,17 +9,17 @@ public partial class InventorySlotUi : PanelContainer
 	public int SlotIndex { get; set; } = -1; // -1 weapon
 	public TextureRect Icon { get; private set; }
 	public Label CountLabel { get; private set; }
-	private Button _button;
+	public Button Button { get; private set; }
 
 	public override void _Ready()
 	{
 		CustomMinimumSize = new Vector2(44, 44);
-		_button = new Button { Flat = false, MouseFilter = MouseFilterEnum.Pass };
-		_button.SetAnchorsPreset(LayoutPreset.FullRect);
-		_button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-		_button.SizeFlagsVertical = SizeFlags.ExpandFill;
-		_button.Pressed += () => EmitSignal(SignalName.SlotPressed, this);
-		AddChild(_button);
+		Button = new Button { Flat = false, MouseFilter = MouseFilterEnum.Pass, FocusMode = FocusModeEnum.All };
+		Button.SetAnchorsPreset(LayoutPreset.FullRect);
+		Button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		Button.SizeFlagsVertical = SizeFlags.ExpandFill;
+		Button.Pressed += () => EmitSignal(SignalName.SlotPressed, this);
+		AddChild(Button);
 
 		Icon = new TextureRect
 		{
@@ -29,7 +29,7 @@ public partial class InventorySlotUi : PanelContainer
 		};
 		Icon.SetAnchorsPreset(LayoutPreset.FullRect);
 		Icon.OffsetLeft = 4; Icon.OffsetTop = 4; Icon.OffsetRight = -4; Icon.OffsetBottom = -4;
-		_button.AddChild(Icon);
+		Button.AddChild(Icon);
 
 		CountLabel = new Label
 		{
@@ -39,7 +39,7 @@ public partial class InventorySlotUi : PanelContainer
 		};
 		CountLabel.SetAnchorsPreset(LayoutPreset.FullRect);
 		CountLabel.OffsetRight = -2; CountLabel.OffsetBottom = -1;
-		_button.AddChild(CountLabel);
+		Button.AddChild(CountLabel);
 	}
 
 	public void SetStack(ItemStack stack)

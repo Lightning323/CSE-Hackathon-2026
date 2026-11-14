@@ -41,6 +41,7 @@ public partial class SettingsMenu : Control
 		_testButton.Pressed += OnTestPressed;
 
 		LoadIntoUi();
+		_providerOption.GrabFocus();
 	}
 
 	private void LoadIntoUi()

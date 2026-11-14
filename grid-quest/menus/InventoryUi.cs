@@ -132,34 +132,44 @@ public partial class InventoryUi : Control
 		Refresh();
 	}
 
-	public override void _UnhandledInput(InputEvent @event)
+	public override void _Input(InputEvent @event)
 	{
-		bool toggle = false;
-		bool interact = false;
+		if (@event.IsEcho()) return;
+		var villagerChat = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
+		if (villagerChat != null && villagerChat.Visible)
+			return;
+
+		bool togglePressed = @event.IsActionPressed("toggle_inventory");
+		bool interactPressed = @event.IsActionPressed("interact");
+		bool cancelPressed = @event.IsActionPressed("ui_cancel") || @event.IsActionPressed("pause_menu");
+
+		// Fallbacks for direct device events (and when actions are remapped in-editor)
 		if (@event is InputEventKey key && key.Pressed && !key.Echo)
 		{
-			if (key.Keycode == Key.E || key.Keycode == Key.Tab || key.Keycode == Key.I) toggle = true;
-			if (key.Keycode == Key.F) interact = true;
-			if (key.Keycode == Key.Escape && Visible)
-			{
-				CloseInventory();
-				GetViewport().SetInputAsHandled();
-				return;
-			}
+			if (key.Keycode == Key.E || key.Keycode == Key.Tab || key.Keycode == Key.I) togglePressed = true;
+			if (key.Keycode == Key.F) interactPressed = true;
+			if (key.Keycode == Key.Escape && Visible) cancelPressed = true;
 		}
-		if (@event is InputEventJoypadButton jb && jb.Pressed && jb.ButtonIndex == JoyButton.Y) toggle = true;
+		if (@event is InputEventJoypadButton jb && jb.Pressed && jb.ButtonIndex == JoyButton.Y) togglePressed = true;
 
-		if (interact)
+		if (Visible && cancelPressed)
+		{
+			CloseInventory();
+			GetViewport().SetInputAsHandled();
+			return;
+		}
+
+		if (interactPressed)
 		{
 			if (TryInteractChest())
 			{
 				GetViewport().SetInputAsHandled();
 				return;
 			}
-			// No chest interaction consumed F; allow monument/villager handlers to process it.
+			// No chest interaction consumed; allow monument/villager handlers to process it.
 		}
 
-		if (toggle)
+		if (togglePressed)
 		{
 			if (Visible) CloseInventory();
 			else OpenInventory();
@@ -172,6 +182,7 @@ public partial class InventoryUi : Control
 		Visible = true;
 		_selected = null;
 		Refresh();
+		GrabInventoryFocus();
 	}
 
 	public void CloseInventory()
@@ -189,6 +200,19 @@ public partial class InventoryUi : Control
 		Visible = true;
 		_selected = null;
 		Refresh();
+		GrabInventoryFocus();
+	}
+
+	private void GrabInventoryFocus()
+	{
+		Control target = null;
+		if (_chestPanel.Visible && _takeAllButton != null && _takeAllButton.IsVisibleInTree())
+			target = _takeAllButton;
+		else if (_weaponSlot?.Button != null && _weaponSlot.Button.IsVisibleInTree())
+			target = _weaponSlot.Button;
+		else if (_playerSlots.Length > 0 && _playerSlots[0]?.Button != null)
+			target = _playerSlots[0].Button;
+		target?.GrabFocus();
 	}
 
 	public void CloseChest()
@@ -528,8 +552,8 @@ public partial class InventoryUi : Control
 
 		HighlightSelected();
 		_hintLabel.Text = _openChest != null
-			? "E/Tab: Close | F: Close chest | Click items to move/swap, Take All for loot"
-			: "E/Tab/I: Open/Close | F: Open nearby chest | Click items to select/move/swap";
+			? "Inventory/Cancel: Close | Interact: Close chest | D-pad/Stick + Accept to select/move, Take All for loot"
+			: "Inventory: Open/Close | Interact: Open chest | D-pad/Stick + Accept to select/move/swap";
 	}
 
 	private void HighlightSelected()

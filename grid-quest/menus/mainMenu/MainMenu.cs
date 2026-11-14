@@ -17,6 +17,7 @@ public partial class MainMenu : Control
 
 		_startGameButton.Pressed += OnStartGamePressed;
 		_settingsButton.Pressed += OnSettingsPressed;
+		_startGameButton.GrabFocus();
 	}
 
 	private void OnStartGamePressed()

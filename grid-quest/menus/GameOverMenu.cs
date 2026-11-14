@@ -34,9 +34,12 @@ public partial class GameOverMenu : Control
 		ShowMenu("Game Over");
 	}
 
-	public override void _UnhandledInput(InputEvent @event)
+	public override void _Input(InputEvent @event)
 	{
-		if (@event is not InputEventKey key || !key.Pressed || key.Echo || key.Keycode != Key.Escape)
+		bool pausePressed = @event.IsActionPressed("pause_menu") || @event.IsActionPressed("ui_cancel");
+		if (!pausePressed && @event is InputEventKey key && key.Pressed && !key.Echo && key.Keycode == Key.Escape)
+			pausePressed = true;
+		if (!pausePressed)
 			return;
 		if (_isGameOver)
 			return;

@@ -50,7 +50,7 @@ grid-quest/
 │       ├── tree/              # Tree factory/scene
 │       └── walls/             # Wall factory/scene
 ├── menus/
-│   ├── CheatMenu.cs           # Debug/cheat menu (invincibility, add coins, add weapons)
+│   ├── CheatMenu.cs           # Debug/cheat menu (invincibility, add coins, add weapons, villager trust debug)
 │   ├── InventoryUi.cs         # Inventory + chest UI (drag/drop, move, take-all)
 │   ├── InventorySlotUi.cs     # Reusable inventory slot UI control
 │   ├── MonumentIndicator.cs   # Directional indicator pointing to the monument
@@ -104,8 +104,8 @@ grid-quest/
 | 6-8 | attack down / side / up | 4 |
 | 9 | death | 4 |
 
-Movement is 4-directional with WASD/arrow keys and is allowed during attacks. Space attacks;
-the player can damage enemies and knights. Health is shown in the player health bar. Debug cheats (including invincibility toggle) are available via the in-game cheat menu (`menus/CheatMenu.cs`, `` ` `` key) instead of direct gameplay keybinds.
+Movement is 4-directional (`WASD`/arrow keys, controller left stick/D-pad) and is allowed during attacks. Attack: `Space`/`J` or controller **A** (uses the `attack` action).
+The player can damage enemies and knights. Health is shown in the player health bar. Debug cheats (including invincibility toggle) are available via the in-game cheat menu (`menus/CheatMenu.cs`, `` ` `` key) instead of direct gameplay keybinds.
 
 The player has a slot-based backpack inventory and weapon slot (`items/ItemDefs.cs`, `InventoryContainer.cs`).
 Coins collected in-world are tracked as gold in the player's wallet (used for monument upgrades). Coins are not stored as backpack items; coin transfers from chests are converted to wallet immediately, and any legacy coin stacks in the backpack are normalized into the wallet.
@@ -114,9 +114,9 @@ Coins collected in-world are tracked as gold in the player's wallet (used for mo
 ## Inventory, Chests, and Items
 
 - `menus/inventory_ui.tscn` + `InventoryUi.cs`/`InventorySlotUi.cs` provide the inventory UI and chest UI.
-  - Toggle inventory: `E`/`Tab`/`I` (controller `Y`); close: `Esc` or toggle key.
-  - Interact/open nearby chest: `F` (opens chest and shows chest panel alongside inventory). While the chest menu is open, `E`/`F`/`Esc` (or Close Chest) close the entire inventory + chest view.
-  - Supports click-to-select move/swap and drag-and-drop between backpack, weapon slot, and chest; stacks merge where applicable, and chest loot can be moved with **Take All**.
+  - Toggle inventory: `E`/`Tab`/`I` or controller **Y** (`toggle_inventory`); close: same toggle, `Esc`, or controller **B/Start** (`ui_cancel`/`pause_menu`) depending on context.
+  - Interact/open nearby chest, villager, or monument: `F` or controller **X** (`interact`). While the chest menu is open, inventory/close actions (`E`/`Tab`/`I`, `Esc`/`B`, or `F`/`X` when interacting with the open chest) or **Close Chest** close the entire inventory + chest view.
+  - Supports click-to-select move/swap and drag-and-drop between backpack, weapon slot, and chest; stacks merge where applicable, and chest loot can be moved with **Take All**. Controller UI navigation uses focus/directional input and **A** (`ui_accept`) to activate/select.
   - Coins taken from a chest into the player's inventory (including **Take All**) are consumed from the chest and added directly to the player's coin wallet instead of occupying backpack slots.
 - `menus/skills_ui.tscn` + `menus/SkillsUi.cs` provide the monument upgrade UI (`skills_ui` group), listing all player attribute upgrades with current level, coin cost, and purchase actions. It opens from the monument and closes with `F`/`Esc`.
 - `map/map_objects/chest/` defines a stateful chest object (`Chest.cs`, `chest.tscn`) that opens on first interaction, generates a random dynamic loot pool once, and stores items in a 12-slot container for transfer in/out.
@@ -140,8 +140,10 @@ Coins collected in-world are tracked as gold in the player's wallet (used for mo
 
 - `npc/villager/Villager.cs` builds villager animations at runtime and runs simple idle/patrol/flee AI. Villagers target-threat flee from enemies, can take damage, and prefer to stay within/near their assigned home village (`SetHome`) by wandering locally and returning when displaced.
 - `npc/villager/VillagePopulationManager.cs` spawns a configurable number of villagers per generated village at startup and respawns villagers slowly after death when the village area is not visible to the active camera. Manual spawn inputs (`level/character_dev/VillagerSpawnInput.cs`) can also place/assign villagers to generated villages.
-- **Interaction & chat:** villagers display a dynamically sized speech bubble above their head (`npc/villager/villager.tscn`) with placeholder dialogue for `Idle`, `Chased`, and `Recovered` states (auto-updated on state changes). Pressing `F` near the closest villager opens the villager chat interface (`menus/villager_chat_ui.tscn`, `VillagerChatUi.cs`) so the player can ask questions and receive streamed responses (via `LlmApi` with in-character prompt/context from `Villager`); `Esc`/`F`/Close closes it.
-- **Dialogue/chat context:** `Villager` exposes dialogue/emotional state and runtime context for dialogue/chat generation via `CurrentDialogueEmotion`, `CurrentDialogueText`, `GetDialogueContext()`, and chat prompt helpers (state/emotion, fleeing/recovery/threat/home/player proximity, health, current dialogue, etc.).
+- **Interaction & chat:** villagers display a dynamically sized speech bubble above their head (`npc/villager/villager.tscn`) with state-based dialogue. Pressing `F` or controller **X** (`interact`) near the closest villager opens the villager chat interface (`menus/villager_chat_ui.tscn`, `VillagerChatUi.cs`) for streamed in-character responses (via `LlmApi` and `Villager` context); `Esc`/controller **B/Start**/Close closes it. Typing responses remains keyboard-based, and chat input is consumed while open so gameplay/menu keybinds do not trigger while typing.
+- **Trust & advice system:** calm villagers can ask the player for life advice during chat. Player responses are evaluated (LLM-based rating with fallback heuristics) to update a per-villager trust score based on communication/helpfulness. Higher trust makes villagers more likely to randomly gift coin drops when the player is nearby, showing contextual thank-you speech-bubble messages (e.g. for help/upgrades). Gift frequency/amount scales with trust to support upgrade progression.
+- **Flee/recovery dialogue:** while being chased, villagers show flee messages with a **10-second cooldown** between messages (one message, then at least 10s before another can appear if still chased). Recovered/idle dialogue states continue to update contextually, and temporary gift/trust messages can appear as speech-bubble dialogue.
+- **Dialogue/chat context:** `Villager` exposes dialogue/emotional/trust state and runtime context for dialogue/chat and advice evaluation via methods/properties such as `CurrentDialogueEmotion`, `CurrentDialogueText`, `Trust`, `GetDialogueContext()`, and chat/advice prompt helpers (state/emotion, fleeing/recovery/threat/home/player proximity, health, current dialogue, trust, etc.).
 
 ## Monument & Upgrades
 
@@ -199,7 +201,7 @@ sprites under `assets/images/characters/`. Knights are allied village protectors
 - `menus/mainMenu/MainMenu.tscn` is the startup scene (`project.godot` `run/main_scene`) containing the menu UI layout; `menus/mainMenu/MainMenu.cs` handles behavior/wiring.
 - **Current simplified flow:** the main menu provides **Start Game** and **Settings**. Save list/selection, New Save, Delete, and game/story generation are not exposed in the UI (generation/save code remains in `game_generator/`, `menus/mainMenu/SaveManager.cs`, `menus/mainMenu/GameSession.cs` but is kept out of the active flow for now).
 - **Start Game** creates/reuses a temporary save (`OS.GetUserDataDir()/saves/temp_session`) via `SaveManager.GetOrCreateTemporarySave()`, stores it in the `GameSession` autoload, and boots into `res://level/character_dev/main_level.tscn`.
-- **In-game menu:** `menus/game_over_menu.tscn` + `menus/GameOverMenu.cs` (added to the level UI) pauses gameplay and provides **Exit to Main Menu**. It opens as "Paused" when `Esc` is pressed in-game (toggles closed with `Esc`, unless other modal UI is open) and opens as "Game Over" on player death.
+- **In-game menu:** `menus/game_over_menu.tscn` + `menus/GameOverMenu.cs` (added to the level UI) pauses gameplay and provides **Exit to Main Menu**. It opens as "Paused" when `Esc` or controller **Start** (`pause_menu`) is pressed in-game (toggles closed the same way, unless other modal UI is open) and opens as "Game Over" on player death.
 
 ## Main Menu Settings and LLM API
 

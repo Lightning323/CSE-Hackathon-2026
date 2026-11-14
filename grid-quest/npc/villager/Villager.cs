@@ -1,5 +1,7 @@
 using Godot;
 using Godot.Collections;
+using System;
+using System.Text.Json;
 
 public partial class Villager : CharacterBody2D
 {
@@ -19,6 +21,49 @@ public partial class Villager : CharacterBody2D
 	[Export] public float InteractRange { get; set; } = 42.0f;
 	[Export] public float RecoveredStateDuration { get; set; } = 5.0f;
 	[Export] public float DialogueDisplayDuration { get; set; } = 4.0f;
+	[Export] public float GiftRange { get; set; } = 72.0f;
+	[Export] public float GiftCheckInterval { get; set; } = 4.0f;
+
+	public int Trust { get; private set; } = 0;
+	public bool HasPendingAdviceRequest => _hasPendingAdviceRequest;
+	public string PendingAdviceQuestion => _pendingAdviceQuestion ?? "";
+
+	public void DebugAdjustTrust(int delta)
+	{
+		Trust = Mathf.Clamp(Trust + delta, 0, 100);
+	}
+
+	private static readonly PackedScene CoinScene = GD.Load<PackedScene>("res://items/coin.tscn");
+	private static readonly string[] AdviceQuestions =
+	{
+		"I've been feeling stuck lately. What should I do to move forward?",
+		"Sometimes I'm afraid of making the wrong choice. Any life advice?",
+		"How do you stay hopeful when things get difficult?",
+		"I want to be more helpful to others. Where should I start?",
+		"Do you have advice for finding courage in scary times?"
+	};
+	private static readonly string[] TrustGiftDialogue =
+	{
+		"Here's for your troubles.",
+		"For your next upgrade.",
+		"Thanks for listening to me.",
+		"You've been a real help. Take this!",
+		"For all your good advice."
+	};
+	private static readonly string[] HighTrustGiftDialogue =
+	{
+		"You've earned this and more!",
+		"For your next upgrade — and the one after!",
+		"I trust you completely. Please, take these!",
+		"Here's a little fortune for a true friend."
+	};
+
+	private bool _hasPendingAdviceRequest;
+	private string _pendingAdviceQuestion = "";
+	private float _adviceCooldownTimer;
+	private float _giftTimer;
+	private bool _trustDialogueActive;
+	private float _ambientTalkTimer;
 
 	private static readonly string[] IdleDialogueOptions =
 	{
@@ -52,6 +97,7 @@ public partial class Villager : CharacterBody2D
 	private float _patrolWaitTimer;
 	private float _patrolRepathTimer;
 	private float _fleeFacingTimer;
+	private float _fleeDialogueCooldownTimer;
 
 	private bool _hasHome;
 	private Rect2 _homeWorldRect;
@@ -65,8 +111,6 @@ public partial class Villager : CharacterBody2D
 	private string _currentDialogueText = "";
 	private Node2D _lastThreat;
 	private float _lastThreatDistance = float.MaxValue;
-	private bool _fleeDialogueLocked;
-	private string _fleeDialogueText = "";
 
 	private enum State
 	{
@@ -100,10 +144,15 @@ public partial class Villager : CharacterBody2D
 		UpdateHealthBar();
 		ConfigureSpeechBubble();
 		SetDialogueForEmotion(DialogueEmotion.Idle, false);
+		_adviceCooldownTimer = (float)GD.RandRange(5.0, 12.0); // make first life advice appear fairly quickly
+		_ambientTalkTimer = (float)GD.RandRange(18.0, 45.0); // stagger random popups so villages aren't too chatty
+		_giftTimer = (float)GD.RandRange(12.0, 20.0);
 	}
 
-	public override void _UnhandledInput(InputEvent @event)
+	public override void _Input(InputEvent @event)
 	{
+		var chatUiControl = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
+		if (chatUiControl != null && chatUiControl.Visible) return;
 		if (!IsInteractionInput(@event))
 			return;
 
@@ -117,7 +166,10 @@ public partial class Villager : CharacterBody2D
 		if (!IsClosestInteractableVillager(player))
 			return;
 
-		var chatUi = GetTree().GetFirstNodeInGroup("villager_chat_ui") as VillagerChatUi;
+		if (IsPlayerNearChest(player))
+			return;
+
+		var chatUi = chatUiControl as VillagerChatUi ?? GetTree().GetFirstNodeInGroup("villager_chat_ui") as VillagerChatUi;
 		if (chatUi != null)
 		{
 			chatUi.Open(this);
@@ -148,8 +200,8 @@ public partial class Villager : CharacterBody2D
 		string location = _hasHome ? $"home village #{_homeVillageIndex + 1}" : "the wilderness";
 		return $"You are a villager NPC in the game Grid Quest. Stay in character and answer the player's question directly. " +
 			$"Current mood/state: {mood}. Location/context: {location}. {threat} " +
-			$"Health: {Health}/{MaxHealth}. Recent line: \"{_currentDialogueText}\". " +
-			"Keep responses concise (1-3 short sentences), helpful, and grounded in what a villager might know.";
+			$"Health: {Health}/{MaxHealth}. Trust toward player: {Trust}/100. Recent line: \"{_currentDialogueText}\". " +
+			"Be responsive to how kindly/helpfully the player speaks. Keep responses concise (1-3 short sentences), helpful, and grounded in what a villager might know.";
 	}
 
 	public string BuildChatPrompt(string question)
@@ -208,8 +260,20 @@ public partial class Villager : CharacterBody2D
 
 	private static bool IsInteractionInput(InputEvent @event)
 	{
+		if (@event.IsActionPressed("interact"))
+			return true;
 		if (@event is InputEventKey keyEvent && keyEvent.Pressed && !keyEvent.Echo && keyEvent.Keycode == Key.F)
 			return true;
+		return false;
+	}
+
+	private bool IsPlayerNearChest(Node2D player)
+	{
+		foreach (Node node in GetTree().GetNodesInGroup("chests"))
+		{
+			if (node is Node2D chest && IsInstanceValid(chest) && player.GlobalPosition.DistanceTo(chest.GlobalPosition) <= 40.0f)
+				return true;
+		}
 		return false;
 	}
 
@@ -284,7 +348,9 @@ public partial class Villager : CharacterBody2D
 	{
 		float dt = (float)delta;
 		_fleeFacingTimer -= dt;
+		_fleeDialogueCooldownTimer = Mathf.Max(0.0f, _fleeDialogueCooldownTimer - dt);
 		UpdateDialogueTimers(dt);
+		UpdateTrustAndGifts(dt);
 
 		if (Health <= 0)
 		{
@@ -298,15 +364,10 @@ public partial class Villager : CharacterBody2D
 		{
 			_lastThreat = threat;
 			_lastThreatDistance = GlobalPosition.DistanceTo(threat.GlobalPosition);
-			if (!_wasRecentlyChased && !_fleeDialogueLocked)
-			{
-				// Start a new flee episode with one dialogue line for the whole flee.
-				_fleeDialogueLocked = true;
-				_fleeDialogueText = PickDialogueLine(DialogueEmotion.Chased);
-			}
 			_wasRecentlyChased = true;
 			_recoveryTimer = 0.0f;
-			SetDialogueEmotionState(DialogueEmotion.Chased, forceText: _dialogueEmotion != DialogueEmotion.Chased);
+			UpdateFleeDialogue();
+			SetDialogueEmotionState(DialogueEmotion.Chased, forceText: false);
 			FleeFrom(threat.GlobalPosition);
 			MoveAndSlide();
 			return;
@@ -326,20 +387,22 @@ public partial class Villager : CharacterBody2D
 			{
 				_wasRecentlyChased = false;
 				_recoveryTimer = 0.0f;
-				_fleeDialogueLocked = false;
-				_fleeDialogueText = "";
+				_fleeDialogueCooldownTimer = 0.0f;
 				SetDialogueEmotionState(DialogueEmotion.Idle, forceText: _dialogueEmotion != DialogueEmotion.Idle);
 			}
 		}
 		else
 		{
-			_fleeDialogueLocked = false;
-			_fleeDialogueText = "";
 			SetDialogueEmotionState(DialogueEmotion.Idle, forceText: false);
 		}
 
 		UpdatePatrol(dt);
 		MoveAndSlide();
+	}
+
+	private void UpdateFleeDialogue()
+	{
+		// Flee dialogue popups intentionally disabled.
 	}
 
 	public void TakeDamage(int amount)
@@ -529,27 +592,9 @@ public partial class Villager : CharacterBody2D
 
 		if (emotion == DialogueEmotion.Chased)
 		{
-			// Keep one chased line for the entire flee episode.
-			string desired = _fleeDialogueLocked && !string.IsNullOrEmpty(_fleeDialogueText)
-				? _fleeDialogueText
-				: _currentDialogueText;
-			if (string.IsNullOrEmpty(desired))
-			{
-				desired = PickDialogueLine(DialogueEmotion.Chased);
-				_fleeDialogueLocked = true;
-				_fleeDialogueText = desired;
-			}
-
-			if (changed || _currentDialogueText != desired)
-			{
-				_currentDialogueText = desired;
-				if (_dialogueLabel != null)
-					_dialogueLabel.Text = _currentDialogueText;
-				UpdateBubbleLayout();
-			}
-
-			_dialogueVisibleTimer = 9999.0f;
-			SetBubbleVisible(true);
+			// Flee dialogue popups intentionally disabled.
+			_dialogueVisibleTimer = 0.0f;
+			SetBubbleVisible(false);
 			return;
 		}
 
@@ -590,20 +635,6 @@ public partial class Villager : CharacterBody2D
 		if (!autoHide && _dialogueEmotion != DialogueEmotion.Chased)
 		{
 			_dialogueVisibleTimer = DialogueDisplayDuration;
-		}
-	}
-
-	private void UpdateDialogueTimers(float delta)
-	{
-		if (_speechBubble == null || !_speechBubble.Visible)
-			return;
-		if (_dialogueEmotion == DialogueEmotion.Chased)
-			return;
-
-		_dialogueVisibleTimer -= delta;
-		if (_dialogueVisibleTimer <= 0.0f)
-		{
-			SetBubbleVisible(false);
 		}
 	}
 
@@ -697,5 +728,333 @@ public partial class Villager : CharacterBody2D
 
 		_healthBar.MaxValue = MaxHealth;
 		_healthBar.Value = Health;
+	}
+
+	private void UpdateTrustAndGifts(float delta)
+	{
+		_adviceCooldownTimer = Mathf.Max(0.0f, _adviceCooldownTimer - delta);
+		_giftTimer -= delta;
+		_ambientTalkTimer -= delta;
+
+		bool calm = !IsFleeing && !_wasRecentlyChased && _dialogueEmotion != DialogueEmotion.Chased;
+
+		if (!_hasPendingAdviceRequest && calm && _adviceCooldownTimer <= 0.0f)
+		{
+			// Prepare an advice request for the next conversation opportunity (shows up easily).
+			_hasPendingAdviceRequest = true;
+			_pendingAdviceQuestion = AdviceQuestions[(int)(GD.Randi() % (uint)AdviceQuestions.Length)];
+			_adviceCooldownTimer = (float)GD.RandRange(12.0, 22.0);
+		}
+
+		UpdateAmbientDialogue(calm);
+		TryGiftCoins();
+	}
+
+	private void UpdateAmbientDialogue(bool calm)
+	{
+		if (!calm || _ambientTalkTimer > 0.0f)
+			return;
+		if (_speechBubble != null && _speechBubble.Visible)
+		{
+			_ambientTalkTimer = (float)GD.RandRange(12.0, 24.0);
+			return;
+		}
+
+		string line = IdleDialogueOptions[(int)(GD.Randi() % (uint)IdleDialogueOptions.Length)];
+		if (_hasPendingAdviceRequest && GD.Randf() < 0.45f)
+			line = "Could I ask for your advice sometime?";
+		else if (Trust >= 50 && GD.Randf() < 0.35f)
+			line = Trust >= 80 ? "I really trust your judgment." : "I appreciate our talks.";
+
+		ShowTemporaryDialogue(line, (float)GD.RandRange(3.0, 4.5));
+		_ambientTalkTimer = (float)GD.RandRange(25.0, 55.0);
+	}
+
+	private void TryGiftCoins()
+	{
+		if (Trust < 25 || CoinScene == null || IsFleeing || _dialogueEmotion == DialogueEmotion.Chased)
+			return;
+		if (_giftTimer > 0.0f)
+			return;
+
+		Node2D player = GetTree().GetFirstNodeInGroup("player") as Node2D;
+		if (player == null || !IsInstanceValid(player))
+			return;
+		if (GlobalPosition.DistanceTo(player.GlobalPosition) > GiftRange)
+			return;
+
+		// Higher trust => better gifts, but keep a decent cooldown so it doesn't feel constant.
+		float trust01 = Mathf.Clamp(Trust / 100.0f, 0.0f, 1.0f);
+		float chance = Mathf.Lerp(0.20f, 0.55f, trust01);
+		if (GD.Randf() > chance)
+		{
+			_giftTimer = (float)GD.RandRange(10.0f, 18.0f);
+			return;
+		}
+
+		int minCoins = Trust >= 85 ? 3 : Trust >= 60 ? 2 : 1;
+		int maxCoins = Trust >= 95 ? 10 : Trust >= 80 ? 7 : Trust >= 60 ? 4 : 2;
+		int coins = GD.RandRange(minCoins, maxCoins);
+		DropGiftCoins(coins, player.GlobalPosition);
+		ShowGiftDialogue();
+
+		_giftTimer = Mathf.Lerp(30.0f, 14.0f, trust01) + (float)GD.RandRange(0.0f, 6.0f);
+		_adviceCooldownTimer = Mathf.Max(_adviceCooldownTimer, 6.0f);
+	}
+
+	private void DropGiftCoins(int count, Vector2 towardPosition)
+	{
+		Vector2 baseDir = towardPosition - GlobalPosition;
+		if (baseDir.LengthSquared() < 0.001f) baseDir = Vector2.Down;
+		baseDir = baseDir.Normalized();
+
+		for (int i = 0; i < count; i++)
+		{
+			Node coinNode = CoinScene.Instantiate();
+			if (coinNode is not Node2D coin)
+			{
+				coinNode.QueueFree();
+				continue;
+			}
+
+			float spread = (float)GD.RandRange(-0.9f, 0.9f);
+			Vector2 dir = baseDir.Rotated(spread);
+			float dist = (float)GD.RandRange(8.0f, 28.0f);
+			coin.GlobalPosition = GlobalPosition + dir * dist + new Vector2((float)GD.RandRange(-4, 4), (float)GD.RandRange(-4, 4));
+			GetParent()?.AddChild(coin);
+		}
+	}
+
+	private void ShowGiftDialogue()
+	{
+		string[] pool = Trust >= 70 ? HighTrustGiftDialogue : TrustGiftDialogue;
+		string line = pool[(int)(GD.Randi() % (uint)pool.Length)];
+		ShowTemporaryDialogue(line, 3.5f);
+	}
+
+	private void ShowTemporaryDialogue(string text, float durationSeconds)
+	{
+		if (string.IsNullOrWhiteSpace(text)) return;
+		_currentDialogueText = text;
+		if (_dialogueLabel != null)
+			_dialogueLabel.Text = _currentDialogueText;
+		UpdateBubbleLayout();
+		SetBubbleVisible(true);
+		_dialogueVisibleTimer = Mathf.Max(durationSeconds, 0.5f);
+		_trustDialogueActive = true;
+	}
+
+	public void EnsureAdviceRequestReady()
+	{
+		if (IsFleeing || _dialogueEmotion == DialogueEmotion.Chased)
+			return;
+		if (_hasPendingAdviceRequest && !string.IsNullOrWhiteSpace(_pendingAdviceQuestion))
+			return;
+		// Make advice requests show up easily: if none is pending, prepare one for calm villagers.
+		if (_adviceCooldownTimer > 0.0f && GD.Randf() < 0.5f)
+			_adviceCooldownTimer = 0.0f;
+		if (_adviceCooldownTimer > 0.0f)
+			return;
+
+		_hasPendingAdviceRequest = true;
+		_pendingAdviceQuestion = AdviceQuestions[(int)(GD.Randi() % (uint)AdviceQuestions.Length)];
+	}
+
+	public string ConsumeAdviceQuestion()
+	{
+		EnsureAdviceRequestReady();
+		if (!_hasPendingAdviceRequest)
+			return "";
+		_hasPendingAdviceRequest = false;
+		_adviceCooldownTimer = (float)GD.RandRange(10.0, 20.0);
+		return _pendingAdviceQuestion ?? "";
+	}
+
+	public string BuildAdviceEvaluationSystemPrompt(string adviceQuestion)
+	{
+		return "You are a villager NPC in Grid Quest evaluating the player's response to your request for life advice. " +
+			"Be warm and in-character. Judge helpfulness, empathy, clarity, and relevance. " +
+			"Return ONLY valid JSON (no markdown) with keys: " +
+			"\"reply\" (string, 1-3 short sentences as the villager), " +
+			"\"score\" (integer 0-5), " +
+			"\"reason\" (short string). " +
+			$"Advice question asked: {adviceQuestion}";
+	}
+
+	public string BuildAdviceEvaluationPrompt(string adviceQuestion, string playerAdvice)
+	{
+		return $"Villager context: trust={Trust}, mood={_dialogueEmotion}, fleeing={IsFleeing}, village={_homeVillageIndex}.\n" +
+			$"Advice question: {adviceQuestion}\n" +
+			$"Player advice: {playerAdvice}\n" +
+			"Rate how well the player communicated and helped.";
+	}
+
+	public string ApplyAdviceEvaluation(string llmJsonOrText, string fallbackAdvice)
+	{
+		int score = EstimateAdviceScoreFallback(fallbackAdvice);
+		string reply = "Thank you for sharing that with me.";
+
+		if (!string.IsNullOrWhiteSpace(llmJsonOrText))
+		{
+			if (TryParseAdviceEvaluation(llmJsonOrText, out int parsedScore, out string parsedReply))
+			{
+				score = parsedScore;
+				if (!string.IsNullOrWhiteSpace(parsedReply))
+					reply = parsedReply.Trim();
+			}
+			else
+			{
+				// If model didn't follow JSON, use its text as reply but keep heuristic score.
+				reply = llmJsonOrText.Trim();
+				if (reply.Length > 220) reply = reply.Substring(0, 220).TrimEnd() + "...";
+			}
+		}
+
+		score = Mathf.Clamp(score, 0, 5);
+		int delta = score switch
+		{
+			0 => -15,
+			1 => -8,
+			2 => 2,
+			3 => 10,
+			4 => 18,
+			_ => 25 // successful life advice
+		};
+		Trust = Mathf.Clamp(Trust + delta, 0, 100);
+
+		// Immediate small gratitude chance on good advice, scaled later by passive gifts.
+		if (score >= 4)
+		{
+			_giftTimer = Mathf.Min(_giftTimer <= 0 ? 6.0f : _giftTimer, 6.0f);
+		}
+
+		ShowTemporaryDialogue(reply, 4.5f);
+		return reply;
+	}
+
+	public void ApplyConversationTrust(string playerMessage, string villagerReply)
+	{
+		int delta = EstimateConversationTrustDelta(playerMessage, villagerReply);
+		if (delta == 0) return;
+		Trust = Mathf.Clamp(Trust + delta, 0, 100);
+	}
+
+	private static int EstimateConversationTrustDelta(string playerMessage, string villagerReply)
+	{
+		string p = (playerMessage ?? "").Trim().ToLowerInvariant();
+		string r = (villagerReply ?? "").Trim().ToLowerInvariant();
+		if (string.IsNullOrEmpty(p)) return 0;
+
+		int delta = 0;
+		// Small talk / normal conversation: 5-15 if really good, can lower if bad.
+		if (p.Length >= 8) delta += 2;
+		if (p.Length >= 25) delta += 3;
+		if (p.Length >= 60) delta += 3;
+
+		string[] positive = { "thank", "thanks", "please", "help", "sorry", "hope", "friend", "kind", "care", "appreciate", "good", "great", "love", "safe", "glad", "understand", "how are you", "are you ok", "you can", "we can", "together" };
+		int posHits = 0;
+		foreach (string w in positive)
+		{
+			if (p.Contains(w)) posHits++;
+		}
+		delta += Mathf.Min(posHits, 3) * 2;
+		if (p.Contains("?")) delta += 1;
+
+		string[] rude = { "shut up", "stupid", "idiot", "hate", "useless", "dumb", "kill you", "annoying", "worthless", "loser", "ugly" };
+		int rudeHits = 0;
+		foreach (string w in rude)
+		{
+			if (p.Contains(w)) rudeHits++;
+		}
+		if (rudeHits > 0) delta -= 6 + (rudeHits - 1) * 3;
+
+		string[] dismissive = { "whatever", "idc", "don't care", "dont care", "boring", "go away", "leave me alone" };
+		foreach (string w in dismissive)
+		{
+			if (p.Contains(w)) { delta -= 4; break; }
+		}
+
+		if (p == "ok" || p == "k" || p == "hi" || p == "hello" || p == "hey") delta = Mathf.Min(delta, 2);
+		if (p.Contains("sorry") && p.Length < 12) delta = Mathf.Max(delta, 3);
+
+		// If villager reply indicates discomfort (fallback/error cases can be neutral), don't auto-boost.
+		if (r.Contains("unable to respond") || r.Contains("can't think clearly")) delta = Mathf.Min(delta, 1);
+
+		return Mathf.Clamp(delta, -12, 15);
+	}
+
+	private static bool TryParseAdviceEvaluation(string text, out int score, out string reply)
+	{
+		score = 0;
+		reply = "";
+		if (string.IsNullOrWhiteSpace(text)) return false;
+
+		string json = ExtractJsonObject(text);
+		if (string.IsNullOrWhiteSpace(json)) return false;
+		try
+		{
+			using JsonDocument doc = JsonDocument.Parse(json);
+			JsonElement root = doc.RootElement;
+			if (root.ValueKind != JsonValueKind.Object) return false;
+
+			if (root.TryGetProperty("score", out JsonElement scoreEl))
+			{
+				if (scoreEl.ValueKind == JsonValueKind.Number && scoreEl.TryGetInt32(out int i)) score = i;
+				else if (scoreEl.ValueKind == JsonValueKind.String && int.TryParse(scoreEl.GetString(), out int si)) score = si;
+			}
+			if (root.TryGetProperty("reply", out JsonElement replyEl) && replyEl.ValueKind == JsonValueKind.String)
+				reply = replyEl.GetString() ?? "";
+			else if (root.TryGetProperty("villager_reply", out JsonElement vr) && vr.ValueKind == JsonValueKind.String)
+				reply = vr.GetString() ?? "";
+
+			return true;
+		}
+		catch
+		{
+			return false;
+		}
+	}
+
+	private static string ExtractJsonObject(string text)
+	{
+		int start = text.IndexOf('{');
+		int end = text.LastIndexOf('}');
+		if (start < 0 || end <= start) return "";
+		return text.Substring(start, end - start + 1);
+	}
+
+	private static int EstimateAdviceScoreFallback(string advice)
+	{
+		if (string.IsNullOrWhiteSpace(advice)) return 0;
+		string t = advice.Trim().ToLowerInvariant();
+		int score = 1;
+		if (t.Length >= 20) score++;
+		if (t.Length >= 60) score++;
+		if (t.Length >= 120) score++;
+		if (t.Contains("you") || t.Contains("try") || t.Contains("could") || t.Contains("can") || t.Contains("maybe")) score++;
+		if (t.Contains("sorry") || t.Contains("understand") || t.Contains("hope") || t.Contains("help") || t.Contains("step") || t.Contains("breathe") || t.Contains("talk")) score++;
+		if (t.Contains("idk") || t.Contains("dunno") || t == "ok" || t == "no" || t == "whatever") score = 0;
+		if (t.Contains("stupid") || t.Contains("idiot") || t.Contains("hate") || t.Contains("shut up")) score = 0;
+		return Mathf.Clamp(score, 0, 5);
+	}
+
+	private void UpdateDialogueTimers(float delta)
+	{
+		if (_speechBubble == null || !_speechBubble.Visible)
+			return;
+		if (_dialogueEmotion == DialogueEmotion.Chased)
+			return;
+
+		_dialogueVisibleTimer -= delta;
+		if (_dialogueVisibleTimer <= 0.0f)
+		{
+			_trustDialogueActive = false;
+			// Restore a normal idle/recovered line if a temporary trust/gift message expired.
+			if (_dialogueEmotion == DialogueEmotion.Recovered)
+				SetDialogueForEmotion(DialogueEmotion.Recovered, show: false);
+			else
+				SetDialogueForEmotion(DialogueEmotion.Idle, show: false);
+			SetBubbleVisible(false);
+		}
 	}
 }
