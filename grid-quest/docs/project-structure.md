@@ -50,12 +50,14 @@ grid-quest/
 │       ├── tree/              # Tree factory/scene
 │       └── walls/             # Wall factory/scene
 ├── menus/
+│   ├── CheatMenu.cs           # Debug/cheat menu (invincibility, add coins, add weapons)
 │   ├── InventoryUi.cs         # Inventory + chest UI (drag/drop, move, take-all)
 │   ├── InventorySlotUi.cs     # Reusable inventory slot UI control
-│   ├── MonumentIndicator.cs   # Directional monument indicator UI
-│   ├── SkillsUi.cs            # Skills UI overlay
+│   ├── MonumentIndicator.cs   # Directional indicator pointing to the monument
+│   ├── SkillsUi.cs            # Monument upgrade menu/UI (purchasable player attributes)
+│   ├── cheat_menu.tscn        # Debug/cheat menu UI scene
 │   ├── inventory_ui.tscn      # Inventory/chest UI scene root
-│   ├── skills_ui.tscn         # Skills UI scene
+│   ├── skills_ui.tscn         # Monument/skills upgrade UI scene
 │   ├── main_menu.tscn         # Legacy main menu scene
 │   └── mainMenu/
 │       ├── MainMenu.cs        # Save selection/creation UI and game boot flow
@@ -63,6 +65,9 @@ grid-quest/
 │       ├── SettingsMenu.cs    # LLM settings menu behavior
 │       ├── SettingsMenu.tscn  # LLM settings scene (UI in scene)
 │       ├── SaveManager.cs     # Save discovery/creation/deletion in app data
+│       ├── StoryGenerator.cs   # LLM/fallback campaign story generation and JSON serialization
+│       ├── GameGenerationScene.cs # Game generation flow scene behavior
+│       ├── GameGenerationScene.tscn # Generation progress UI scene
 │       ├── LlmSettingsStore.cs # LLM provider/model/key persistence in app data
 │       ├── LlmApi.cs          # Autoload LLM API for in-game requests/tests
 │       └── GameSession.cs     # Autoload holding currently selected save
@@ -76,7 +81,8 @@ grid-quest/
 │       ├── KnightNpc.cs       # Allied knight AI, combat, and regeneration
 │       └── knight_npc.tscn    # Knight character scene
 └── player/
-	├── Player.cs              # Player movement, combat, health, and animations
+	├── Player.cs              # Player movement, combat, health, upgrades, and animations
+	├── PlayerUpgradeDefs.cs   # Monument upgrade definitions and cost scaling
 	├── Player.cs.uid          # Godot-generated script UID
 	└── player.tscn            # Player character scene
 ```
@@ -93,11 +99,11 @@ grid-quest/
 | 9 | death | 4 |
 
 Movement is 4-directional with WASD/arrow keys and is allowed during attacks. Space attacks;
-the player can damage enemies and knights. Health is shown in the player health bar. `H` toggles
-temporary debug invulnerability (remove when no longer needed).
+the player can damage enemies and knights. Health is shown in the player health bar. Debug cheats (including invincibility toggle) are available via the in-game cheat menu (`menus/CheatMenu.cs`, `` ` `` key) instead of direct gameplay keybinds.
 
 The player has a slot-based backpack inventory and weapon slot (`items/ItemDefs.cs`, `InventoryContainer.cs`).
 Coins collected in-world are tracked as gold and added to inventory as stackable coin items.
+`player/PlayerUpgradeDefs.cs` defines monument upgrade definitions/cost scaling, and `Player.cs` stores upgrade levels and applies derived combat/movement stats (including acceleration, regen/delay, armor, lifesteal, thorns, knockback, projectile/melee upgrades, temporary speed buffs, and boss bonus damage hooks). Coin purchases spend gold and remove coin items from inventory to stay in sync.
 
 ## Inventory, Chests, and Items
 
@@ -105,6 +111,7 @@ Coins collected in-world are tracked as gold and added to inventory as stackable
   - Toggle inventory: `E`/`Tab`/`I` (controller `Y`); close: `Esc` or toggle key.
   - Interact/open nearby chest: `F` (opens chest and shows chest panel alongside inventory).
   - Supports click-to-select move/swap and drag-and-drop between backpack, weapon slot, and chest; stacks merge where applicable, and chest loot can be moved with **Take All**.
+- `menus/skills_ui.tscn` + `menus/SkillsUi.cs` provide the monument upgrade UI (`skills_ui` group), listing all player attribute upgrades with current level, coin cost, and purchase actions. It opens from the monument and closes with `F`/`Esc`.
 - `map/map_objects/chest/` defines a stateful chest object (`Chest.cs`, `chest.tscn`) that opens on first interaction, generates a random dynamic loot pool once, and stores items in a 12-slot container for transfer in/out.
 - `RoomGenerator` spawns one chest in rooms at least 5×5; smaller rooms omit it to keep paths clear. `Map.GenerateBuildings()` places a procedural dungeon and single rooms before wilderness decoration.
 
@@ -129,14 +136,15 @@ Coins collected in-world are tracked as gold and added to inventory as stackable
 - **Interaction & dialogue bubbles:** villagers display a dynamically sized speech bubble above their head (`npc/villager/villager.tscn`) with placeholder dialogue for `Idle`, `Chased`, and `Recovered` (done being chased/catching breath) states. Bubbles auto-show/update on state changes (including while chased and briefly after fleeing ends) and the player can interact with the nearest nearby villager using `F` to refresh/show context-appropriate dialogue.
 - **AI-ready context:** `Villager` exposes dialogue/emotional state and runtime context for future external dialogue generation via `CurrentDialogueEmotion`, `CurrentDialogueText`, and `GetDialogueContext()` (state/emotion, fleeing/recovery/threat/home/player proximity, health, current dialogue, and placeholder options per state).
 
-## Monument Discovery
+## Monument & Upgrades
 
-- `map/map_objects/monument/Monument.cs` tracks discovery when the player comes within discovery range (or interacts). `menus/MonumentIndicator.cs` (added to level UI layers) displays a `meta_pickaxe.png` directional arrow that always points toward the monument from the screen center (texture top treated as the pointing direction).
+- `map/map_objects/monument/Monument.cs` tracks discovery when the player comes within discovery/interact range and opens the monument upgrade UI (`skills_ui`) when the player presses `F` nearby (with basic priority checks to avoid conflicting with chest/villager interactions). `menus/MonumentIndicator.cs` (added to level UI layers) displays a `meta_pickaxe.png` directional arrow that always points toward the monument from the screen center (texture top treated as the pointing direction).
+- `menus/SkillsUi.cs` presents purchasable, uncapped attribute upgrades priced in coins (cheap starting costs with increasing per-level costs). Available upgrades include: Player Movement Speed, Player Acceleration, Attack Speed, Attack Damage, Maximum Health, Slow Health Regeneration, Health Regeneration Delay, Damage Reduction Armor, Lifesteal, Thorns Damage, Knockback Strength, Projectile Speed, Projectile Damage, Melee Range, Movement Speed After Taking Damage, Movement Speed After Killing an Enemy, and Bonus Damage to Bosses. Purchases deduct coin items/gold from the player.
 
 ## Enemies
 
 `Enemy.cs` builds `SpriteFrames` at runtime from a configurable 32×32 sprite sheet. It exposes
-movement, health, combat, texture, and animation settings. Enemies target the closest player, allied knight, or villager, move toward them, and attack with a timed windup that applies damage at the end of the attack animation if the target is still in range.
+movement, health, combat, texture, and animation settings. When not aggroed, enemies idle/wander around locally; when a target (player, allied knight, or villager) is within agro range they chase and attack with a timed windup that applies damage at the end of the attack animation if the target is still in range.
 
 | Scene | Variant | Speed | Health | Attack | Appearance/notes |
 | --- | --- | --- | --- | --- | --- |
@@ -144,7 +152,9 @@ movement, health, combat, texture, and animation settings. Enemies target the cl
 | `skeleton_enemy.tscn` | Medium | 50 | 3 | 1 dmg, 24 range, 0.8s cooldown | Standard skeleton |
 | `elite_skeleton_enemy.tscn` | Hard | 70 | 6 | 2 dmg, 26 range, 0.7s cooldown | Larger red-tinted skeleton |
 
-`level/EnemySpawnOnKill.cs` performs occasional off-camera monster spawns (with a population cap and refill when empty), favoring normal skeletons over elite skeletons. Spawn pacing/cap are tuned for more frequent ambient monsters around the map. `level/character_dev/EnemyTestSpawner.cs` remains a temporary manual test spawner (keys `1`/`2`). Remove temporary spawners when no longer needed.
+`level/EnemySpawnOnKill.cs` performs off-camera monster spawning with an initial population seed, a maintained minimum population, and a higher cap to keep many monsters roaming the map. Spawns favor normal skeletons over elite skeletons and run in gameplay levels (including the main character dev level). `level/character_dev/EnemyTestSpawner.cs` remains a temporary manual test spawner if attached/scripted for dev use. Remove temporary spawners when no longer needed.
+
+Enemy combat integrates with player upgrade effects: `Enemy.cs` supports knockback (`ApplyKnockback`) and passes attacker context on player damage so thorns can trigger. `items/Fireball.cs` uses upgraded projectile speed/damage/knockback and notifies the player on hits for on-hit effects (e.g. lifesteal / kill-speed hooks); boss bonus damage applies to targets in `boss`/`bosses` groups or with an `IsBoss` property.
 
 ## Allied Knight NPC
 

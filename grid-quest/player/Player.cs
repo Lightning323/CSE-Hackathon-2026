@@ -1,6 +1,9 @@
 
 using Godot;
 using GridQuest.Items;
+using GridQuest.PlayerUpgrades;
+using System;
+using System.Collections.Generic;
 
 public partial class Player : CharacterBody2D
 {
@@ -23,9 +26,18 @@ public partial class Player : CharacterBody2D
 	private string _facing = "down";
 	private bool _faceLeft;
 	private float _attackTimer;
+	private Vector2 _velocityCurrent = Vector2.Zero;
 
-	// --- TEMPORARY DEBUG (remove when no longer needed): press H to toggle invulnerability ---
-	private bool _debugInvulnerable;
+	// Upgrade-driven runtime state
+	private readonly Dictionary<string, int> _upgradeLevels = new();
+	private float _damageRegenDelayTimer;
+	private float _regenAccumulator;
+	private float _damageSpeedBuffTimer;
+	private float _killSpeedBuffTimer;
+	private float _lifestealAccumulator;
+	private float _thornsAccumulator;
+
+	public bool DebugInvulnerable { get; set; }
 
 	private enum State
 	{
@@ -42,16 +54,71 @@ public partial class Player : CharacterBody2D
 	public string EquippedWeaponId { get; set; } = "base_sword";
 	public bool IsDead => _state == State.Dead;
 
+	public int GetUpgradeLevel(string id) => _upgradeLevels.TryGetValue(id, out int lvl) ? lvl : 0;
+	public int GetUpgradeCost(string id)
+	{
+		var def = UpgradeCatalog.Get(id);
+		return def?.GetCost(GetUpgradeLevel(id)) ?? int.MaxValue;
+	}
+
+	private int BaseMaxHealth => 5;
+	private float BaseSpeed => 90.0f;
+	private float BaseAttackCooldown => 0.45f;
+	private int BaseAttackDamage => 1;
+	private float BaseAttackRange => 32.0f;
+	private float BaseProjectileSpeed => 220.0f;
+	private int BaseProjectileDamage => 2;
+
+	public int CurrentMaxHealth => BaseMaxHealth + GetUpgradeLevel("maximum_health");
+	public int CurrentAttackDamage => BaseAttackDamage + GetUpgradeLevel("attack_damage");
+	public float CurrentAttackRange => BaseAttackRange + GetUpgradeLevel("melee_range") * 4.0f;
+	public float CurrentAttackCooldown => Mathf.Max(0.08f, BaseAttackCooldown / (1.0f + GetUpgradeLevel("attack_speed") * 0.12f));
+	public float CurrentProjectileSpeed => BaseProjectileSpeed * (1.0f + GetUpgradeLevel("projectile_speed") * 0.12f);
+	public int CurrentProjectileDamage => BaseProjectileDamage + GetUpgradeLevel("projectile_damage");
+	public float CurrentKnockbackStrength => 40.0f * GetUpgradeLevel("knockback_strength");
+	public float CurrentLifestealPerHit => GetUpgradeLevel("lifesteal") * 0.25f;
+	public int CurrentThornsDamage => GetUpgradeLevel("thorns_damage");
+	public float CurrentBossBonusMultiplier => 1.0f + GetUpgradeLevel("bonus_damage_to_bosses") * 0.2f;
+	public float CurrentArmorReductionPerHit => Mathf.Min(0.75f, GetUpgradeLevel("damage_reduction_armor") * 0.08f);
+	public float CurrentRegenPerSecond => GetUpgradeLevel("slow_health_regeneration") * 0.35f;
+	public float CurrentRegenDelay => Mathf.Max(0.25f, 3.0f - GetUpgradeLevel("health_regeneration_delay") * 0.25f);
+	public float CurrentAcceleration
+	{
+		get
+		{
+			int lvl = GetUpgradeLevel("player_acceleration");
+			return 900.0f + lvl * 220.0f;
+		}
+	}
+
+	public float CurrentMoveSpeed
+	{
+		get
+		{
+			float mult = 1.0f
+				+ GetUpgradeLevel("player_movement_speed") * 0.08f;
+			if (_damageSpeedBuffTimer > 0.0f)
+				mult += GetUpgradeLevel("movement_speed_after_taking_damage") * 0.12f;
+			if (_killSpeedBuffTimer > 0.0f)
+				mult += GetUpgradeLevel("movement_speed_after_killing_an_enemy") * 0.12f;
+			return BaseSpeed * mult;
+		}
+	}
+
 	public override void _Ready()
 	{
 		MotionMode = MotionModeEnum.Floating;
-		Health = MaxHealth;
+		Health = CurrentMaxHealth;
+		MaxHealth = CurrentMaxHealth;
+		Speed = CurrentMoveSpeed;
+		AttackCooldown = CurrentAttackCooldown;
+		AttackDamage = CurrentAttackDamage;
+		AttackRange = CurrentAttackRange;
 		_sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
 		_healthBar = GetNodeOrNull<ProgressBar>("HealthBar");
 		_sprite.SpriteFrames = BuildSpriteFrames();
 		_sprite.AnimationFinished += OnAnimationFinished;
 		_sprite.Play("idle_down");
-		//ZIndex=2;
 		SyncEquippedFromId();
 		UpdateHealthBar();
 	}
@@ -75,6 +142,45 @@ public partial class Player : CharacterBody2D
 		return Inventory.AddItem(itemId, count);
 	}
 
+	public bool TrySpendCoins(int amount)
+	{
+		if (amount <= 0) return true;
+		int have = Inventory.CountItem("coin");
+		if (have < amount || Gold < amount) return false;
+		if (!Inventory.RemoveItem("coin", amount)) return false;
+		Gold -= amount;
+		if (Gold < 0) Gold = 0;
+		return true;
+	}
+
+	public bool TryPurchaseUpgrade(string upgradeId)
+	{
+		var def = UpgradeCatalog.Get(upgradeId);
+		if (def == null) return false;
+		int cost = def.GetCost(GetUpgradeLevel(upgradeId));
+		if (!TrySpendCoins(cost)) return false;
+
+		_upgradeLevels[upgradeId] = GetUpgradeLevel(upgradeId) + 1;
+		ApplyDerivedStats(healOnMaxHealthIncrease: true);
+		return true;
+	}
+
+	private void ApplyDerivedStats(bool healOnMaxHealthIncrease)
+	{
+		int oldMax = MaxHealth;
+		MaxHealth = CurrentMaxHealth;
+		Speed = CurrentMoveSpeed;
+		AttackCooldown = CurrentAttackCooldown;
+		AttackDamage = CurrentAttackDamage;
+		AttackRange = CurrentAttackRange;
+		if (healOnMaxHealthIncrease && MaxHealth > oldMax)
+		{
+			Health += (MaxHealth - oldMax);
+		}
+		Health = Mathf.Clamp(Health, 0, MaxHealth);
+		UpdateHealthBar();
+	}
+
 	public void SyncEquippedFromId()
 	{
 		EquippedWeapon = EquippedWeaponId switch
@@ -87,17 +193,11 @@ public partial class Player : CharacterBody2D
 
 	public override void _UnhandledInput(InputEvent @event)
 	{
-		// --- TEMPORARY DEBUG (remove when no longer needed): press H to toggle invulnerability ---
-		if (@event is InputEventKey keyEvent && keyEvent.Pressed && !keyEvent.Echo && keyEvent.Keycode == Key.H)
-		{
-			_debugInvulnerable = !_debugInvulnerable;
-			GD.Print($"[TEMP DEBUG] Player invulnerability: {_debugInvulnerable}");
-			GetViewport().SetInputAsHandled();
-		}
 	}
 
 	public override void _PhysicsProcess(double delta)
 	{
+		float dt = (float)delta;
 		if (_state == State.Dead)
 		{
 			Velocity = Vector2.Zero;
@@ -105,11 +205,14 @@ public partial class Player : CharacterBody2D
 			return;
 		}
 
-		// freeze if inventory open
+		// freeze if modal UI open
 		var inv = GetTree().GetFirstNodeInGroup("inventory_ui") as Control;
-		if (inv != null && inv.Visible)
+		var skills = GetTree().GetFirstNodeInGroup("skills_ui") as Control;
+		var cheat = GetTree().GetFirstNodeInGroup("cheat_ui") as Control;
+		if ((inv != null && inv.Visible) || (skills != null && skills.Visible) || (cheat != null && cheat.Visible))
 		{
 			Velocity = Vector2.Zero;
+			_velocityCurrent = Vector2.Zero;
 			if (_state != State.Attack)
 			{
 				_state = State.Idle;
@@ -119,7 +222,12 @@ public partial class Player : CharacterBody2D
 			return;
 		}
 
-		_attackTimer = Mathf.Max(0.0f, _attackTimer - (float)delta);
+		ApplyDerivedStats(healOnMaxHealthIncrease: false);
+		_attackTimer = Mathf.Max(0.0f, _attackTimer - dt);
+		_damageRegenDelayTimer = Mathf.Max(0.0f, _damageRegenDelayTimer - dt);
+		_damageSpeedBuffTimer = Mathf.Max(0.0f, _damageSpeedBuffTimer - dt);
+		_killSpeedBuffTimer = Mathf.Max(0.0f, _killSpeedBuffTimer - dt);
+		ApplyHealthRegen(dt);
 
 		if (_state != State.Attack && EquippedWeapon != "none" && (Input.IsKeyPressed(Key.Space) || Input.IsJoyButtonPressed(0, JoyButton.A)) && _attackTimer <= 0.0f)
 		{
@@ -135,24 +243,28 @@ public partial class Player : CharacterBody2D
 		if (joy != Vector2.Zero) input = joy;
 		if (input.Length() > 1.0f) input = input.Normalized();
 
+		Vector2 desiredVelocity = input * CurrentMoveSpeed;
+		float accel = CurrentAcceleration;
+		_velocityCurrent = _velocityCurrent.MoveToward(desiredVelocity, accel * dt);
+
 		if (_state == State.Attack)
 		{
-			Velocity = input * Speed;
+			Velocity = _velocityCurrent;
 			MoveAndSlide();
 			return;
 		}
 
 		if (input == Vector2.Zero)
 		{
-			Velocity = Vector2.Zero;
 			_state = State.Idle;
+			Velocity = _velocityCurrent;
 			PlayAnimation($"idle_{_facing}");
 		}
 		else
 		{
 			UpdateFacing(input);
-			Velocity = input * Speed;
 			_state = State.Walk;
+			Velocity = _velocityCurrent;
 			PlayAnimation($"walk_{_facing}");
 		}
 
@@ -161,23 +273,59 @@ public partial class Player : CharacterBody2D
 
 	public void TakeDamage(int amount)
 	{
+		TakeDamage(amount, null);
+	}
+
+	public void TakeDamage(int amount, Node2D attacker)
+	{
 		if (_state == State.Dead || amount <= 0)
 		{
 			return;
 		}
 
-		// --- TEMPORARY DEBUG (remove when no longer needed): ignore damage while invulnerable ---
-		if (_debugInvulnerable)
+		if (DebugInvulnerable)
 		{
 			return;
 		}
 
-		Health = Mathf.Max(0, Health - amount);
+		int reduced = Mathf.Max(1, Mathf.CeilToInt(amount * (1.0f - CurrentArmorReductionPerHit)));
+		Health = Mathf.Max(0, Health - reduced);
+		_damageRegenDelayTimer = CurrentRegenDelay;
+		if (GetUpgradeLevel("movement_speed_after_taking_damage") > 0)
+		{
+			_damageSpeedBuffTimer = Mathf.Max(_damageSpeedBuffTimer, 2.5f);
+		}
+
+		ApplyThorns(attacker);
 		UpdateHealthBar();
 		if (Health == 0)
 		{
 			Die();
 		}
+	}
+
+	private void ApplyThorns(Node2D attacker)
+	{
+		int thorns = CurrentThornsDamage;
+		if (thorns <= 0 || attacker == null || !IsInstanceValid(attacker))
+			return;
+		if (attacker.HasMethod("TakeDamage"))
+		{
+			attacker.Call("TakeDamage", thorns);
+		}
+	}
+
+	private void ApplyHealthRegen(float delta)
+	{
+		if (_state == State.Dead || Health <= 0 || Health >= MaxHealth) { _regenAccumulator = 0.0f; return; }
+		if (_damageRegenDelayTimer > 0.0f || CurrentRegenPerSecond <= 0.0f) return;
+
+		_regenAccumulator += CurrentRegenPerSecond * delta;
+		int heal = Mathf.FloorToInt(_regenAccumulator);
+		if (heal <= 0) return;
+		_regenAccumulator -= heal;
+		Health = Mathf.Min(MaxHealth, Health + heal);
+		UpdateHealthBar();
 	}
 
 	public void Die()
@@ -189,36 +337,38 @@ public partial class Player : CharacterBody2D
 
 		_state = State.Dead;
 		Velocity = Vector2.Zero;
+		_velocityCurrent = Vector2.Zero;
 		_sprite.FlipH = _facing == "side" && _faceLeft;
 		PlayAnimation("death");
 		EmitSignal(SignalName.Died);
 	}
 
 	private void ShootFireball()
+	{
+		if (FireballScene == null)
 		{
-				if (FireballScene == null)
-				{
-						GD.PushError("Fireball scene could not be loaded.");
-						return;
-				}
-
-				var fireball = FireballScene.Instantiate<Fireball>();
-
-				Vector2 direction = _facing switch
-				{
-						"up" => Vector2.Up,
-						"down" => Vector2.Down,
-						"side" => _faceLeft ? Vector2.Left : Vector2.Right,
-						_ => Vector2.Down
-				};
-
-				GetTree().CurrentScene.AddChild(fireball);
-				fireball.Init(direction, GlobalPosition + direction * 16.0f);
+			GD.PushError("Fireball scene could not be loaded.");
+			return;
 		}
 
-		private void StartAttack()
+		var fireball = FireballScene.Instantiate<Fireball>();
+
+		Vector2 direction = _facing switch
+		{
+			"up" => Vector2.Up,
+			"down" => Vector2.Down,
+			"side" => _faceLeft ? Vector2.Left : Vector2.Right,
+			_ => Vector2.Down
+		};
+
+		GetTree().CurrentScene.AddChild(fireball);
+		int damage = ComputeDamageForTarget(null, CurrentProjectileDamage);
+		fireball.Init(direction, GlobalPosition + direction * 16.0f, CurrentProjectileSpeed, damage, CurrentKnockbackStrength, this);
+	}
+
+	private void StartAttack()
 	{
-		_attackTimer = AttackCooldown;
+		_attackTimer = CurrentAttackCooldown;
 		_sprite.FlipH = _facing == "side" && _faceLeft;
 		if (EquippedWeapon == "fire_staff")
 		{
@@ -239,17 +389,72 @@ public partial class Player : CharacterBody2D
 		DamageGroupInRange("knights");
 	}
 
+	private bool IsBossTarget(Node2D target)
+	{
+		if (target == null) return false;
+		if (target.IsInGroup("boss") || target.IsInGroup("bosses")) return true;
+		Variant v = target.Get("IsBoss");
+		return v.VariantType == Variant.Type.Bool && v.AsBool();
+	}
+
+	public int ComputeDamageForTarget(Node2D target, int baseDamage)
+	{
+		float dmg = baseDamage;
+		if (IsBossTarget(target))
+			dmg *= CurrentBossBonusMultiplier;
+		return Mathf.Max(1, Mathf.RoundToInt(dmg));
+	}
+
+	private void ApplyOnHitEffects(Node2D target)
+	{
+		if (target == null || !IsInstanceValid(target)) return;
+		if (GetUpgradeLevel("movement_speed_after_killing_an_enemy") > 0)
+		{
+			// if this hit killed, the enemy will be freed shortly; check health-like property best-effort
+			Variant hv = target.Get("Health");
+			if (hv.VariantType == Variant.Type.Int && hv.AsInt32() <= 0)
+			{
+				_killSpeedBuffTimer = Mathf.Max(_killSpeedBuffTimer, 2.5f);
+			}
+		}
+
+		if (CurrentLifestealPerHit > 0.0f && Health < MaxHealth)
+		{
+			_lifestealAccumulator += CurrentLifestealPerHit;
+			int heal = Mathf.FloorToInt(_lifestealAccumulator);
+			if (heal > 0)
+			{
+				_lifestealAccumulator -= heal;
+				Health = Mathf.Min(MaxHealth, Health + heal);
+				UpdateHealthBar();
+			}
+		}
+	}
+
 	private void DamageGroupInRange(string group)
 	{
 		foreach (Node node in GetTree().GetNodesInGroup(group))
 		{
-			if (node is Node2D target
-				&& target.GlobalPosition.DistanceTo(GlobalPosition) <= AttackRange
-				&& target.HasMethod("TakeDamage"))
+			if (node is not Node2D target || !IsInstanceValid(target))
+				continue;
+			if (target.GlobalPosition.DistanceTo(GlobalPosition) > CurrentAttackRange || !target.HasMethod("TakeDamage"))
+				continue;
+
+			int damage = ComputeDamageForTarget(target, CurrentAttackDamage);
+			target.Call("TakeDamage", damage);
+			if (CurrentKnockbackStrength > 0.0f && target.HasMethod("ApplyKnockback"))
 			{
-				target.Call("TakeDamage", AttackDamage);
+				Vector2 dir = (target.GlobalPosition - GlobalPosition);
+				if (dir.LengthSquared() < 0.001f) dir = _facing switch { "up" => Vector2.Up, "down" => Vector2.Down, "side" => _faceLeft ? Vector2.Left : Vector2.Right, _ => Vector2.Down };
+				target.Call("ApplyKnockback", dir.Normalized(), CurrentKnockbackStrength);
 			}
+			ApplyOnHitEffects(target);
 		}
+	}
+
+	public void NotifyProjectileHit(Node2D target)
+	{
+		ApplyOnHitEffects(target);
 	}
 
 	private void UpdateFacing(Vector2 input)

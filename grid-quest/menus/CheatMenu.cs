@@ -1,0 +1,150 @@
+using Godot;
+
+public partial class CheatMenu : Control
+{
+	private Player _player;
+	private CheckButton _invincibilityToggle;
+	private Label _statusLabel;
+
+	public override void _Ready()
+	{
+		AddToGroup("cheat_ui");
+		Visible = false;
+		ProcessMode = ProcessModeEnum.Always;
+		MouseFilter = MouseFilterEnum.Stop;
+		SetAnchorsPreset(LayoutPreset.FullRect);
+		BuildUi();
+		CallDeferred(nameof(ResolvePlayer));
+	}
+
+	private void BuildUi()
+	{
+		foreach (Node child in GetChildren())
+			child.QueueFree();
+
+		var dim = new ColorRect { Color = new Color(0, 0, 0, 0.35f) };
+		dim.SetAnchorsPreset(LayoutPreset.FullRect);
+		dim.MouseFilter = MouseFilterEnum.Ignore;
+		AddChild(dim);
+
+		var panel = new PanelContainer { CustomMinimumSize = new Vector2(360, 300) };
+		panel.SetAnchorsPreset(LayoutPreset.TopLeft);
+		panel.OffsetLeft = 20;
+		panel.OffsetTop = 20;
+		panel.OffsetRight = 380;
+		panel.OffsetBottom = 320;
+		var sb = new StyleBoxFlat { BgColor = new Color(0.10f, 0.10f, 0.13f, 0.96f) };
+		sb.SetCornerRadiusAll(8);
+		sb.SetContentMarginAll(10);
+		panel.AddThemeStyleboxOverride("panel", sb);
+		AddChild(panel);
+
+		var root = new VBoxContainer();
+		root.SetAnchorsPreset(LayoutPreset.FullRect);
+		root.OffsetLeft = 10; root.OffsetTop = 10; root.OffsetRight = -10; root.OffsetBottom = -10;
+		root.AddThemeConstantOverride("separation", 8);
+		panel.AddChild(root);
+
+		var title = new Label { Text = "Debug / Cheat Menu (`)" };
+		title.AddThemeFontSizeOverride("font_size", 18);
+		root.AddChild(title);
+
+		_invincibilityToggle = new CheckButton { Text = "Invincibility" };
+		_invincibilityToggle.Toggled += OnInvincibilityToggled;
+		root.AddChild(_invincibilityToggle);
+
+		var coinsRow = new HBoxContainer();
+		coinsRow.AddThemeConstantOverride("separation", 6);
+		var add10 = new Button { Text = "+10 Coins" };
+		add10.Pressed += () => AddCoins(10);
+		var add100 = new Button { Text = "+100 Coins" };
+		add100.Pressed += () => AddCoins(100);
+		coinsRow.AddChild(add10);
+		coinsRow.AddChild(add100);
+		root.AddChild(new Label { Text = "Add Coins:" });
+		root.AddChild(coinsRow);
+
+		root.AddChild(new Label { Text = "Add Weapon to Inventory:" });
+		var weaponRow = new HBoxContainer();
+		weaponRow.AddThemeConstantOverride("separation", 6);
+		var sword = new Button { Text = "Sword" };
+		sword.Pressed += () => AddWeapon("base_sword");
+		var staff = new Button { Text = "Fire Staff" };
+		staff.Pressed += () => AddWeapon("fire_staff");
+		weaponRow.AddChild(sword);
+		weaponRow.AddChild(staff);
+		root.AddChild(weaponRow);
+
+		_statusLabel = new Label { Text = "Press ` to close." };
+		_statusLabel.AutowrapMode = TextServer.AutowrapMode.Word;
+		root.AddChild(_statusLabel);
+	}
+
+	private void ResolvePlayer()
+	{
+		if (_player == null || !IsInstanceValid(_player))
+			_player = GetTree().GetFirstNodeInGroup("player") as Player;
+		SyncFromPlayer();
+	}
+
+	public override void _UnhandledInput(InputEvent @event)
+	{
+		if (@event is InputEventKey key && key.Pressed && !key.Echo &&
+			(key.Keycode == Key.Quoteleft || key.PhysicalKeycode == Key.Quoteleft))
+		{
+			ToggleMenu();
+			GetViewport().SetInputAsHandled();
+			return;
+		}
+
+		if (!Visible) return;
+
+		if (@event is InputEventKey esc && esc.Pressed && !esc.Echo && esc.Keycode == Key.Escape)
+		{
+			Visible = false;
+			GetViewport().SetInputAsHandled();
+		}
+	}
+
+	private void ToggleMenu()
+	{
+		Visible = !Visible;
+		if (Visible)
+		{
+			ResolvePlayer();
+			_statusLabel.Text = "Cheats enabled. Press ` or Esc to close.";
+		}
+	}
+
+	private void SyncFromPlayer()
+	{
+		if (_player != null && IsInstanceValid(_player) && _invincibilityToggle != null)
+		{
+			_invincibilityToggle.ButtonPressed = _player.DebugInvulnerable;
+		}
+	}
+
+	private void OnInvincibilityToggled(bool enabled)
+	{
+		ResolvePlayer();
+		if (_player == null) return;
+		_player.DebugInvulnerable = enabled;
+		_statusLabel.Text = enabled ? "Invincibility: ON" : "Invincibility: OFF";
+	}
+
+	private void AddCoins(int amount)
+	{
+		ResolvePlayer();
+		if (_player == null) return;
+		_player.AddGold(amount);
+		_statusLabel.Text = $"Added {amount} coin(s). Total: {_player.Gold}";
+	}
+
+	private void AddWeapon(string itemId)
+	{
+		ResolvePlayer();
+		if (_player == null) return;
+		bool added = _player.AddItem(itemId, 1);
+		_statusLabel.Text = added ? $"Added weapon: {itemId}" : $"Could not add {itemId} (inventory full?)";
+	}
+}

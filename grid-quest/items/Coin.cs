@@ -20,23 +20,44 @@ public partial class Coin : Area2D
 		_sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
 		var frames = new SpriteFrames();
 		frames.AddAnimation("spin");
-		frames.SetAnimationLoop("spin", true);
+		frames.SetAnimationLoopMode("spin", SpriteFrames.LoopMode.Linear);
 		frames.SetAnimationSpeed("spin", 10.0);
-		frames.AddFrame("spin", GD.Load<Texture2D>("res://assets/images/items/forest_coin-1.png"));
-		frames.AddFrame("spin", GD.Load<Texture2D>("res://assets/images/items/forest_coin-2.png"));
-		frames.AddFrame("spin", GD.Load<Texture2D>("res://assets/images/items/forest_coin-3.png"));
-		frames.AddFrame("spin", GD.Load<Texture2D>("res://assets/images/items/forest_coin-4.png"));
+		// Use available coin art assets for drop animation.
+		foreach (string path in new[]
+		{
+			"res://assets/images/items/coin/meta_coin1.png",
+			"res://assets/images/items/coin/meta_coin2.png",
+			"res://assets/images/items/coin/meta_coin3.png",
+			"res://assets/images/items/coin/meta_coin4.png",
+		})
+		{
+			var tex = GD.Load<Texture2D>(path);
+			if (tex != null)
+				frames.AddFrame("spin", tex);
+		}
+		if (frames.GetFrameCount("spin") == 0)
+		{
+			var fallback = GD.Load<Texture2D>("res://assets/images/items/coin/meta_coin1.png");
+			if (fallback != null) frames.AddFrame("spin", fallback);
+		}
 		_sprite.SpriteFrames = frames;
 		_sprite.Play("spin");
 
+		Monitoring = true;
+		Monitorable = true;
+		Monitoring = false; // enable for overlap after pop+idle delay
+		BodyEntered += OnBodyEntered;
+		CallDeferred(nameof(InitializePop));
+	}
+
+	private void InitializePop()
+	{
 		_popStart = GlobalPosition;
 		float ang = (float)GD.RandRange(0.0, Mathf.Tau);
 		_popEnd = _popStart + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * PopDistance;
 		_popElapsed = 0.0f;
 		_timer = PopTime + IdleTime;
 		_magnetizing = false;
-		Monitoring = false;
-		BodyEntered += OnBodyEntered;
 	}
 
 	public override void _PhysicsProcess(double delta)
@@ -47,7 +68,9 @@ public partial class Coin : Area2D
 		{
 			_popElapsed += dt;
 			float t = Mathf.Clamp(_popElapsed / PopTime, 0.0f, 1.0f);
-			GlobalPosition = _popStart.Lerp(_popEnd, t);
+			// Ease-out pop so the drop feels snappy then settles before magneting.
+			float eased = 1.0f - Mathf.Pow(1.0f - t, 3.0f);
+			GlobalPosition = _popStart.Lerp(_popEnd, eased);
 			return;
 		}
 
@@ -56,7 +79,7 @@ public partial class Coin : Area2D
 			_timer -= dt;
 			if (_timer <= PopTime)
 			{
-				Monitoring = true; // enable pickup after pop+idle
+				Monitoring = true; // enable pickup overlap after pop+idle delay
 			}
 			return;
 		}
@@ -75,15 +98,19 @@ public partial class Coin : Area2D
 
 		if (_magnetizing)
 		{
-			Vector2 dir = (player.GlobalPosition - GlobalPosition);
-			if (dir.LengthSquared() < 0.01f)
+			Vector2 toPlayer = player.GlobalPosition - GlobalPosition;
+			float d = toPlayer.Length();
+			if (d <= 8.0f)
 			{
 				Collect(player);
 				return;
 			}
-			dir = dir.Normalized();
-			GlobalPosition += dir * MagnetSpeed * dt;
-			if (GlobalPosition.DistanceTo(player.GlobalPosition) <= 6.0f)
+
+			Vector2 dir = toPlayer / d;
+			// Smooth acceleration into the player for a satisfying magnet feel.
+			float speed = MagnetSpeed + Mathf.Clamp((MagnetRange - d) * 1.2f, 0.0f, 120.0f);
+			GlobalPosition += dir * speed * dt;
+			if (GlobalPosition.DistanceTo(player.GlobalPosition) <= 8.0f)
 			{
 				Collect(player);
 			}
@@ -98,9 +125,14 @@ public partial class Coin : Area2D
 		}
 	}
 
+	private bool _collected;
+
 	private void Collect(Node2D player)
 	{
-		if (player.HasMethod("AddGold"))
+		if (_collected) return;
+		_collected = true;
+		SetDeferred(Area2D.PropertyName.Monitoring, false);
+		if (player != null && IsInstanceValid(player) && player.HasMethod("AddGold"))
 		{
 			player.Call("AddGold", 1);
 		}

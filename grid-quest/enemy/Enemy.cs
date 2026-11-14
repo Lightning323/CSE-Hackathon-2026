@@ -27,6 +27,10 @@ public partial class Enemy : CharacterBody2D
 	private string _facing = "down";
 	private bool _faceLeft;
 	private float _attackTimer;
+	private Vector2 _knockbackVelocity = Vector2.Zero;
+	private Vector2 _wanderTarget;
+	private float _wanderWaitTimer;
+	private float _wanderRepathTimer;
 
 	private enum State
 	{
@@ -48,11 +52,13 @@ public partial class Enemy : CharacterBody2D
 		_sprite.Play("idle_down");
 		AddToGroup("enemies");
 		_player = GetTree().GetFirstNodeInGroup("player") as Node2D;
+		PickNewWanderTarget();
 		UpdateHealthBar();
 	}
 
 	public override void _PhysicsProcess(double delta)
 	{
+		float dt = (float)delta;
 		if (Health <= 0)
 		{
 			Velocity = Vector2.Zero;
@@ -60,7 +66,15 @@ public partial class Enemy : CharacterBody2D
 			return;
 		}
 
-		_attackTimer = Mathf.Max(0.0f, _attackTimer - (float)delta);
+		_attackTimer = Mathf.Max(0.0f, _attackTimer - dt);
+		if (_knockbackVelocity.LengthSquared() > 1.0f)
+		{
+			Velocity = _knockbackVelocity;
+			_knockbackVelocity = _knockbackVelocity.MoveToward(Vector2.Zero, 700.0f * dt);
+			MoveAndSlide();
+			return;
+		}
+		_knockbackVelocity = Vector2.Zero;
 
 		if (_state == State.Attack)
 		{
@@ -71,48 +85,40 @@ public partial class Enemy : CharacterBody2D
 
 		_player = FindClosestTarget();
 
-		if (_player == null)
+		if (_player != null)
 		{
-			Velocity = Vector2.Zero;
-			_state = State.Idle;
-			PlayAnimation($"idle_{_facing}");
-			MoveAndSlide();
-			return;
+			Vector2 toPlayer = _player.GlobalPosition - GlobalPosition;
+			float distance = toPlayer.Length();
+			if (distance <= AgroRange && distance > 0.001f)
+			{
+				Vector2 direction = toPlayer / distance;
+				UpdateFacing(direction);
+
+				if (distance <= AttackRange && _attackTimer <= 0.0f)
+				{
+					StartAttack();
+					MoveAndSlide();
+					return;
+				}
+
+				if (distance <= AttackRange)
+				{
+					Velocity = Vector2.Zero;
+					_state = State.Idle;
+					PlayAnimation($"idle_{_facing}");
+					MoveAndSlide();
+					return;
+				}
+
+				Velocity = direction * Speed;
+				_state = State.Walk;
+				PlayAnimation($"walk_{_facing}");
+				MoveAndSlide();
+				return;
+			}
 		}
 
-		Vector2 toPlayer = _player.GlobalPosition - GlobalPosition;
-		float distance = toPlayer.Length();
-		if (distance > AgroRange || distance <= 0.001f)
-		{
-			Velocity = Vector2.Zero;
-			_state = State.Idle;
-			PlayAnimation($"idle_{_facing}");
-			MoveAndSlide();
-			return;
-		}
-
-		Vector2 direction = toPlayer / distance;
-		UpdateFacing(direction);
-
-		if (distance <= AttackRange && _attackTimer <= 0.0f)
-		{
-			StartAttack();
-			MoveAndSlide();
-			return;
-		}
-
-		if (distance <= AttackRange)
-		{
-			Velocity = Vector2.Zero;
-			_state = State.Idle;
-			PlayAnimation($"idle_{_facing}");
-			MoveAndSlide();
-			return;
-		}
-
-		Velocity = direction * Speed;
-		_state = State.Walk;
-		PlayAnimation($"walk_{_facing}");
+		UpdateWander(dt);
 		MoveAndSlide();
 	}
 
@@ -130,6 +136,14 @@ public partial class Enemy : CharacterBody2D
 			DropCoins();
 			QueueFree();
 		}
+	}
+
+	public void ApplyKnockback(Vector2 direction, float strength)
+	{
+		if (Health <= 0 || strength <= 0.0f) return;
+		Vector2 dir = direction;
+		if (dir.LengthSquared() < 0.0001f) return;
+		_knockbackVelocity = dir.Normalized() * strength;
 	}
 
 	private void DropCoins()
@@ -183,7 +197,7 @@ public partial class Enemy : CharacterBody2D
 
 		if (_player.GlobalPosition.DistanceTo(GlobalPosition) <= AttackRange && _player.HasMethod("TakeDamage"))
 		{
-			_player.Call("TakeDamage", AttackDamage);
+			_player.Call("TakeDamage", AttackDamage, this);
 		}
 	}
 
@@ -209,6 +223,63 @@ public partial class Enemy : CharacterBody2D
 		{
 			_sprite.Play(animation);
 		}
+	}
+
+	private void UpdateWander(float delta)
+	{
+		_wanderRepathTimer -= delta;
+
+		if (_wanderWaitTimer > 0.0f)
+		{
+			_wanderWaitTimer -= delta;
+			_state = State.Idle;
+			Velocity = Vector2.Zero;
+			PlayAnimation($"idle_{_facing}");
+			if (_wanderWaitTimer <= 0.0f)
+				PickNewWanderTarget();
+			return;
+		}
+
+		if (_wanderTarget == Vector2.Zero || _wanderRepathTimer <= 0.0f)
+		{
+			PickNewWanderTarget();
+		}
+
+		Vector2 toTarget = _wanderTarget - GlobalPosition;
+		if (toTarget.Length() <= 6.0f)
+		{
+			_wanderWaitTimer = (float)GD.RandRange(0.6, 2.0);
+			_state = State.Idle;
+			Velocity = Vector2.Zero;
+			PlayAnimation($"idle_{_facing}");
+			return;
+		}
+
+		Vector2 direction = toTarget.Normalized();
+		UpdateFacing(direction);
+		_state = State.Walk;
+		Velocity = direction * Mathf.Max(10.0f, Speed * 0.4f);
+		PlayAnimation($"walk_{_facing}");
+	}
+
+	private void PickNewWanderTarget()
+	{
+		_wanderRepathTimer = (float)GD.RandRange(2.0, 4.5);
+		Vector2 origin = GlobalPosition;
+
+		for (int i = 0; i < 8; i++)
+		{
+			float angle = (float)GD.RandRange(0.0, Mathf.Tau);
+			float dist = (float)GD.RandRange(20.0, 72.0);
+			Vector2 candidate = origin + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * dist;
+			if (candidate.DistanceTo(origin) >= 12.0f)
+			{
+				_wanderTarget = candidate;
+				return;
+			}
+		}
+
+		_wanderTarget = origin;
 	}
 
 	private void UpdateHealthBar()
