@@ -37,7 +37,9 @@ grid-quest/
 ├── map/                       # Map tile definitions, generation, and object factories
 │   ├── Map.cs                 # Runtime map composition and building placement
 │   ├── MapConstants.cs        # Shared map constants (e.g. cell size)
-│   ├── RoomGenerator.cs       # Builds rectangular rooms (configurable wall edges, chest spawn)
+│   ├── RoomGenerator.cs       # Builds rooms with configurable edges and safe chest placement
+│   ├── RoomGenerationContext.cs # Deduplicates shared boundaries and floor tiles
+│   ├── BuildingGenerator.cs   # Seedable connected multi-room planning and generation
 │   ├── map.tscn               # Reusable map scene
 │   ├── map_floors/            # Floor tile factories (grass/stone)
 │   └── map_objects/
@@ -57,8 +59,12 @@ grid-quest/
 │   ├── main_menu.tscn         # Legacy main menu scene
 │   └── mainMenu/
 │       ├── MainMenu.cs        # Save selection/creation UI and game boot flow
-│       ├── MainMenu.tscn      # Main menu scene (startup scene)
+│       ├── MainMenu.tscn      # Main menu scene (startup scene, UI in scene)
+│       ├── SettingsMenu.cs    # LLM settings menu behavior
+│       ├── SettingsMenu.tscn  # LLM settings scene (UI in scene)
 │       ├── SaveManager.cs     # Save discovery/creation/deletion in app data
+│       ├── LlmSettingsStore.cs # LLM provider/model/key persistence in app data
+│       ├── LlmApi.cs          # Autoload LLM API for in-game requests/tests
 │       └── GameSession.cs     # Autoload holding currently selected save
 ├── npc/
 │   └── knight/
@@ -95,7 +101,7 @@ Coins collected in-world are tracked as gold and added to inventory as stackable
   - Interact/open nearby chest: `F` (opens chest and shows chest panel alongside inventory).
   - Supports click-to-select move/swap and drag-and-drop between backpack, weapon slot, and chest; stacks merge where applicable, and chest loot can be moved with **Take All**.
 - `map/map_objects/chest/` defines a stateful chest object (`Chest.cs`, `chest.tscn`) that opens on first interaction, generates a random dynamic loot pool once, and stores items in a 12-slot container for transfer in/out.
-- `RoomGenerator` spawns one chest inside each generated room; `Map.GenerateBuildings()` places multiple rooms/buildings so chests appear in those rooms.
+- `RoomGenerator` spawns one chest in rooms at least 5×5; smaller rooms omit it to keep paths clear. `Map.GenerateBuildings()` places a procedural dungeon and single rooms before wilderness decoration.
 
 ## Map and Tiles
 
@@ -105,7 +111,7 @@ Coins collected in-world are tracked as gold and added to inventory as stackable
 - **Village-only town trees:** colliding, y-sorted town trees (`assets/images/map_tiles/trees/town_tree-1.png`, `town_tree-2.png`) are placed only in a ring around village bounds as village-edge decoration (separate from forest trees), avoiding paths/objects/reserved areas and overlap.
 - **Monument:** the stone monument (`map/map_objects/monument/`) spawns at a random location within the camera-reachable map bounds, biased toward the center and kept away from edges, with reserved clearance from villages/objects and cardinal (N/S/E/W) path lines carved for discoverability. `Map` exposes `MonumentWorldPosition`.
 - **Forest/wilderness decorations:** outside villages (and a small buffer around village bounds reserved for village decor) the generator scatters natural props including colliding, y-sorted forest trees (orange/pink/dried variants), rocks, and trunks, plus non-blocking forest bushes and ground plants for denser, more natural terrain. Blocking decor/trees use base-aligned sprites and collision shapes for correct depth and movement.
-- **Buildings/rooms, gates, and chests:** `RoomGenerator.cs` builds rectangular rooms with configurable wall edges (`Solid`/`Opening`/`Gate`), optional floors, and a chest. `Map.GenerateBuilding(...)`/`GenerateBuildings()` place rooms while avoiding overlap with reserved procedural areas (villages/monument/paths). Gates (`map/map_objects/gate/`) and chests (`map/map_objects/chest/`) are interactive/stateful map objects integrated with the inventory system.
+- **Buildings/rooms, gates, and chests:** `RoomGenerator.cs` builds rectangular rooms with configurable wall edges (`Solid`/`Opening`/`Gate`), optional floors, and a chest. `Map.GenerateBuilding(...)`/`GenerateBuildings()` place rooms while avoiding overlap with reserved procedural areas (villages/monument/paths). `RoomGenerationContext` resolves shared walls/gates/openings and floor tiles. `BuildingGenerator.Plan/Create` produces connected layouts with an exterior entrance, and `Map.GenerateDungeon` validates and reserves their footprint. Gates (`map/map_objects/gate/`) have configurable visuals/collision; chests (`map/map_objects/chest/`) support interaction and inventory transfer. See [map-architecture.md](./map-architecture.md) for generation APIs, ownership, and tests.
 - **Map objects/layering:** `map/map_objects/MapObjectFactory.cs` is the base for walls/trees/bushes/houses/props/gates/chests. `TreeFactory`, `WallFactory`, and `HouseFactory` are scene-backed factories; `PlantFactory` creates lightweight non-blocking plant nodes; `map/map_objects/props/PropFactory.cs` creates configurable decorative props (sprite offset, optional collision, y-sort). Border walls are placed in a non-y-sorted `Walls` layer behind y-sorted actors/objects so players, plants, and other objects render over the walls.
 - **Map helpers/data:** `Map` provides `CellToWorldCenter`, `CellToWorldBase`, village metadata (`Villages`, `GetRandomPointInVillage`), monument position, and size helpers for other systems.
 - `FloorTiles` / `FloorTileFactory` (`map/map_floors/`) build floor sprites.
@@ -155,7 +161,15 @@ sprites under `assets/images/characters/`. Knights are allied village protectors
 ## Main Menu and Saves
 
 - `menus/mainMenu/MainMenu.tscn` is the startup scene (`project.godot` `run/main_scene`) containing the menu UI layout; `menus/mainMenu/MainMenu.cs` handles behavior/wiring.
-- The main menu lists save folders from the app data saves directory (`OS.GetUserDataDir()/saves`), and supports **Play**, **Delete**, and **New Save**.
-- **New Save** opens a dialog for title and description, creates a new per-save folder under the saves directory with a `save.json` metadata file, sets it as the active session save, and boots into `res://level/character_dev/main_level.tscn`.
+- The main menu lists save folders from the app data saves directory (`OS.GetUserDataDir()/saves`), and supports **Play**, **Delete**, **New Save**, and **Settings**.
+- **New Save** opens a dialog for title and description, creates a new per-save folder under the saves directory with a `save.json` metadata file, and refreshes/selects it in the list (it does not automatically boot into the game).
+- **Play** sets the selected save as the active session save and boots into `res://level/character_dev/main_level.tscn`.
 - `menus/mainMenu/GameSession.cs` is registered as an autoload (`GameSession`) to store the currently selected/created save for the running session.
 - A debug button in the main menu opens the saves/app-data folder via `OS.ShellOpen`.
+
+## Main Menu Settings and LLM API
+
+- `menus/mainMenu/SettingsMenu.tscn` (UI in scene) and `menus/mainMenu/SettingsMenu.cs` provide LLM configuration: provider selection (OpenAI, Anthropic, LM Studio, Custom OpenAI-compatible), base URL, model, and API key.
+- **Test Model** pings the configured provider/model and reports connection/status in the settings UI.
+- `menus/mainMenu/LlmSettingsStore.cs` persists LLM settings to app data (`OS.GetUserDataDir()/llm_settings.json`).
+- `menus/mainMenu/LlmApi.cs` is registered as an autoload (`LlmApi`) and exposes async methods (`ChatAsync`, `TestConnectionAsync`) so game/UI code can call an LLM directly in Godot using saved or overridden settings (OpenAI-compatible chat completions and Anthropic messages APIs).

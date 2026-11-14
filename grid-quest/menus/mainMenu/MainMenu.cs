@@ -6,11 +6,13 @@ namespace GridQuest.Menus.MainMenu;
 public partial class MainMenu : Control
 {
 	private const string LevelScenePath = "res://level/character_dev/main_level.tscn";
+	private const string SettingsScenePath = "res://menus/mainMenu/SettingsMenu.tscn";
 
 	private ItemList _saveList;
 	private Button _playButton;
 	private Button _deleteButton;
 	private Button _newSaveButton;
+	private Button _settingsButton;
 	private Button _openFolderButton;
 	private Label _titleLabel;
 	private Label _descriptionLabel;
@@ -28,6 +30,7 @@ public partial class MainMenu : Control
 		_playButton = GetNode<Button>("%PlayButton");
 		_deleteButton = GetNode<Button>("%DeleteButton");
 		_newSaveButton = GetNode<Button>("%NewSaveButton");
+		_settingsButton = GetNode<Button>("%SettingsButton");
 		_openFolderButton = GetNode<Button>("%OpenFolderButton");
 		_titleLabel = GetNode<Label>("%TitleLabel");
 		_descriptionLabel = GetNode<Label>("%DescriptionLabel");
@@ -42,6 +45,7 @@ public partial class MainMenu : Control
 		_newSaveButton.Pressed += OnNewSavePressed;
 		_deleteButton.Pressed += OnDeletePressed;
 		_playButton.Pressed += OnPlayPressed;
+		_settingsButton.Pressed += OnSettingsPressed;
 		_openFolderButton.Pressed += OnOpenSavesFolderPressed;
 		_createDialog.Confirmed += OnCreateSaveConfirmed;
 
@@ -130,7 +134,6 @@ public partial class MainMenu : Control
 		var info = SaveManager.CreateSave(_newTitleEdit.Text, _newDescriptionEdit.Text);
 		RefreshSaves();
 		SelectSaveById(info.Id);
-		StartSave(info);
 	}
 
 	private void SelectSaveById(string id)
@@ -175,6 +178,13 @@ public partial class MainMenu : Control
 		var err = GetTree().ChangeSceneToFile(LevelScenePath);
 		if (err != Error.Ok)
 			GD.PushError($"Failed to load level scene '{LevelScenePath}': {err}");
+	}
+
+	private void OnSettingsPressed()
+	{
+		var err = GetTree().ChangeSceneToFile(SettingsScenePath);
+		if (err != Error.Ok)
+			GD.PushError($"Failed to open settings scene '{SettingsScenePath}': {err}");
 	}
 
 	private void OnOpenSavesFolderPressed()

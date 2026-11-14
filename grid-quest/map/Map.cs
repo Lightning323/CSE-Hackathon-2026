@@ -7,8 +7,8 @@ using System.Collections.Generic;
 
 public partial class Map : Node2D
 {
-	public const int Width = 200;
-	public const int Height = 200;
+	public const int Width = 600;
+	public const int Height = 600;
 
 	public readonly struct VillageArea
 	{
@@ -59,8 +59,8 @@ public partial class Map : Node2D
 		CarveMonumentApproachPaths(_monumentCell);
 
 		AddChild(FloorLayer(Width, Height));
-		AddChild(ObjectLayer(Width, Height, rng, houses));
 		GenerateBuildings();
+		AddChild(ObjectLayer(Width, Height, rng, houses));
 	}
 
 	public Node2D GenerateBuilding(
@@ -80,19 +80,46 @@ public partial class Map : Node2D
 
 		var building = GridQuest.Map.RoomGenerator.Create(originX, originY, width, height, north, south, east, west, gatesOpen, includeFloor);
 		building.Name = $"Building_{originX}_{originY}";
-		ReserveRect(originX, originY, width, height);
+		ReserveRect(originX - 1, originY - 1, width + 2, height + 2);
 		MarkOccupiedRect(originX, originY, width, height);
+		AddChild(building);
+		return building;
+	}
+
+	public Node2D GenerateDungeon(int originX, int originY, BuildingLayout layout,
+		bool gatesOpen = true, bool includeFloor = true)
+	{
+		ArgumentNullException.ThrowIfNull(layout);
+		if (!CanPlaceBuilding(originX, originY, layout.Size.X, layout.Size.Y))
+			return null;
+
+		Node2D building = BuildingGenerator.Create(layout, originX, originY, gatesOpen, includeFloor);
+		building.Name = $"Building_{originX}_{originY}";
+		// Reserve the entire footprint, including gaps, before wilderness objects are scattered.
+		ReserveRect(originX - 1, originY - 1, layout.Size.X + 2, layout.Size.Y + 2);
+		MarkOccupiedRect(originX, originY, layout.Size.X, layout.Size.Y);
 		AddChild(building);
 		return building;
 	}
 
 	private void GenerateBuildings()
 	{
-		// Try to place a few generated rooms in clear areas so pulled room/chest/gate features
-		// coexist with procedural villages/monument without overlap.
-		TryPlaceBuildingNear(24, 24, 8, 6, GridQuest.Map.WallFeature.Solid, GridQuest.Map.WallFeature.Gate, GridQuest.Map.WallFeature.Solid, GridQuest.Map.WallFeature.Solid);
-		TryPlaceBuildingNear(70, 18, 10, 8, GridQuest.Map.WallFeature.Opening, GridQuest.Map.WallFeature.Solid, GridQuest.Map.WallFeature.Gate, GridQuest.Map.WallFeature.Solid);
-		TryPlaceBuildingNear(24, 70, 12, 7, GridQuest.Map.WallFeature.Solid, GridQuest.Map.WallFeature.Gate, GridQuest.Map.WallFeature.Solid, GridQuest.Map.WallFeature.Opening, gatesOpen: true);
+		// Generate before wilderness decoration so entrances and interiors stay clear.
+		BuildingLayout dungeon = BuildingGenerator.Plan(8);
+		for (int y = 5; y + dungeon.Size.Y < 98; y += 5)
+		{
+			bool placed = false;
+			for (int x = 5; x + dungeon.Size.X < 98; x += 5)
+			{
+				if (GenerateDungeon(x, y, dungeon) == null) continue;
+				placed = true;
+				break;
+			}
+			if (placed) break;
+		}
+		// TryPlaceBuildingNear(24, 24, 8, 6, GridQuest.Map.WallFeature.Solid, GridQuest.Map.WallFeature.Gate, GridQuest.Map.WallFeature.Solid, GridQuest.Map.WallFeature.Solid);
+		// TryPlaceBuildingNear(70, 18, 10, 8, GridQuest.Map.WallFeature.Opening, GridQuest.Map.WallFeature.Solid, GridQuest.Map.WallFeature.Gate, GridQuest.Map.WallFeature.Solid);
+		// TryPlaceBuildingNear(24, 70, 12, 7, GridQuest.Map.WallFeature.Solid, GridQuest.Map.WallFeature.Gate, GridQuest.Map.WallFeature.Solid, GridQuest.Map.WallFeature.Opening, gatesOpen: true);
 	}
 
 	private void TryPlaceBuildingNear(
@@ -122,7 +149,8 @@ public partial class Map : Node2D
 
 	private bool CanPlaceBuilding(int originX, int originY, int width, int height)
 	{
-		if (originX < 2 || originY < 2 || originX + width >= Width - 1 || originY + height >= Height - 1)
+		if (width < 3 || height < 3 || originX < 2 || originY < 2 ||
+			originX + (long)width >= Width - 1 || originY + (long)height >= Height - 1)
 			return false;
 
 		for (int y = originY - 1; y <= originY + height; y++)

@@ -21,6 +21,12 @@ public partial class GateFactory : MapObjectFactory
 	[Export] public GateAxis Axis { get; set; } = GateAxis.Horizontal;
 	[Export] public bool IsOpen { get; set; }
 
+	public override void _Ready()
+	{
+		base._Ready();
+		Configure(Axis, IsOpen);
+	}
+
 	public static GateFactory Instantiate(Vector2 worldPosition, GateAxis axis = GateAxis.Horizontal, bool isOpen = false)
 	{
 		var gate = Scene.Instantiate<GateFactory>();
