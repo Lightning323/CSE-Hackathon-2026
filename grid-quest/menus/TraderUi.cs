@@ -33,6 +33,7 @@ public partial class TraderUi : Control
 	private Button _buyButton;
 	private Button _closeButton;
 	private SpinBox _sellQtySpin;
+	private Button _sellQtyMaxButton;
 	private Label _sellQtyLabel;
 	private Label _sellTotalLabel;
 
@@ -93,7 +94,7 @@ public partial class TraderUi : Control
 		_coinsLabel = new Label { Text = "Coins: 0" };
 		root.AddChild(_coinsLabel);
 
-		_statusLabel = new Label { Text = "Sell looted items and weapons, or buy weapons from the trader." };
+		_statusLabel = new Label { Text = "Sell looted items/weapons, buy weapons, or pay for a permanent Full Heal service." };
 		_statusLabel.AutowrapMode = TextServer.AutowrapMode.Word;
 		root.AddChild(_statusLabel);
 
@@ -118,6 +119,9 @@ public partial class TraderUi : Control
 		_sellQtySpin = new SpinBox { MinValue = 1, MaxValue = 1, Step = 1, Value = 1, CustomMinimumSize = new Vector2(90, 0) };
 		_sellQtySpin.ValueChanged += OnSellQuantityChanged;
 		qtyRow.AddChild(_sellQtySpin);
+		_sellQtyMaxButton = new Button { Text = "Max", CustomMinimumSize = new Vector2(52, 0) };
+		_sellQtyMaxButton.Pressed += OnSellMaxPressed;
+		qtyRow.AddChild(_sellQtyMaxButton);
 		_sellTotalLabel = new Label { Text = "Total: 0c", SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
 		qtyRow.AddChild(_sellTotalLabel);
 
@@ -128,7 +132,36 @@ public partial class TraderUi : Control
 		var buyPanel = MakeSubPanel("Buy Weapons");
 		buyPanel.CustomMinimumSize = new Vector2(320, 0);
 		columns.AddChild(buyPanel);
-		var buyScroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 320) };
+
+		// Permanent service: full heal (separate and visually distinct)
+		var serviceBox = new PanelContainer();
+		var serviceSb = new StyleBoxFlat { BgColor = new Color(0.10f, 0.28f, 0.18f, 1.0f), BorderColor = new Color(0.35f, 0.95f, 0.55f, 1.0f) };
+		serviceSb.SetBorderWidthAll(2);
+		serviceSb.SetCornerRadiusAll(6);
+		serviceSb.SetContentMarginAll(8);
+		serviceBox.AddThemeStyleboxOverride("panel", serviceSb);
+		var serviceVBox = new VBoxContainer();
+		serviceVBox.AddThemeConstantOverride("separation", 4);
+		serviceBox.AddChild(serviceVBox);
+		var serviceTitle = new Label { Text = "Service (Permanent)", HorizontalAlignment = HorizontalAlignment.Center };
+		serviceTitle.AddThemeColorOverride("font_color", new Color(0.75f, 1.0f, 0.85f, 1.0f));
+		serviceTitle.AddThemeFontSizeOverride("font_size", 14);
+		serviceVBox.AddChild(serviceTitle);
+		var healButton = new Button { Text = "Full Heal (5c)", CustomMinimumSize = new Vector2(0, 34) };
+		var healStyle = new StyleBoxFlat { BgColor = new Color(0.18f, 0.55f, 0.30f, 1.0f), BorderColor = new Color(0.55f, 1.0f, 0.70f, 1.0f) };
+		healStyle.SetBorderWidthAll(2);
+		healStyle.SetCornerRadiusAll(5);
+		healButton.AddThemeStyleboxOverride("normal", healStyle);
+		healButton.AddThemeColorOverride("font_color", new Color(0.95f, 1.0f, 0.97f, 1.0f));
+		healButton.Pressed += OnFullHealPressed;
+		serviceVBox.AddChild(healButton);
+		buyPanel.GetNode<VBoxContainer>("VBox").AddChild(serviceBox);
+
+		var weaponsLabel = new Label { Text = "Weapons", HorizontalAlignment = HorizontalAlignment.Center };
+		weaponsLabel.AddThemeFontSizeOverride("font_size", 13);
+		buyPanel.GetNode<VBoxContainer>("VBox").AddChild(weaponsLabel);
+
+		var buyScroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 260) };
 		buyPanel.GetNode<VBoxContainer>("VBox").AddChild(buyScroll);
 		_buyList = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
 		_buyList.AddThemeConstantOverride("separation", 4);
@@ -218,6 +251,8 @@ public partial class TraderUi : Control
 		// Weapons for sale (pricey)
 		_buyOffers.Add(new BuyOffer { ItemId = "base_sword", Price = 120 });
 		_buyOffers.Add(new BuyOffer { ItemId = "fire_staff", Price = 240 });
+		_buyOffers.Add(new BuyOffer { ItemId = "scythe", Price = 320 });
+		_buyOffers.Add(new BuyOffer { ItemId = "crossbow", Price = 360 });
 	}
 
 	private void Refresh()
@@ -411,6 +446,7 @@ public partial class TraderUi : Control
 			_sellQtySpin.MaxValue = 1;
 			if (Math.Abs(_sellQtySpin.Value - 1.0) > 0.001) _sellQtySpin.Value = 1;
 			_sellQtySpin.Editable = false;
+			if (_sellQtyMaxButton != null) _sellQtyMaxButton.Disabled = true;
 			_sellTotalLabel.Text = "Total: 0c";
 			if (_sellQtyLabel != null) _sellQtyLabel.Text = "Quantity:";
 			return;
@@ -420,6 +456,7 @@ public partial class TraderUi : Control
 		int max = Mathf.Max(1, offer.Count);
 		_selectedSellQuantity = Mathf.Clamp(_selectedSellQuantity, 1, max);
 		_sellQtySpin.Editable = max > 1;
+		if (_sellQtyMaxButton != null) _sellQtyMaxButton.Disabled = max <= 1 || _selectedSellQuantity >= max;
 		_sellQtySpin.MinValue = 1;
 		_sellQtySpin.MaxValue = max;
 		_sellQtySpin.Step = 1;
@@ -432,6 +469,15 @@ public partial class TraderUi : Control
 	private void OnSellQuantityChanged(double value)
 	{
 		_selectedSellQuantity = Mathf.Max(1, Mathf.RoundToInt((float)value));
+		ClampSelectedSellQuantity();
+		UpdateActionButtons();
+	}
+
+	private void OnSellMaxPressed()
+	{
+		if (_selectedSellIndex < 0 || _selectedSellIndex >= _sellOffers.Count)
+			return;
+		_selectedSellQuantity = Mathf.Max(1, _sellOffers[_selectedSellIndex].Count);
 		ClampSelectedSellQuantity();
 		UpdateActionButtons();
 	}
@@ -500,6 +546,35 @@ public partial class TraderUi : Control
 		Refresh();
 	}
 
+
+	private void OnFullHealPressed()
+	{
+		ResolvePlayer();
+		if (_player == null || !IsInstanceValid(_player)) return;
+		const int healCost = 5;
+		if (_player.Health >= _player.MaxHealth)
+		{
+			_statusLabel.Text = "You are already at full health.";
+			Refresh();
+			return;
+		}
+		if (_player.Gold < healCost)
+		{
+			_statusLabel.Text = $"Not enough coins for Full Heal ({healCost}c).";
+			Refresh();
+			return;
+		}
+		if (!_player.TrySpendCoins(healCost))
+		{
+			_statusLabel.Text = $"Could not pay for Full Heal ({healCost}c).";
+			Refresh();
+			return;
+		}
+		_player.Heal(_player.MaxHealth);
+		_statusLabel.Text = $"Fully healed for {healCost} coins.";
+		Refresh();
+	}
+
 	private void OnBuyPressed()
 	{
 		ResolvePlayer();
@@ -563,6 +638,8 @@ public partial class TraderUi : Control
 			"boots" => (20, 35),
 			"base_sword" => (40, 70),
 			"fire_staff" => (80, 130),
+			"scythe" => (110, 180),
+			"crossbow" => (130, 200),
 			_ => (0, 0),
 		};
 	}

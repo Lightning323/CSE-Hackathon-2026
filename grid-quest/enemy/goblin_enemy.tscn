@@ -1,0 +1,50 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://entities/enemy/GoblinEnemy.cs" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/images/enemies/Goblin/gobu Idle.png" id="2_tex"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_idle0"]
+atlas = ExtResource("2_tex")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_enemy"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_idle0")
+}],
+"loop": true,
+"name": &"idle_down",
+"speed": 5.0
+}]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_enemy"]
+radius = 6.0
+
+[node name="GoblinEnemy" type="CharacterBody2D" groups=["enemies"]]
+script = ExtResource("1_script")
+Speed = 85.0
+MaxHealth = 2
+AttackDamage = 1
+AttackRange = 20.0
+AttackCooldown = 0.45
+CoinDropCount = 2
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+texture_filter = 1
+sprite_frames = SubResource("SpriteFrames_enemy")
+animation = &"idle_down"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_enemy")
+
+[node name="HealthBar" type="ProgressBar" parent="."]
+modulate = Color(1, 0.7, 0.7, 1)
+offset_left = -10.0
+offset_top = -18.0
+offset_right = 10.0
+offset_bottom = -14.0
+max_value = 2.0
+value = 2.0
+show_percentage = false
+mouse_filter = 2

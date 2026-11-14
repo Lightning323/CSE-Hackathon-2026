@@ -50,9 +50,20 @@ public partial class DayNightCycle : CanvasModulate
 
 	public void SetToSunrise(bool emitSunriseEvent = false)
 	{
+		SetNormalizedTime(0.22f, emitSunriseEvent);
+	}
+
+	public void SetToMidday() => SetNormalizedTime(0.50f, emitSunriseEvent: false);
+	public void SetToSunset() => SetNormalizedTime(0.80f, emitSunriseEvent: false);
+	public void SetToMidnight() => SetNormalizedTime(0.00f, emitSunriseEvent: false);
+
+	public void SetNormalizedTime(float normalized, bool emitSunriseEvent = false)
+	{
 		float duration = Mathf.Max(1.0f, CycleDurationSeconds);
-		_time = duration * 0.22f; // sunrise keyframe
-		UpdateCycle(0.0f);
+		_time = Mathf.PosMod(normalized, 1.0f) * duration;
+		float t = _time / duration;
+		Color = EvaluateColor(t, out float daylight);
+		DaylightFactor = daylight;
 		bool isDaytime = DaylightFactor >= 0.45f;
 		if (emitSunriseEvent && isDaytime && !_wasDaytime)
 		{

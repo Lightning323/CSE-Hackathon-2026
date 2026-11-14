@@ -32,20 +32,20 @@ public partial class EnemyEntity : NpcEntity
 	private const int FrameSize = 32;
 	private static readonly PackedScene CoinScene = GD.Load<PackedScene>("res://items/coin.tscn");
 
-	private AnimatedSprite2D _sprite;
-	private ProgressBar _healthBar;
-	private Node2D _target;
-	private State _state = State.Idle;
-	private string _facing = "down";
-	private bool _faceLeft;
-	private float _attackTimer;
-	private Vector2 _knockbackVelocity = Vector2.Zero;
-	private Vector2 _wanderTarget;
-	private float _wanderWaitTimer;
-	private float _wanderRepathTimer;
-	private bool _dying;
+	protected AnimatedSprite2D Sprite = null!;
+	protected ProgressBar HealthBarNode = null!;
+	protected Node2D? Target;
+	protected EnemyState State = EnemyState.Idle;
+	protected string Facing = "down";
+	protected bool FaceLeft;
+	protected float AttackTimer;
+	protected Vector2 KnockbackVelocity = Vector2.Zero;
+	protected Vector2 WanderTarget;
+	protected float WanderWaitTimer;
+	protected float WanderRepathTimer;
+	protected bool Dying;
 
-	private enum State { Idle, Walk, Attack }
+	protected enum EnemyState { Idle, Walk, Attack }
 
 	public override void _Ready()
 	{
@@ -57,15 +57,16 @@ public partial class EnemyEntity : NpcEntity
 		base._Ready();
 		Health = MaxHealth;
 
-		_sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
-		_healthBar = GetNode<ProgressBar>("HealthBar");
-		_sprite.SpriteFrames = BuildSpriteFrames();
-		_sprite.AnimationFinished += OnAnimationFinished;
-		_sprite.Play("idle_down");
+		Sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
+		HealthBarNode = GetNode<ProgressBar>("HealthBar");
+		Sprite.SpriteFrames = BuildSpriteFrames();
+		Sprite.AnimationFinished += OnAnimationFinished;
+		PlayAnimation(GetAnimationName(EnemyState.Idle, Facing));
 		AddToGroup("enemies");
 		PickNewWanderTarget();
 		ApplyHealthBarStyle();
 		UpdateHealthBar();
+		OnEnemyReady();
 	}
 
 	public override void _PhysicsProcess(double delta)
@@ -73,38 +74,38 @@ public partial class EnemyEntity : NpcEntity
 		float dt = (float)delta;
 		if (IsDead) { Velocity = Vector2.Zero; MoveAndSlide(); return; }
 
-		_attackTimer = Mathf.Max(0.0f, _attackTimer - dt);
-		if (_knockbackVelocity.LengthSquared() > 1.0f)
+		AttackTimer = Mathf.Max(0.0f, AttackTimer - dt);
+		if (KnockbackVelocity.LengthSquared() > 1.0f)
 		{
-			Velocity = _knockbackVelocity;
-			_knockbackVelocity = _knockbackVelocity.MoveToward(Vector2.Zero, 700.0f * dt);
+			Velocity = KnockbackVelocity;
+			KnockbackVelocity = KnockbackVelocity.MoveToward(Vector2.Zero, 700.0f * dt);
 			MoveAndSlide();
 			return;
 		}
-		_knockbackVelocity = Vector2.Zero;
+		KnockbackVelocity = Vector2.Zero;
 
-		if (_state == State.Attack) { Velocity = Vector2.Zero; MoveAndSlide(); return; }
+		if (State == EnemyState.Attack) { Velocity = Vector2.Zero; MoveAndSlide(); return; }
 
-		_target = FindClosestTarget();
+		Target = FindClosestTarget();
 		Node2D playerNode = GetTree().GetFirstNodeInGroup("player") as Node2D;
-		if (ForceChasePlayer && playerNode != null && IsInstanceValid(playerNode)) _target = playerNode;
+		if (ForceChasePlayer && playerNode != null && IsInstanceValid(playerNode)) Target = playerNode;
 
-		if (_target != null)
+		if (Target != null)
 		{
-			Vector2 toPlayer = _target.GlobalPosition - GlobalPosition;
+			Vector2 toPlayer = Target.GlobalPosition - GlobalPosition;
 			float distance = toPlayer.Length();
-			float agroRange = (ForceChasePlayer && _target == playerNode) ? Mathf.Max(AgroRange, HordeAgroRange) : AgroRange;
+			float agroRange = (ForceChasePlayer && Target == playerNode) ? Mathf.Max(AgroRange, HordeAgroRange) : AgroRange;
 			if (distance <= agroRange && distance > 0.001f)
 			{
 				Vector2 direction = toPlayer / distance;
 				UpdateFacing(direction);
 
-				if (distance <= AttackRange && _attackTimer <= 0.0f) { StartAttack(); MoveAndSlide(); return; }
+				if (distance <= AttackRange && AttackTimer <= 0.0f) { StartAttack(); MoveAndSlide(); return; }
 				if (distance <= AttackRange)
 				{
-					Velocity = Vector2.Zero; _state = State.Idle; PlayAnimation($"idle_{_facing}"); MoveAndSlide(); return;
+					Velocity = Vector2.Zero; State = EnemyState.Idle; PlayAnimation(GetAnimationName(EnemyState.Idle, Facing)); MoveAndSlide(); return;
 				}
-				Velocity = direction * Speed; _state = State.Walk; PlayAnimation($"walk_{_facing}"); MoveAndSlide(); return;
+				Velocity = direction * Speed; State = EnemyState.Walk; PlayAnimation(GetAnimationName(EnemyState.Walk, Facing)); MoveAndSlide(); return;
 			}
 		}
 
@@ -119,7 +120,7 @@ public partial class EnemyEntity : NpcEntity
 
 	public override int TakeDamageAmount(int amount, Node2D? source = null)
 	{
-		if (amount <= 0 || IsDead || _dying) return 0;
+		if (amount <= 0 || IsDead || Dying) return 0;
 		int applied = base.TakeDamageAmount(amount, source);
 		UpdateHealthBar();
 		if (Health <= 0)
@@ -131,8 +132,8 @@ public partial class EnemyEntity : NpcEntity
 
 	private void Die()
 	{
-		if (_dying) return;
-		_dying = true;
+		if (Dying) return;
+		Dying = true;
 		Velocity = Vector2.Zero;
 		DropCoins();
 		PlayDeathSfx();
@@ -160,7 +161,7 @@ public partial class EnemyEntity : NpcEntity
 	{
 		if (IsDead || strength <= 0.0f) return;
 		if (direction.LengthSquared() < 0.0001f) return;
-		_knockbackVelocity = direction.Normalized() * strength;
+		KnockbackVelocity = direction.Normalized() * strength;
 	}
 
 	private void DropCoins()
@@ -194,27 +195,27 @@ public partial class EnemyEntity : NpcEntity
 
 	private void StartAttack()
 	{
-		_state = State.Attack; _attackTimer = AttackCooldown; Velocity = Vector2.Zero;
-		_sprite.FlipH = _facing == "side" && _faceLeft;
-		PlayAnimation($"attack_{_facing}");
+		State = EnemyState.Attack; AttackTimer = AttackCooldown; Velocity = Vector2.Zero;
+		ApplyFacingFlip();
+		PlayAnimation(GetAnimationName(EnemyState.Attack, Facing));
 	}
 
 	private void OnAnimationFinished()
 	{
 		if (IsDead) return;
-		if (_state == State.Attack)
+		if (State == EnemyState.Attack)
 		{
 			TryDealAttackDamage();
-			_state = State.Idle;
-			PlayAnimation($"idle_{_facing}");
+			State = EnemyState.Idle;
+			PlayAnimation(GetAnimationName(EnemyState.Idle, Facing));
 		}
 	}
 
 	private void TryDealAttackDamage()
 	{
-		if (_target == null || !IsInstanceValid(_target)) return;
-		if (_target.GlobalPosition.DistanceTo(GlobalPosition) <= AttackRange && _target.HasMethod("TakeDamage"))
-			_target.Call("TakeDamage", AttackDamage, this);
+		if (Target == null || !IsInstanceValid(Target)) return;
+		if (Target.GlobalPosition.DistanceTo(GlobalPosition) <= AttackRange && Target.HasMethod("TakeDamage"))
+			Target.Call("TakeDamage", AttackDamage, this);
 	}
 
 	private Node2D FindClosestTarget()
@@ -234,58 +235,90 @@ public partial class EnemyEntity : NpcEntity
 		return closest;
 	}
 
-	private void UpdateFacing(Vector2 direction)
+	protected virtual void UpdateFacing(Vector2 direction)
 	{
-		if (Mathf.Abs(direction.X) >= Mathf.Abs(direction.Y)) { _facing = "side"; _faceLeft = direction.X < 0.0f; }
-		else { _facing = direction.Y < 0.0f ? "up" : "down"; _faceLeft = false; }
-		_sprite.FlipH = _facing == "side" && _faceLeft;
+		if (Mathf.Abs(direction.X) >= Mathf.Abs(direction.Y)) { Facing = "side"; FaceLeft = direction.X < 0.0f; }
+		else { Facing = direction.Y < 0.0f ? "up" : "down"; FaceLeft = false; }
+		ApplyFacingFlip();
 	}
 
-	private void PlayAnimation(string animation) { if (_sprite.Animation != animation) _sprite.Play(animation); }
+	protected void PlayAnimation(string animation) { if (Sprite.Animation != animation) Sprite.Play(animation); }
 
 	private void UpdateWander(float delta)
 	{
-		_wanderRepathTimer -= delta;
-		if (_wanderWaitTimer > 0.0f)
+		WanderRepathTimer -= delta;
+		if (WanderWaitTimer > 0.0f)
 		{
-			_wanderWaitTimer -= delta; _state = State.Idle; Velocity = Vector2.Zero; PlayAnimation($"idle_{_facing}");
-			if (_wanderWaitTimer <= 0.0f) PickNewWanderTarget();
+			WanderWaitTimer -= delta; State = EnemyState.Idle; Velocity = Vector2.Zero; PlayAnimation(GetAnimationName(EnemyState.Idle, Facing));
+			if (WanderWaitTimer <= 0.0f) PickNewWanderTarget();
 			return;
 		}
-		if (_wanderTarget == Vector2.Zero || _wanderRepathTimer <= 0.0f) PickNewWanderTarget();
+		if (WanderTarget == Vector2.Zero || WanderRepathTimer <= 0.0f) PickNewWanderTarget();
 
-		Vector2 toTarget = _wanderTarget - GlobalPosition;
+		Vector2 toTarget = WanderTarget - GlobalPosition;
 		if (toTarget.Length() <= 6.0f)
 		{
-			_wanderWaitTimer = (float)GD.RandRange(0.6, 2.0); _state = State.Idle; Velocity = Vector2.Zero; PlayAnimation($"idle_{_facing}"); return;
+			WanderWaitTimer = (float)GD.RandRange(0.6, 2.0); State = EnemyState.Idle; Velocity = Vector2.Zero; PlayAnimation(GetAnimationName(EnemyState.Idle, Facing)); return;
 		}
 		Vector2 dir = toTarget.Normalized();
-		UpdateFacing(dir); _state = State.Walk; Velocity = dir * Speed * 0.55f; PlayAnimation($"walk_{_facing}");
+		UpdateFacing(dir); State = EnemyState.Walk; Velocity = dir * Speed * 0.55f; PlayAnimation(GetAnimationName(EnemyState.Walk, Facing));
 	}
 
 	private void PickNewWanderTarget()
 	{
-		_wanderRepathTimer = (float)GD.RandRange(1.5, 4.0);
+		WanderRepathTimer = (float)GD.RandRange(1.5, 4.0);
 		float angle = (float)GD.RandRange(0.0, Mathf.Tau);
 		float dist = (float)GD.RandRange(16.0, 64.0);
-		_wanderTarget = GlobalPosition + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * dist;
+		WanderTarget = GlobalPosition + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * dist;
 	}
 
 	private void ApplyHealthBarStyle()
 	{
-		if (_healthBar == null) return;
+		if (HealthBarNode == null) return;
 		var bg = new StyleBoxFlat { BgColor = new Color(0.08f, 0.05f, 0.05f, 0.95f) };
 		bg.SetCornerRadiusAll(2);
 		var fill = new StyleBoxFlat { BgColor = new Color(1.0f, 0.45f, 0.45f, 1.0f) };
 		fill.SetCornerRadiusAll(2);
-		_healthBar.AddThemeStyleboxOverride("background", bg);
-		_healthBar.AddThemeStyleboxOverride("fill", fill);
-		_healthBar.SelfModulate = Colors.White;
+		HealthBarNode.AddThemeStyleboxOverride("background", bg);
+		HealthBarNode.AddThemeStyleboxOverride("fill", fill);
+		HealthBarNode.SelfModulate = Colors.White;
 	}
 
-	private void UpdateHealthBar() { if (_healthBar == null) return; _healthBar.MaxValue = MaxHealth; _healthBar.Value = Health; }
+	private void UpdateHealthBar() { if (HealthBarNode == null) return; HealthBarNode.MaxValue = MaxHealth; HealthBarNode.Value = Health; }
 
-	private SpriteFrames BuildSpriteFrames()
+
+	protected virtual void OnEnemyReady() { }
+
+
+	protected virtual bool ShouldFlipHorizontallyForSide() => true;
+
+	protected void ApplyFacingFlip()
+	{
+		Sprite.FlipH = Facing == "side" && FaceLeft && ShouldFlipHorizontallyForSide();
+	}
+
+	protected virtual string GetAnimationName(EnemyState state, string facing)
+	{
+		string prefix = state switch
+		{
+			EnemyState.Walk => "walk",
+			EnemyState.Attack => "attack",
+			_ => "idle",
+		};
+		return $"{prefix}_{facing}";
+	}
+
+	public virtual bool CanSpawnInBuildingInterior => true;
+	public virtual bool CanSpawnInDungeonOnly => false;
+	public virtual bool IsNightOnlySpawn => false;
+	public virtual bool IsDayThreeOnlySpawn => false;
+	public virtual bool IsHordeSpawnEligible => true;
+	public virtual bool IsAmbientSpawnEligible => true;
+	public virtual bool ShouldForceChasePlayerOnHordeSpawn => true;
+
+	public virtual void OnSunrise() { }
+
+	protected virtual SpriteFrames BuildSpriteFrames()
 	{
 		Texture2D texture = GD.Load<Texture2D>(TexturePath);
 		SpriteFrames frames = new(); frames.RemoveAnimation("default");
@@ -301,7 +334,7 @@ public partial class EnemyEntity : NpcEntity
 		return frames;
 	}
 
-	private static void AddAnimation(SpriteFrames frames, Texture2D texture, string name, int row, int frameCount, float fps, bool loop)
+	protected static void AddAnimation(SpriteFrames frames, Texture2D texture, string name, int row, int frameCount, float fps, bool loop)
 	{
 		frames.AddAnimation(name); frames.SetAnimationSpeed(name, fps); frames.SetAnimationLoop(name, loop);
 		for (int frame = 0; frame < frameCount; frame++)
@@ -312,10 +345,10 @@ public partial class EnemyEntity : NpcEntity
 	{
 		var state = base.GetEntityState();
 		state["entity_kind"] = "enemy";
-		state["ai_state"] = _state.ToString();
-		state["facing"] = _facing;
-		state["has_target"] = _target != null && IsInstanceValid(_target);
-		state["target_name"] = (_target != null && IsInstanceValid(_target)) ? _target.Name.ToString() : "";
+		state["aiState"] = State.ToString();
+		state["facing"] = Facing;
+		state["hasTarget"] = Target != null && IsInstanceValid(Target);
+		state["target_name"] = (Target != null && IsInstanceValid(Target)) ? Target.Name.ToString() : "";
 		state["force_chase_player"] = ForceChasePlayer;
 		state["agro_range"] = AgroRange;
 		state["coin_drop_count"] = CoinDropCount;
@@ -329,14 +362,14 @@ public partial class EnemyEntity : NpcEntity
 		state["entity_kind"] = "enemy";
 		state["enemy_ai"] = new Godot.Collections.Dictionary
 		{
-			["ai_state"] = _state.ToString(),
-			["facing"] = _facing,
-			["has_target"] = _target != null && IsInstanceValid(_target),
-			["target_name"] = (_target != null && IsInstanceValid(_target)) ? _target.Name.ToString() : "",
+			["aiState"] = State.ToString(),
+			["facing"] = Facing,
+			["hasTarget"] = Target != null && IsInstanceValid(Target),
+			["target_name"] = (Target != null && IsInstanceValid(Target)) ? Target.Name.ToString() : "",
 			["force_chase_player"] = ForceChasePlayer,
 			["agro_range"] = AgroRange,
 			["horde_agro_range"] = HordeAgroRange,
-			["wander_target"] = _wanderTarget,
+			["wanderTarget"] = WanderTarget,
 		};
 		return state;
 	}
@@ -345,8 +378,8 @@ public partial class EnemyEntity : NpcEntity
 	public bool ToolGoTo(float x, float y, string reason = "")
 	{
 		bool ok = GoToPosition(new Vector2(x, y), reason);
-		_wanderTarget = new Vector2(x, y);
-		_wanderRepathTimer = 0.0f;
+		WanderTarget = new Vector2(x, y);
+		WanderRepathTimer = 0.0f;
 		return ok;
 	}
 
@@ -356,7 +389,7 @@ public partial class EnemyEntity : NpcEntity
 		bool ok = GoToEntity(entityId, reason);
 		var target = ResolveEntityTarget(entityId);
 		if (target != null && IsInstanceValid(target))
-			_wanderTarget = target.GlobalPosition;
+			WanderTarget = target.GlobalPosition;
 		return ok;
 	}
 

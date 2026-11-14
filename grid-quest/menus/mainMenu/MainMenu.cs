@@ -33,7 +33,10 @@ public partial class MainMenu : Control
 	{
 		var session = GameSession.Instance ?? GetNodeOrNull<GameSession>("/root/GameSession");
 		if (session != null)
+		{
 			session.SetCurrentSave(SaveManager.GetOrCreateTemporarySave());
+			session.ShowControlsOnNextLevelLoad = true;
+		}
 		else
 			GD.PushWarning("GameSession autoload not found; starting without session metadata.");
 

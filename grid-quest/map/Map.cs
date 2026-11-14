@@ -297,6 +297,41 @@ public partial class Map : Node2D
 		return false;
 	}
 
+	public Vector2? GetRandomPointInBuildingInterior(int attempts = 80)
+	{
+		if (_buildingInteriorRects.Count == 0)
+			return null;
+
+		var rng = new RandomNumberGenerator();
+		rng.Randomize();
+		for (int i = 0; i < attempts; i++)
+		{
+			Rect2I rect = _buildingInteriorRects[rng.RandiRange(0, _buildingInteriorRects.Count - 1)];
+			if (rect.Size.X <= 0 || rect.Size.Y <= 0)
+				continue;
+			int x = rng.RandiRange(rect.Position.X, rect.End.X - 1);
+			int y = rng.RandiRange(rect.Position.Y, rect.End.Y - 1);
+			if (!IsCellInBounds(x, y) || _occupiedCells[x, y])
+				continue;
+			return CellToWorldCenter(x, y);
+		}
+
+		foreach (Rect2I rect in _buildingInteriorRects)
+		{
+			for (int y = rect.Position.Y; y < rect.End.Y; y++)
+			{
+				for (int x = rect.Position.X; x < rect.End.X; x++)
+				{
+					if (IsCellInBounds(x, y) && !_occupiedCells[x, y])
+						return CellToWorldCenter(x, y);
+				}
+			}
+		}
+		return null;
+	}
+
+	public bool HasBuildingInteriors => _buildingInteriorRects.Count > 0;
+
 	private void RegisterBuildingInterior(int originX, int originY, int width, int height)
 	{
 		// Track the interior area (inside perimeter walls) for lighting/indoor logic.
@@ -409,26 +444,26 @@ public partial class Map : Node2D
 					continue;
 
 				float roll = rng.Randf();
-				if (roll < 0.018f)
+				if (roll < 0.010f)
 				{
 					treesLayer.AddChild(CreateForestTree(x, y, rng));
 					MarkOccupied(x, y);
 				}
-				else if (roll < 0.028f)
+				else if (roll < 0.020f)
 				{
 					decorLayer.AddChild(CreateForestRock(x, y));
 					MarkOccupied(x, y);
 				}
-				else if (roll < 0.034f)
+				else if (roll < 0.026f)
 				{
 					decorLayer.AddChild(CreateForestTrunk(x, y));
 					MarkOccupied(x, y);
 				}
-				else if (roll < 0.055f)
+				else if (roll < 0.045f)
 				{
 					plantsLayer.AddChild(CreateForestBush(x, y, rng));
 				}
-				else if (roll < 0.11f)
+				else if (roll < 0.10f)
 				{
 					plantsLayer.AddChild(PlantFactory.Create(x, y, rng.RandiRange(1, 3)));
 				}
@@ -735,7 +770,7 @@ public partial class Map : Node2D
 	{
 		foreach (VillageArea village in _villages)
 		{
-			int target = rng.RandiRange(4, 7);
+			int target = rng.RandiRange(2, 4);
 			int placed = 0;
 			for (int attempt = 0; attempt < 80 && placed < target; attempt++)
 			{

@@ -27,12 +27,12 @@ public partial class CheatMenu : Control
 		dim.MouseFilter = MouseFilterEnum.Ignore;
 		AddChild(dim);
 
-		var panel = new PanelContainer { CustomMinimumSize = new Vector2(360, 300) };
+		var panel = new PanelContainer { CustomMinimumSize = new Vector2(420, 470) };
 		panel.SetAnchorsPreset(LayoutPreset.TopLeft);
 		panel.OffsetLeft = 20;
 		panel.OffsetTop = 20;
-		panel.OffsetRight = 380;
-		panel.OffsetBottom = 320;
+		panel.OffsetRight = 440;
+		panel.OffsetBottom = 490;
 		var sb = new StyleBoxFlat { BgColor = new Color(0.10f, 0.10f, 0.13f, 0.96f) };
 		sb.SetCornerRadiusAll(8);
 		sb.SetContentMarginAll(10);
@@ -74,6 +74,15 @@ public partial class CheatMenu : Control
 		weaponRow.AddChild(sword);
 		weaponRow.AddChild(staff);
 		root.AddChild(weaponRow);
+		var weaponRow2 = new HBoxContainer();
+		weaponRow2.AddThemeConstantOverride("separation", 6);
+		var scythe = new Button { Text = "Scythe" };
+		scythe.Pressed += () => AddWeapon("scythe");
+		var crossbow = new Button { Text = "Crossbow" };
+		crossbow.Pressed += () => AddWeapon("crossbow");
+		weaponRow2.AddChild(scythe);
+		weaponRow2.AddChild(crossbow);
+		root.AddChild(weaponRow2);
 
 		root.AddChild(new Label { Text = "Villager Trust (debug):" });
 		var trustRow = new HBoxContainer();
@@ -85,6 +94,40 @@ public partial class CheatMenu : Control
 		trustRow.AddChild(trustNear);
 		trustRow.AddChild(trustAll);
 		root.AddChild(trustRow);
+
+		root.AddChild(new Label { Text = "Set Time of Day:" });
+		var timeRow1 = new HBoxContainer();
+		timeRow1.AddThemeConstantOverride("separation", 6);
+		var sunriseBtn = new Button { Text = "Sunrise" };
+		sunriseBtn.Pressed += () => SetTimeOfDay("sunrise");
+		var middayBtn = new Button { Text = "Midday" };
+		middayBtn.Pressed += () => SetTimeOfDay("midday");
+		timeRow1.AddChild(sunriseBtn);
+		timeRow1.AddChild(middayBtn);
+		root.AddChild(timeRow1);
+		var timeRow2 = new HBoxContainer();
+		timeRow2.AddThemeConstantOverride("separation", 6);
+		var sunsetBtn = new Button { Text = "Sunset" };
+		sunsetBtn.Pressed += () => SetTimeOfDay("sunset");
+		var midnightBtn = new Button { Text = "Midnight" };
+		midnightBtn.Pressed += () => SetTimeOfDay("midnight");
+		timeRow2.AddChild(sunsetBtn);
+		timeRow2.AddChild(midnightBtn);
+		root.AddChild(timeRow2);
+
+		root.AddChild(new Label { Text = "Spawn New Enemies Near Player:" });
+		var spawnRow = new HBoxContainer();
+		spawnRow.AddThemeConstantOverride("separation", 6);
+		var spawn1 = new Button { Text = "1 Blood Monster" };
+		spawn1.Pressed += () => SpawnEnemyNearPlayer("res://enemy/blood_monster_enemy.tscn", "Blood Monster");
+		var spawn2 = new Button { Text = "2 Goblin" };
+		spawn2.Pressed += () => SpawnEnemyNearPlayer("res://enemy/goblin_enemy.tscn", "Goblin");
+		var spawn3 = new Button { Text = "3 Vampire" };
+		spawn3.Pressed += () => SpawnEnemyNearPlayer("res://enemy/vampire_enemy.tscn", "Vampire");
+		spawnRow.AddChild(spawn1);
+		spawnRow.AddChild(spawn2);
+		spawnRow.AddChild(spawn3);
+		root.AddChild(spawnRow);
 
 		_statusLabel = new Label { Text = "Press ` to close." };
 		_statusLabel.AutowrapMode = TextServer.AutowrapMode.Word;
@@ -208,4 +251,68 @@ public partial class CheatMenu : Control
 		}
 		_statusLabel.Text = count > 0 ? $"Raised trust for {count} nearby villager(s)." : "No nearby villagers.";
 	}
+
+	private void SetTimeOfDay(string timeName)
+	{
+		var cycle = GetTree().GetFirstNodeInGroup("day_night_cycle") as DayNightCycle
+			?? GetTree().CurrentScene?.GetNodeOrNull<DayNightCycle>("DayNightCycle")
+			?? GetTree().CurrentScene?.GetNodeOrNull<DayNightCycle>("CanvasModulate");
+		if (cycle == null)
+		{
+			_statusLabel.Text = "Day/Night cycle not found.";
+			return;
+		}
+
+		switch (timeName)
+		{
+			case "sunrise":
+				cycle.SetToSunrise(emitSunriseEvent: false);
+				break;
+			case "midday":
+				cycle.SetToMidday();
+				break;
+			case "sunset":
+				cycle.SetToSunset();
+				break;
+			case "midnight":
+				cycle.SetToMidnight();
+				break;
+			default:
+				_statusLabel.Text = "Unknown time setting.";
+				return;
+		}
+		_statusLabel.Text = $"Set time of day to {timeName}.";
+	}
+
+	private void SpawnEnemyNearPlayer(string scenePath, string label)
+	{
+		ResolvePlayer();
+		if (_player == null || !IsInstanceValid(_player))
+		{
+			_statusLabel.Text = "Player not found.";
+			return;
+		}
+
+		var scene = GD.Load<PackedScene>(scenePath);
+		if (scene == null)
+		{
+			_statusLabel.Text = $"Could not load {label} scene.";
+			return;
+		}
+
+		Node inst = scene.Instantiate();
+		if (inst is not Node2D enemy)
+		{
+			inst.QueueFree();
+			_statusLabel.Text = $"Failed to spawn {label}.";
+			return;
+		}
+
+		float angle = (float)GD.RandRange(0.0, Mathf.Tau);
+		float dist = (float)GD.RandRange(40.0, 80.0);
+		enemy.GlobalPosition = _player.GlobalPosition + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * dist;
+		GetTree().CurrentScene?.AddChild(enemy);
+		_statusLabel.Text = $"Spawned {label} near player.";
+	}
+
 }

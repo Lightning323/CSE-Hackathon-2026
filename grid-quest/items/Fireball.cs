@@ -7,7 +7,7 @@ public partial class Fireball : Area2D
 	private Vector2 _dir = Vector2.Right;
 	private float _life = 2.0f;
 	private float _knockbackStrength = 0.0f;
-	private Player _sourcePlayer;
+	private global::Player _sourcePlayer;
 	private global::GridQuest.Entities.Player.PlayerEntity _sourcePlayerEntity;
 
 	public override void _Ready()
@@ -22,16 +22,15 @@ public partial class Fireball : Area2D
 		}
 	}
 
-	public void Init(Vector2 direction, Vector2 fromPos, float speed = 220.0f, int damage = 2, float knockbackStrength = 0.0f, Player sourcePlayer = null)
+	public void Init(Vector2 direction, Vector2 fromPos, float speed = 220.0f, int damage = 2, float knockbackStrength = 0.0f, global::GridQuest.Entities.Player.PlayerEntity sourcePlayer = null)
 	{
 		_sourcePlayerEntity = sourcePlayer;
+		_sourcePlayer = sourcePlayer as global::Player;
 
 		GlobalPosition = fromPos;
 		Speed = speed;
 		Damage = damage;
 		_knockbackStrength = knockbackStrength;
-		_sourcePlayer = sourcePlayer;
-		_sourcePlayerEntity = sourcePlayer;
 		_dir = direction.Normalized();
 		// bias toward nearest enemy (one-time)
 		Node2D nearest = null;

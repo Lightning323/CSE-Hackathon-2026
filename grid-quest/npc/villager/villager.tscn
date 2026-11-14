@@ -12,14 +12,25 @@ border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.2, 0.2, 0.2, 0.9)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-content_margin_left = 6.0
-content_margin_top = 4.0
-content_margin_right = 6.0
-content_margin_bottom = 4.0
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+content_margin_left = 5.0
+content_margin_top = 3.0
+content_margin_right = 5.0
+content_margin_bottom = 3.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_trader_label"]
+bg_color = Color(0, 0, 0, 0.85)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+content_margin_left = 5.0
+content_margin_top = 2.0
+content_margin_right = 5.0
+content_margin_bottom = 2.0
 
 [node name="Villager" type="CharacterBody2D" groups=["villagers", "civilians"]]
 script = ExtResource("1_script")
@@ -42,26 +53,33 @@ value = 3.0
 show_percentage = false
 mouse_filter = 2
 
-[node name="TraderLabel" type="Label" parent="."]
+[node name="TraderLabel" type="PanelContainer" parent="."]
 visible = false
 offset_left = -24.0
-offset_top = -30.0
+offset_top = -31.0
 offset_right = 24.0
-offset_bottom = -18.0
+offset_bottom = -17.0
+grow_horizontal = 2
 mouse_filter = 2
-theme_override_colors/font_color = Color(0.35, 0.7, 1, 1)
+theme_override_styles/panel = SubResource("StyleBoxFlat_trader_label")
+
+[node name="Label" type="Label" parent="TraderLabel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.55, 0.85, 1, 1)
 theme_override_font_sizes/font_size = 8
 text = "Trader"
 horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="SpeechBubble" type="Node2D" parent="."]
-position = Vector2(0, -34)
+position = Vector2(0, -33)
 z_index = 20
 
 [node name="BubblePanel" type="PanelContainer" parent="SpeechBubble"]
-offset_left = -60.0
-offset_top = -40.0
-offset_right = 60.0
+offset_left = -48.0
+offset_top = -32.0
+offset_right = 48.0
 offset_bottom = 0.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_bubble")
@@ -71,11 +89,11 @@ layout_mode = 2
 mouse_filter = 2
 
 [node name="DialogueLabel" type="Label" parent="SpeechBubble/BubblePanel/MarginContainer"]
-custom_minimum_size = Vector2(40, 0)
+custom_minimum_size = Vector2(32, 0)
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.1, 0.1, 0.1, 1)
-theme_override_font_sizes/font_size = 8
+theme_override_font_sizes/font_size = 7
 text = ""
 horizontal_alignment = 1
 autowrap_mode = 2

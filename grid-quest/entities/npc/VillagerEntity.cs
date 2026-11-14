@@ -46,6 +46,8 @@ public partial class VillagerEntity : NpcEntity
 	private static readonly string[] IdleDialogueOptions = { "Lovely day in the village.", "Have you seen anything strange nearby?", "I should check on the others soon." };
 	private static readonly string[] ChasedDialogueOptions = { "Help! Something's after me!", "Run! There's a monster!", "Please, keep it away from me!" };
 	private static readonly string[] RecoveredDialogueOptions = { "Phew... I think I'm safe now.", "That was too close.", "I need a moment to catch my breath." };
+	private static readonly System.Collections.Generic.Dictionary<int, double> VillageSpeechUnlockMsec = new();
+	private const double VillageSpeechMinGapMsec = 900.0;
 
 	private bool _hasPendingAdviceRequest;
 	private string _pendingAdviceQuestion = "";
@@ -59,6 +61,7 @@ public partial class VillagerEntity : NpcEntity
 	private Node2D _speechBubble;
 	private PanelContainer _bubblePanel;
 	private Label _dialogueLabel;
+	private Control _traderLabelRoot;
 	private Label _traderLabel;
 	private State _state = State.Idle;
 	private string _facing = "down";
@@ -98,7 +101,8 @@ public partial class VillagerEntity : NpcEntity
 		_speechBubble = GetNodeOrNull<Node2D>("SpeechBubble");
 		_bubblePanel = GetNodeOrNull<PanelContainer>("SpeechBubble/BubblePanel");
 		_dialogueLabel = GetNodeOrNull<Label>("SpeechBubble/BubblePanel/MarginContainer/DialogueLabel");
-		_traderLabel = GetNodeOrNull<Label>("TraderLabel");
+		_traderLabelRoot = GetNodeOrNull<Control>("TraderLabel");
+		_traderLabel = GetNodeOrNull<Label>("TraderLabel/Label") ?? GetNodeOrNull<Label>("TraderLabel");
 		_sprite.SpriteFrames = BuildSpriteFrames();
 		_sprite.Play("idle_down");
 		AddToGroup("villagers");
@@ -115,12 +119,18 @@ public partial class VillagerEntity : NpcEntity
 		UpdateHealthBar();
 		ConfigureSpeechBubble();
 		SetDialogueForEmotion(DialogueEmotion.Idle, false);
+		if (_traderLabelRoot != null)
+			_traderLabelRoot.Visible = IsTrader;
+		else if (_traderLabel != null)
+			_traderLabel.Visible = IsTrader;
 		if (_traderLabel != null)
 		{
-			_traderLabel.Visible = IsTrader;
 			_traderLabel.Text = "Trader";
-			_traderLabel.Modulate = new Color(0.35f, 0.7f, 1.0f, 1.0f);
+			// Brighter blue on dark rounded backdrop (scene provides backdrop styling).
+			_traderLabel.Modulate = Colors.White;
+			_traderLabel.AddThemeColorOverride("font_color", new Color(0.55f, 0.85f, 1.0f, 1.0f));
 		}
+		UpdateTraderLabelLayout();
 		_adviceCooldownTimer = (float)GD.RandRange(5.0, 12.0);
 		_ambientTalkTimer = (float)GD.RandRange(18.0, 45.0);
 		_giftTimer = (float)GD.RandRange(12.0, 20.0);
@@ -158,11 +168,11 @@ public partial class VillagerEntity : NpcEntity
 		{
 			// Chat UI currently expects global Villager wrapper type; prefer wrapper instance in scene tree.
 			if (wrapper != null) chatUi.Open(wrapper);
-			else ShowDialogueForCurrentState(forceRefresh: true, autoHide: true);
+			else ShowDialogueForCurrentState(forceRefresh: true, autoHide: true, prioritize: true);
 		}
 		else
 		{
-			ShowDialogueForCurrentState(forceRefresh: true, autoHide: true);
+			ShowDialogueForCurrentState(forceRefresh: true, autoHide: true, prioritize: true);
 		}
 		GetViewport().SetInputAsHandled();
 	}
@@ -413,6 +423,24 @@ public partial class VillagerEntity : NpcEntity
 		return closest;
 	}
 
+	private bool CanReserveVillageSpeech(bool prioritize = false)
+	{
+		if (!_hasHome || _homeVillageIndex < 0) return true;
+		double now = Time.GetTicksMsec();
+		if (prioritize) return true;
+		return !VillageSpeechUnlockMsec.TryGetValue(_homeVillageIndex, out double unlockMsec) || now >= unlockMsec;
+	}
+
+	private void ReserveVillageSpeech(float durationSeconds, bool prioritize = false)
+	{
+		if (!_hasHome || _homeVillageIndex < 0) return;
+		double now = Time.GetTicksMsec();
+		double until = now + Mathf.Max(0.5f, durationSeconds) * 1000.0 + VillageSpeechMinGapMsec;
+		if (VillageSpeechUnlockMsec.TryGetValue(_homeVillageIndex, out double existing))
+			until = Math.Max(until, prioritize ? until : Math.Max(existing, until));
+		VillageSpeechUnlockMsec[_homeVillageIndex] = until;
+	}
+
 	private void SetDialogueEmotionState(DialogueEmotion emotion, bool forceText)
 	{
 		bool changed = _dialogueEmotion != emotion; _dialogueEmotion = emotion;
@@ -424,28 +452,65 @@ public partial class VillagerEntity : NpcEntity
 		_currentDialogueText = PickDialogueLine(emotion);
 		if (_dialogueLabel != null) _dialogueLabel.Text = _currentDialogueText;
 		UpdateBubbleLayout();
-		if (show) { SetBubbleVisible(true); _dialogueVisibleTimer = DialogueDisplayDuration; }
+		if (show)
+		{
+			// Keep village speech staggered/natural; only one bubble at a time per village for ambient changes.
+			if (!CanReserveVillageSpeech(prioritize: false)) return;
+			ReserveVillageSpeech(DialogueDisplayDuration, prioritize: false);
+			SetBubbleVisible(true);
+			_dialogueVisibleTimer = DialogueDisplayDuration;
+		}
 	}
-	private void ShowDialogueForCurrentState(bool forceRefresh, bool autoHide)
+	private void ShowDialogueForCurrentState(bool forceRefresh, bool autoHide, bool prioritize = false)
 	{
-		if (forceRefresh || string.IsNullOrEmpty(_currentDialogueText)) { _currentDialogueText = PickDialogueLine(_dialogueEmotion); if (_dialogueLabel != null) _dialogueLabel.Text = _currentDialogueText; UpdateBubbleLayout(); }
-		SetBubbleVisible(true); _dialogueVisibleTimer = DialogueDisplayDuration;
+		if (forceRefresh || string.IsNullOrEmpty(_currentDialogueText))
+		{
+			_currentDialogueText = PickDialogueLine(_dialogueEmotion);
+			if (_dialogueLabel != null) _dialogueLabel.Text = _currentDialogueText;
+			UpdateBubbleLayout();
+		}
+		if (!prioritize && !CanReserveVillageSpeech(prioritize: false)) return;
+		ReserveVillageSpeech(DialogueDisplayDuration, prioritize);
+		SetBubbleVisible(true);
+		_dialogueVisibleTimer = DialogueDisplayDuration;
 	}
 	private string PickDialogueLine(DialogueEmotion emotion) { string[] options = GetOptionsForEmotion(emotion); if (options.Length == 0) return "..."; return options[(int)(GD.Randi() % (uint)options.Length)]; }
 	private static string[] GetOptionsForEmotion(DialogueEmotion emotion) => emotion switch { DialogueEmotion.Chased => ChasedDialogueOptions, DialogueEmotion.Recovered => RecoveredDialogueOptions, _ => IdleDialogueOptions };
+	private void UpdateTraderLabelLayout()
+	{
+		if (_traderLabelRoot == null || !IsInstanceValid(_traderLabelRoot))
+			return;
+		// Fit backdrop to text and keep centered above the villager.
+		_traderLabelRoot.ResetSize();
+		Vector2 size = _traderLabelRoot.GetCombinedMinimumSize();
+		_traderLabelRoot.Size = size;
+		_traderLabelRoot.Position = new Vector2(-size.X / 2.0f, -31.0f);
+	}
+
 	private void ConfigureSpeechBubble()
 	{
-		if (_dialogueLabel != null) { _dialogueLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart; _dialogueLabel.CustomMinimumSize = new Vector2(60, 0); _dialogueLabel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter; }
+		if (_dialogueLabel != null)
+		{
+			_dialogueLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+			_dialogueLabel.CustomMinimumSize = new Vector2(48, 0);
+			_dialogueLabel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+		}
 		if (_bubblePanel != null) _bubblePanel.CustomMinimumSize = new Vector2(0, 0);
 		SetBubbleVisible(false);
 	}
 	private void UpdateBubbleLayout()
 	{
 		if (_bubblePanel == null || _dialogueLabel == null) return;
-		float maxTextWidth = 180.0f; float targetWidth = Mathf.Clamp(40.0f + _currentDialogueText.Length * 4.0f, 72.0f, maxTextWidth);
-		_dialogueLabel.CustomMinimumSize = new Vector2(targetWidth, 0); _bubblePanel.ResetSize(); _dialogueLabel.ResetSize();
-		Vector2 minSize = _bubblePanel.GetCombinedMinimumSize(); minSize.X = Mathf.Clamp(minSize.X, 72.0f, maxTextWidth + 20.0f);
-		_bubblePanel.Size = minSize; _bubblePanel.Position = new Vector2(-minSize.X / 2.0f, -minSize.Y);
+		// Compact speech bubble popup sizing/layout (smaller than original, tuned for readability).
+		float maxTextWidth = 140.0f;
+		float targetWidth = Mathf.Clamp(32.0f + _currentDialogueText.Length * 3.0f, 56.0f, maxTextWidth);
+		_dialogueLabel.CustomMinimumSize = new Vector2(targetWidth, 0);
+		_bubblePanel.ResetSize();
+		_dialogueLabel.ResetSize();
+		Vector2 minSize = _bubblePanel.GetCombinedMinimumSize();
+		minSize.X = Mathf.Clamp(minSize.X, 56.0f, maxTextWidth + 16.0f);
+		_bubblePanel.Size = minSize;
+		_bubblePanel.Position = new Vector2(-minSize.X / 2.0f, -minSize.Y);
 	}
 	private void SetBubbleVisible(bool visible) { if (_speechBubble != null) _speechBubble.Visible = visible; }
 	private void UpdateFacing(Vector2 direction)
@@ -488,10 +553,14 @@ public partial class VillagerEntity : NpcEntity
 	{
 		if (!calm || _ambientTalkTimer > 0.0f) return;
 		if (_speechBubble != null && _speechBubble.Visible) { _ambientTalkTimer = (float)GD.RandRange(12.0, 24.0); return; }
+		// Don't start ambient chatter if another villager in the same village is speaking.
+		if (!CanReserveVillageSpeech(prioritize: false)) { _ambientTalkTimer = (float)GD.RandRange(4.0, 10.0); return; }
 		string line = IdleDialogueOptions[(int)(GD.Randi() % (uint)IdleDialogueOptions.Length)];
 		if (_hasPendingAdviceRequest && GD.Randf() < 0.45f) line = "Could I ask for your advice sometime?";
 		else if (Trust >= 6 && GD.Randf() < 0.35f) line = Trust >= 9 ? "I really trust your judgment." : "I appreciate our talks.";
-		ShowTemporaryDialogue(line, (float)GD.RandRange(3.0, 4.5)); _ambientTalkTimer = (float)GD.RandRange(25.0, 55.0);
+		float duration = (float)GD.RandRange(3.0, 4.5);
+		ShowTemporaryDialogue(line, duration, prioritize: false);
+		_ambientTalkTimer = (float)GD.RandRange(25.0, 55.0);
 	}
 	private void TryGiftCoins()
 	{
@@ -516,8 +585,20 @@ public partial class VillagerEntity : NpcEntity
 			GetParent()?.AddChild(coin);
 		}
 	}
-	private void ShowGiftDialogue() { string[] pool = Trust >= 8 ? HighTrustGiftDialogue : TrustGiftDialogue; ShowTemporaryDialogue(pool[(int)(GD.Randi() % (uint)pool.Length)], 3.5f); }
-	private void ShowTemporaryDialogue(string text, float durationSeconds) { if (string.IsNullOrWhiteSpace(text)) return; _currentDialogueText = text; if (_dialogueLabel != null) _dialogueLabel.Text = _currentDialogueText; UpdateBubbleLayout(); SetBubbleVisible(true); _dialogueVisibleTimer = Mathf.Max(durationSeconds, 0.5f); _trustDialogueActive = true; }
+	private void ShowGiftDialogue() { string[] pool = Trust >= 8 ? HighTrustGiftDialogue : TrustGiftDialogue; ShowTemporaryDialogue(pool[(int)(GD.Randi() % (uint)pool.Length)], 3.5f, prioritize: false); }
+	private void ShowTemporaryDialogue(string text, float durationSeconds, bool prioritize = false)
+	{
+		if (string.IsNullOrWhiteSpace(text)) return;
+		if (!prioritize && !CanReserveVillageSpeech(prioritize: false)) return;
+		float duration = Mathf.Max(durationSeconds, 0.5f);
+		_currentDialogueText = text;
+		if (_dialogueLabel != null) _dialogueLabel.Text = _currentDialogueText;
+		UpdateBubbleLayout();
+		ReserveVillageSpeech(duration, prioritize);
+		SetBubbleVisible(true);
+		_dialogueVisibleTimer = duration;
+		_trustDialogueActive = true;
+	}
 
 	public void EnsureAdviceRequestReady()
 	{
@@ -547,7 +628,7 @@ public partial class VillagerEntity : NpcEntity
 		else
 			Trust = Mathf.Clamp(Trust - 2, 0, 10);
 		if (Trust >= 8) _giftTimer = Mathf.Min(_giftTimer <= 0 ? 6.0f : _giftTimer, 6.0f);
-		ShowTemporaryDialogue(reply, 4.5f); return reply;
+		ShowTemporaryDialogue(reply, 4.5f, prioritize: true); return reply;
 	}
 	public void ApplyConversationTrust(string playerMessage, string villagerReply) { int delta = EstimateConversationTrustDelta(playerMessage, villagerReply); if (delta == 0) return; Trust = Mathf.Clamp(Trust + delta, 0, 10); }
 	private static int EstimateConversationTrustDelta(string playerMessage, string villagerReply)

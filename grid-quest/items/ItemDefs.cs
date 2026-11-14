@@ -32,6 +32,8 @@ public static class ItemCatalog
 		["coin"] = new ItemDef { Id = "coin", Name = "Coin", IconPath = "res://assets/images/items/coin/meta_coin1.png", Stackable = true, MaxStack = 999 },
 		["base_sword"] = new ItemDef { Id = "base_sword", Name = "Sword", IconPath = "res://assets/images/items/base_sword.png", Stackable = false, MaxStack = 1, IsWeapon = true },
 		["fire_staff"] = new ItemDef { Id = "fire_staff", Name = "Fire Staff", IconPath = "res://assets/images/items/fire-staff.png", Stackable = false, MaxStack = 1, IsWeapon = true },
+		["scythe"] = new ItemDef { Id = "scythe", Name = "Scythe", IconPath = "res://assets/images/items/scythe_Icon.png", Stackable = false, MaxStack = 1, IsWeapon = true },
+		["crossbow"] = new ItemDef { Id = "crossbow", Name = "Crossbow", IconPath = "res://assets/images/items/crossbow_Icon.png", Stackable = false, MaxStack = 1, IsWeapon = true },
 		["key"] = new ItemDef { Id = "key", Name = "Key", IconPath = "res://assets/images/items/meta_key.png", Stackable = true, MaxStack = 20 },
 		["boots"] = new ItemDef { Id = "boots", Name = "Boots", IconPath = "res://assets/images/items/meta_boots.png", Stackable = false, MaxStack = 1 },
 		["bomb"] = new ItemDef { Id = "bomb", Name = "Bomb", IconPath = "res://assets/images/items/meta_bomb.png", Stackable = true, MaxStack = 10 },

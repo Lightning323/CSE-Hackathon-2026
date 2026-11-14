@@ -27,13 +27,14 @@ public partial class PlayerEntity : Entity
 	private const int FrameSize = 32;
 	private const string PlayerTexturePath = "res://assets/images/characters/cute_Player.png";
 	private static readonly PackedScene FireballScene = GD.Load<PackedScene>("res://items/fireball.tscn");
+	private static readonly PackedScene CrossbowBoltScene = GD.Load<PackedScene>("res://items/crossbow_bolt.tscn");
 
-	private AnimatedSprite2D _sprite;
-	private ProgressBar _healthBar;
-	private PointLight2D _pointLight;
-	private Camera2D _camera;
-	private AudioStreamPlayer _hurtSfx;
-	private AudioStreamPlayer _slashSfx;
+	private AnimatedSprite2D _sprite = null!;
+	private ProgressBar _healthBar = null!;
+	private PointLight2D _pointLight = null!;
+	private Camera2D _camera = null!;
+	private AudioStreamPlayer _hurtSfx = null!;
+	private AudioStreamPlayer _slashSfx = null!;
 	private State _state = State.Idle;
 	private string _facing = "down";
 	private bool _faceLeft;
@@ -47,8 +48,15 @@ public partial class PlayerEntity : Entity
 	private float _killSpeedBuffTimer;
 	private float _lifestealAccumulator;
 	private float _aoeAuraTickTimer;
-	private Node2D _aoeAuraVisual;
-	private Line2D _aoeAuraLine;
+	private Node2D _aoeAuraVisual = null!;
+	private Line2D _aoeAuraLine = null!;
+
+	// Crossbow charge state
+	private bool _crossbowCharging;
+	private float _crossbowChargeTime;
+	private const float CrossbowMinChargeTime = 0.18f;
+	private const float CrossbowFullChargeTime = 0.85f;
+	private string _lastSpriteWeaponKey = "";
 
 	public bool DebugInvulnerable { get; set; }
 
@@ -76,10 +84,35 @@ public partial class PlayerEntity : Entity
 	private float BaseProjectileSpeed => 220.0f;
 	private int BaseProjectileDamage => 2;
 
+	// Weapon-specific superior stats (scythe/crossbow are superior to sword/fire_staff)
+	private float WeaponDamageMultiplier => EquippedWeaponId switch
+	{
+		"scythe" => 1.9f,
+		"crossbow" => 1.0f, // crossbow bolt damage handled separately (heavy/piercing)
+		"fire_staff" => 1.0f,
+		"base_sword" => 1.0f,
+		_ => 1.0f,
+	};
+
+	private float WeaponRangeBonus => EquippedWeaponId switch
+	{
+		"scythe" => 22.0f,
+		_ => 0.0f,
+	};
+
+	private float WeaponAttackSpeedMultiplier => EquippedWeaponId switch
+	{
+		"scythe" => 1.2f,      // faster than sword
+		"crossbow" => 0.85f,    // slower cadence but heavy charged shots
+		"fire_staff" => 1.1f,
+		"base_sword" => 1.0f,
+		_ => 1.0f,
+	};
+
 	public int CurrentMaxHealth => BaseMaxHealth + GetUpgradeLevel("maximum_health");
-	public int CurrentAttackDamage => BaseAttackDamage + GetUpgradeLevel("attack_damage");
-	public float CurrentAttackRange => BaseAttackRange + GetUpgradeLevel("melee_range") * 4.0f;
-	public float CurrentAttackCooldown => Mathf.Max(0.08f, BaseAttackCooldown / (1.0f + GetUpgradeLevel("attack_speed") * 0.12f));
+	public int CurrentAttackDamage => Mathf.Max(1, Mathf.RoundToInt((BaseAttackDamage + GetUpgradeLevel("attack_damage")) * WeaponDamageMultiplier));
+	public float CurrentAttackRange => BaseAttackRange + WeaponRangeBonus + GetUpgradeLevel("melee_range") * 4.0f;
+	public float CurrentAttackCooldown => Mathf.Max(0.08f, (BaseAttackCooldown / (1.0f + GetUpgradeLevel("attack_speed") * 0.12f)) / Mathf.Max(0.1f, WeaponAttackSpeedMultiplier));
 	public float CurrentProjectileSpeed => BaseProjectileSpeed * (1.0f + GetUpgradeLevel("projectile_speed") * 0.12f);
 	public int CurrentProjectileDamage => BaseProjectileDamage + GetUpgradeLevel("projectile_damage");
 	public float CurrentKnockbackStrength => 40.0f * GetUpgradeLevel("knockback_strength");
@@ -96,6 +129,7 @@ public partial class PlayerEntity : Entity
 			float mult = 1.0f + GetUpgradeLevel("player_movement_speed") * 0.08f;
 			if (_damageSpeedBuffTimer > 0.0f) mult += GetUpgradeLevel("movement_speed_after_taking_damage") * 0.12f;
 			if (_killSpeedBuffTimer > 0.0f) mult += GetUpgradeLevel("movement_speed_after_killing_an_enemy") * 0.12f;
+			if (_crossbowCharging) mult *= 0.55f; // charging slows movement
 			return BaseSpeed * mult;
 		}
 	}
@@ -106,7 +140,7 @@ public partial class PlayerEntity : Entity
 		{
 			int level = GetUpgradeLevel("aoe_aura");
 			if (level <= 0) return 0.0f;
-			return 28.0f + (level - 1) * 4.0f; // slow range scaling
+			return 28.0f + (level - 1) * 4.0f;
 		}
 	}
 
@@ -116,12 +150,11 @@ public partial class PlayerEntity : Entity
 		{
 			int level = GetUpgradeLevel("aoe_aura");
 			if (level <= 0) return 0;
-			return 1 + (level - 1) / 3; // slow damage scaling
+			return 1 + (level - 1) / 3;
 		}
 	}
 
 	public float CurrentAoeAuraTickInterval => 0.75f;
-
 	public float CurrentGoldDropMultiplier => 1.0f + GetUpgradeLevel("midas_touch") * 0.15f;
 
 	public int GetScaledMobGoldDrop(int baseGoldAmount)
@@ -137,7 +170,8 @@ public partial class PlayerEntity : Entity
 		base.AttackRange = BaseAttackRange;
 		base.AttackCooldown = BaseAttackCooldown;
 		base.Speed = BaseSpeed;
-		EquippedWeaponId = "base_sword";
+		if (string.IsNullOrEmpty(EquippedWeaponId))
+			EquippedWeaponId = "base_sword";
 		base._Ready();
 
 		Health = CurrentMaxHealth;
@@ -148,13 +182,13 @@ public partial class PlayerEntity : Entity
 		AttackRange = CurrentAttackRange;
 
 		_sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
-		_healthBar = GetNodeOrNull<ProgressBar>("HealthBar");
-		_pointLight = GetNodeOrNull<PointLight2D>("PointLight2D");
-		_camera = GetNodeOrNull<Camera2D>("Camera2D");
-		_sprite.SpriteFrames = BuildSpriteFrames();
-		_sprite.AnimationFinished += OnAnimationFinished;
-		_sprite.Play("idle_down");
+		_healthBar = GetNodeOrNull<ProgressBar>("HealthBar") ?? new ProgressBar();
+		_pointLight = GetNodeOrNull<PointLight2D>("PointLight2D") ?? new PointLight2D();
+		_camera = GetNodeOrNull<Camera2D>("Camera2D") ?? new Camera2D();
 		SyncEquippedFromId();
+		EnsureWeaponSpriteFrames(force: true);
+		_sprite.AnimationFinished += OnAnimationFinished;
+		_sprite.Play(GetIdleAnimName());
 		SetupAudio();
 		SetupAoeAuraVisual();
 		UpdateAoeAuraVisual();
@@ -260,7 +294,40 @@ public partial class PlayerEntity : Entity
 
 	public void SyncEquippedFromId()
 	{
-		EquippedWeapon = EquippedWeaponId switch { "base_sword" => "sword", "fire_staff" => "fire_staff", _ => "none" };
+		EquippedWeapon = EquippedWeaponId switch
+		{
+			"base_sword" => "sword",
+			"fire_staff" => "fire_staff",
+			"scythe" => "scythe",
+			"crossbow" => "crossbow",
+			_ => "none"
+		};
+		EnsureWeaponSpriteFrames(force: false);
+	}
+
+	private string GetWeaponSpriteKey()
+	{
+		return EquippedWeaponId switch
+		{
+			"scythe" => "scythe",
+			"crossbow" => "crossbow",
+			_ => "default"
+		};
+	}
+
+	private void EnsureWeaponSpriteFrames(bool force)
+	{
+		if (_sprite == null) return;
+		string key = GetWeaponSpriteKey();
+		if (!force && key == _lastSpriteWeaponKey && _sprite.SpriteFrames != null)
+			return;
+		_lastSpriteWeaponKey = key;
+		_sprite.SpriteFrames = BuildSpriteFramesForWeapon(key);
+		// Ensure current animation exists
+		string anim = _crossbowCharging ? GetChargeAnimName() : (_state == State.Attack ? GetAttackAnimName() : (_state == State.Walk ? GetWalkAnimName() : GetIdleAnimName()));
+		if (!_sprite.SpriteFrames.HasAnimation(anim))
+			anim = _sprite.SpriteFrames.HasAnimation(GetIdleAnimName()) ? GetIdleAnimName() : "idle_down";
+		_sprite.Play(anim);
 	}
 
 	public override void _PhysicsProcess(double delta)
@@ -272,10 +339,12 @@ public partial class PlayerEntity : Entity
 		var skills = GetTree().GetFirstNodeInGroup("skills_ui") as Control;
 		var cheat = GetTree().GetFirstNodeInGroup("cheat_ui") as Control;
 		var trader = GetTree().GetFirstNodeInGroup("trader_ui") as Control;
-		if ((inv != null && inv.Visible) || (skills != null && skills.Visible) || (cheat != null && cheat.Visible) || (trader != null && trader.Visible))
+		bool uiBlocking = (inv != null && inv.Visible) || (skills != null && skills.Visible) || (cheat != null && cheat.Visible) || (trader != null && trader.Visible);
+		if (uiBlocking)
 		{
+			CancelCrossbowCharge(resetAnim: true);
 			Velocity = Vector2.Zero; _velocityCurrent = Vector2.Zero;
-			if (_state != State.Attack) { _state = State.Idle; PlayAnimation($"idle_{_facing}"); }
+			if (_state != State.Attack) { _state = State.Idle; PlayAnimation(GetIdleAnimName()); }
 			MoveAndSlide(); return;
 		}
 
@@ -289,21 +358,126 @@ public partial class PlayerEntity : Entity
 		UpdateAoeAura(dt);
 
 		SyncEquippedFromId();
-		if (_state != State.Attack && EquippedWeapon != "none" && Input.IsActionPressed("attack") && _attackTimer <= 0.0f)
-			StartAttack();
+		HandleWeaponInput(dt);
 
-		Vector2 input = Input.GetVector("move_left", "move_right", "move_up", "move_down");
-		if (input.LengthSquared() < 0.0001f) input = Input.GetVector("ui_left", "ui_right", "ui_up", "ui_down");
-		if (input.Length() > 1.0f) input = input.Normalized();
+		Vector2 input = GetMoveInput();
 
 		Vector2 desiredVelocity = input * CurrentMoveSpeed;
 		_velocityCurrent = _velocityCurrent.MoveToward(desiredVelocity, CurrentAcceleration * dt);
 
-		if (_state == State.Attack) { Velocity = _velocityCurrent; MoveAndSlide(); return; }
+		if (_state == State.Attack)
+		{
+			Velocity = _velocityCurrent;
+			MoveAndSlide();
+			return;
+		}
 
-		if (input == Vector2.Zero) { _state = State.Idle; Velocity = _velocityCurrent; PlayAnimation($"idle_{_facing}"); }
-		else { UpdateFacing(input); _state = State.Walk; Velocity = _velocityCurrent; PlayAnimation($"walk_{_facing}"); }
+		if (_crossbowCharging)
+		{
+			// Allow aiming/turning while charging by movement input direction.
+			if (input != Vector2.Zero) UpdateFacing(input);
+			_sprite.FlipH = _facing == "side" && _faceLeft;
+			_state = input == Vector2.Zero ? State.Idle : State.Walk;
+			Velocity = _velocityCurrent;
+			// Normal walking while moving; crossbow charge animation when stationary/aiming.
+			PlayAnimation(input == Vector2.Zero ? GetChargeAnimName() : GetWalkAnimName());
+			MoveAndSlide();
+			return;
+		}
+
+		if (input == Vector2.Zero) { _state = State.Idle; Velocity = _velocityCurrent; PlayAnimation(GetIdleAnimName()); }
+		else { UpdateFacing(input); _state = State.Walk; Velocity = _velocityCurrent; PlayAnimation(GetWalkAnimName()); }
 		MoveAndSlide();
+	}
+
+	private Vector2 GetMoveInput()
+	{
+		Vector2 input = Input.GetVector("move_left", "move_right", "move_up", "move_down");
+		if (input.LengthSquared() < 0.0001f) input = Input.GetVector("ui_left", "ui_right", "ui_up", "ui_down");
+		if (input.Length() > 1.0f) input = input.Normalized();
+		return input;
+	}
+
+	private void HandleWeaponInput(float dt)
+	{
+		if (EquippedWeapon == "none")
+		{
+			CancelCrossbowCharge(resetAnim: true);
+			return;
+		}
+
+		if (EquippedWeaponId == "crossbow")
+		{
+			HandleCrossbowInput(dt);
+			return;
+		}
+
+		CancelCrossbowCharge(resetAnim: false);
+		if (_state != State.Attack && Input.IsActionPressed("attack") && _attackTimer <= 0.0f)
+			StartAttack();
+	}
+
+	private void HandleCrossbowInput(float dt)
+	{
+		if (_attackTimer > 0.0f)
+		{
+			CancelCrossbowCharge(resetAnim: false);
+			return;
+		}
+
+		bool pressed = Input.IsActionPressed("attack");
+		bool justReleased = Input.IsActionJustReleased("attack");
+
+		if (_crossbowCharging)
+		{
+			_crossbowChargeTime += dt;
+			// Hold on frame 3 while still charging (walk anim takes over while moving in _PhysicsProcess).
+			if (justReleased || !pressed)
+			{
+				ReleaseCrossbowShot();
+			}
+			return;
+		}
+
+		if (pressed && _state != State.Attack)
+		{
+			_crossbowCharging = true;
+			_crossbowChargeTime = 0.0f;
+			_sprite.FlipH = _facing == "side" && _faceLeft;
+			_sprite.Frame = 0;
+			PlayAnimation(GetChargeAnimName());
+		}
+	}
+
+	private void ReleaseCrossbowShot()
+	{
+		float charge = _crossbowChargeTime;
+		_crossbowCharging = false;
+		_crossbowChargeTime = 0.0f;
+		if (charge < CrossbowMinChargeTime)
+		{
+			// Tap/cancelled early: no shot, return to normal anim.
+			_state = State.Idle;
+			PlayAnimation(GetIdleAnimName());
+			return;
+		}
+
+		ShootCrossbowBolt(charge);
+		_attackTimer = CurrentAttackCooldown;
+		_state = State.Attack;
+		_sprite.FlipH = _facing == "side" && _faceLeft;
+		_sprite.Frame = 0;
+		// Fire/release frame (frame 4), then OnAnimationFinished returns to idle.
+		PlayAnimation(GetAttackAnimName());
+	}
+
+	private void CancelCrossbowCharge(bool resetAnim)
+	{
+		if (!_crossbowCharging) return;
+		_crossbowCharging = false;
+		_crossbowChargeTime = 0.0f;
+		if (resetAnim && _sprite != null)
+			PlayAnimation(GetIdleAnimName());
 	}
 
 	public override void TakeDamage(int amount) => TakeDamage(amount, null);
@@ -312,6 +486,7 @@ public partial class PlayerEntity : Entity
 	{
 		if (IsDead || amount <= 0) return;
 		if (DebugInvulnerable) return;
+		CancelCrossbowCharge(resetAnim: false);
 		int reduced = Mathf.Max(1, Mathf.CeilToInt(amount * (1.0f - CurrentArmorReductionPerHit)));
 		Health = Mathf.Max(0, Health - reduced);
 		_damageRegenDelayTimer = CurrentRegenDelay;
@@ -351,6 +526,7 @@ public partial class PlayerEntity : Entity
 	public void Die()
 	{
 		if (_state == State.Dead) return;
+		CancelCrossbowCharge(resetAnim: false);
 		_state = State.Dead; Health = 0; Velocity = Vector2.Zero; _velocityCurrent = Vector2.Zero;
 		_sprite.FlipH = _facing == "side" && _faceLeft;
 		PlayAnimation("death");
@@ -361,42 +537,91 @@ public partial class PlayerEntity : Entity
 	{
 		if (FireballScene == null) { GD.PushError("Fireball scene could not be loaded."); return; }
 		var fireball = FireballScene.Instantiate<Fireball>();
-		Vector2 direction = _facing switch { "up" => Vector2.Up, "down" => Vector2.Down, "side" => _faceLeft ? Vector2.Left : Vector2.Right, _ => Vector2.Down };
+		Vector2 direction = GetFacingDirection();
 		GetTree().CurrentScene.AddChild(fireball);
 		int damage = ComputeDamageForTarget(null, CurrentProjectileDamage);
-		fireball.Init(direction, GlobalPosition + direction * 16.0f, CurrentProjectileSpeed, damage, CurrentKnockbackStrength, this as global::Player);
+		fireball.Init(direction, GlobalPosition + direction * 16.0f, CurrentProjectileSpeed, damage, CurrentKnockbackStrength, this);
+	}
+
+	private void ShootCrossbowBolt(float chargeTime)
+	{
+		if (CrossbowBoltScene == null) { GD.PushError("Crossbow bolt scene could not be loaded."); return; }
+		var bolt = CrossbowBoltScene.Instantiate<CrossbowBolt>();
+		Vector2 direction = GetFacingDirection();
+		GetTree().CurrentScene.AddChild(bolt);
+
+		float t = Mathf.Clamp((chargeTime - CrossbowMinChargeTime) / Mathf.Max(0.01f, CrossbowFullChargeTime - CrossbowMinChargeTime), 0.0f, 1.0f);
+		// Superior ranged: faster, higher base damage, heavy piercing (passes through enemies)
+		float speed = 440.0f + 180.0f * t + GetUpgradeLevel("projectile_speed") * 20.0f;
+		int baseDamage = 5 + Mathf.RoundToInt(4 * t) + GetUpgradeLevel("projectile_damage");
+		int damage = ComputeDamageForTarget(null, baseDamage);
+		int pierce = 2 + Mathf.RoundToInt(3 * t); // heavy piercing
+		float knockback = CurrentKnockbackStrength + 20.0f + 30.0f * t;
+		bolt.Init(direction, GlobalPosition + direction * 16.0f, speed, damage, knockback, this, pierce);
+		PlaySlashSfx();
+	}
+
+	private Vector2 GetFacingDirection()
+	{
+		return _facing switch { "up" => Vector2.Up, "down" => Vector2.Down, "side" => _faceLeft ? Vector2.Left : Vector2.Right, _ => Vector2.Down };
 	}
 
 	private void StartAttack()
 	{
 		_attackTimer = CurrentAttackCooldown;
 		_sprite.FlipH = _facing == "side" && _faceLeft;
-		if (EquippedWeapon == "fire_staff") { ShootFireball(); }
-		else { _state = State.Attack; PlayAnimation($"attack_{_facing}"); PlaySlashSfx(); DamageEnemiesInRange(); }
+
+		if (EquippedWeaponId == "fire_staff")
+		{
+			ShootFireball();
+			return;
+		}
+		if (EquippedWeaponId == "crossbow")
+		{
+			// Handled by hold/release charge logic.
+			return;
+		}
+
+		_state = State.Attack;
+		PlayAnimation(GetAttackAnimName());
+		PlaySlashSfx();
+		if (EquippedWeaponId == "scythe")
+			DamageEnemiesAroundPlayer360();
+		else
+			DamageEnemiesInRange();
 	}
 
 	public override void _UnhandledInput(InputEvent @event)
 	{
+		if (_camera == null || !IsInstanceValid(_camera))
+			_camera = GetNodeOrNull<Camera2D>("Camera2D");
+		if (_camera == null) return;
+
+		float? zoomDelta = null;
 		if (@event is InputEventMouseButton mb && mb.Pressed)
 		{
-			if (_camera == null || !IsInstanceValid(_camera))
-				_camera = GetNodeOrNull<Camera2D>("Camera2D");
-			if (_camera == null) return;
-
-			float step = 0.15f;
-			Vector2 zoom = _camera.Zoom;
 			if (mb.ButtonIndex == MouseButton.WheelUp)
-				zoom += new Vector2(step, step);
+				zoomDelta = 0.15f;
 			else if (mb.ButtonIndex == MouseButton.WheelDown)
-				zoom -= new Vector2(step, step);
-			else
-				return;
-
-			zoom.X = Mathf.Clamp(zoom.X, 0.75f, 4.0f);
-			zoom.Y = Mathf.Clamp(zoom.Y, 0.75f, 4.0f);
-			_camera.Zoom = zoom;
-			GetViewport().SetInputAsHandled();
+				zoomDelta = -0.15f;
 		}
+		else if (@event is InputEventKey key && key.Pressed && !key.Echo && !key.CtrlPressed && !key.AltPressed && !key.MetaPressed)
+		{
+			if (key.Keycode == Key.Equal || key.Keycode == Key.KpAdd)
+				zoomDelta = 0.15f;
+			else if (key.Keycode == Key.Minus || key.Keycode == Key.KpSubtract)
+				zoomDelta = -0.15f;
+		}
+
+		if (zoomDelta == null)
+			return;
+
+		Vector2 zoom = _camera.Zoom;
+		zoom += new Vector2(zoomDelta.Value, zoomDelta.Value);
+		zoom.X = Mathf.Clamp(zoom.X, 0.75f, 4.0f);
+		zoom.Y = Mathf.Clamp(zoom.Y, 0.75f, 4.0f);
+		_camera.Zoom = zoom;
+		GetViewport().SetInputAsHandled();
 	}
 
 	private void SetupAudio()
@@ -473,7 +698,6 @@ public partial class PlayerEntity : Entity
 		_aoeAuraTickTimer = CurrentAoeAuraTickInterval;
 
 		ApplyAoeAuraDamageToGroup("enemies", radius, damage);
-		// Knights are damageable by player attacks in this game, but aura should focus hostile targets.
 	}
 
 	private void ApplyAoeAuraDamageToGroup(string group, float radius, int damage)
@@ -499,13 +723,32 @@ public partial class PlayerEntity : Entity
 		if (applyKnockback && CurrentKnockbackStrength > 0.0f && target.HasMethod("ApplyKnockback"))
 		{
 			Vector2 dir = target.GlobalPosition - GlobalPosition;
-			if (dir.LengthSquared() < 0.001f) dir = _facing switch { "up" => Vector2.Up, "down" => Vector2.Down, "side" => _faceLeft ? Vector2.Left : Vector2.Right, _ => Vector2.Down };
+			if (dir.LengthSquared() < 0.001f) dir = GetFacingDirection();
 			target.Call("ApplyKnockback", dir.Normalized(), CurrentKnockbackStrength);
 		}
 		ApplyOnHitEffects(target);
 	}
 
 	private void DamageEnemiesInRange() { DamageGroupInRange("enemies"); DamageGroupInRange("knights"); }
+
+	private void DamageEnemiesAroundPlayer360()
+	{
+		// Scythe: 360-degree melee damage around the player (superior range/damage).
+		DamageGroupInRange360("enemies");
+		DamageGroupInRange360("knights");
+	}
+
+	private void DamageGroupInRange360(string group)
+	{
+		float range = CurrentAttackRange;
+		float rangeSq = range * range;
+		foreach (Node node in GetTree().GetNodesInGroup(group))
+		{
+			if (node is not Node2D target || !IsInstanceValid(target)) continue;
+			if (GlobalPosition.DistanceSquaredTo(target.GlobalPosition) > rangeSq || !target.HasMethod("TakeDamage")) continue;
+			DealDamageToTarget(target, CurrentAttackDamage, applyKnockback: true);
+		}
+	}
 
 	public int ComputeDamageForTarget(Node2D target, int baseDamage)
 	{
@@ -534,7 +777,7 @@ public partial class PlayerEntity : Entity
 		foreach (Node node in GetTree().GetNodesInGroup(group))
 		{
 			if (node is not Node2D target || !IsInstanceValid(target)) continue;
-			if (target.GlobalPosition.DistanceTo(GlobalPosition) > CurrentAttackRange || !target.HasMethod("TakeDamage")) continue;
+			if (GlobalPosition.DistanceTo(target.GlobalPosition) > CurrentAttackRange || !target.HasMethod("TakeDamage")) continue;
 			DealDamageToTarget(target, CurrentAttackDamage, applyKnockback: true);
 		}
 	}
@@ -548,7 +791,18 @@ public partial class PlayerEntity : Entity
 		_sprite.FlipH = _facing == "side" && _faceLeft;
 	}
 
-	private void PlayAnimation(string animation) { if (_sprite.Animation != animation) _sprite.Play(animation); }
+	private string GetIdleAnimName() => $"idle_{_facing}";
+	private string GetWalkAnimName() => $"walk_{_facing}";
+	private string GetAttackAnimName() => $"attack_{_facing}";
+	private string GetChargeAnimName() => HasAnim($"charge_{_facing}") ? $"charge_{_facing}" : GetAttackAnimName();
+
+	private bool HasAnim(string name) => _sprite?.SpriteFrames != null && _sprite.SpriteFrames.HasAnimation(name);
+	private void PlayAnimation(string animation)
+	{
+		if (_sprite == null) return;
+		if (!HasAnim(animation)) return;
+		if (_sprite.Animation != animation) _sprite.Play(animation);
+	}
 
 	private void OnAnimationFinished()
 	{
@@ -558,7 +812,7 @@ public partial class PlayerEntity : Entity
 			EmitSignal(SignalName.EntityDied);
 			return;
 		}
-		if (_state == State.Attack) { _state = State.Idle; PlayAnimation($"idle_{_facing}"); }
+		if (_state == State.Attack) { _state = State.Idle; PlayAnimation(GetIdleAnimName()); }
 	}
 
 	private void ApplyHealthBarStyle()
@@ -583,28 +837,123 @@ public partial class PlayerEntity : Entity
 		_healthBarStyled = true;
 	}
 
-	private static SpriteFrames BuildSpriteFrames()
+	// --- Sprite/animation building ---
+
+	private SpriteFrames BuildSpriteFramesForWeapon(string weaponKey)
+	{
+		return weaponKey switch
+		{
+			"scythe" => BuildScytheSpriteFrames(),
+			"crossbow" => BuildCrossbowSpriteFrames(),
+			_ => BuildDefaultSpriteFrames(),
+		};
+	}
+
+	private static SpriteFrames BuildDefaultSpriteFrames()
 	{
 		Texture2D texture = GD.Load<Texture2D>(PlayerTexturePath);
 		SpriteFrames frames = new(); frames.RemoveAnimation("default");
-		AddAnimation(frames, texture, "idle_down", 0, 6, 6.0f, true);
-		AddAnimation(frames, texture, "idle_side", 1, 6, 6.0f, true);
-		AddAnimation(frames, texture, "idle_up", 2, 6, 6.0f, true);
-		AddAnimation(frames, texture, "walk_down", 3, 6, 10.0f, true);
-		AddAnimation(frames, texture, "walk_side", 4, 6, 10.0f, true);
-		AddAnimation(frames, texture, "walk_up", 5, 6, 10.0f, true);
-		AddAnimation(frames, texture, "attack_down", 6, 4, 12.0f, false);
-		AddAnimation(frames, texture, "attack_side", 7, 4, 12.0f, false);
-		AddAnimation(frames, texture, "attack_up", 8, 4, 12.0f, false);
-		AddAnimation(frames, texture, "death", 9, 4, 8.0f, false);
+		AddGridAnimation(frames, texture, "idle_down", 0, 6, 6.0f, true, FrameSize, FrameSize);
+		AddGridAnimation(frames, texture, "idle_side", 1, 6, 6.0f, true, FrameSize, FrameSize);
+		AddGridAnimation(frames, texture, "idle_up", 2, 6, 6.0f, true, FrameSize, FrameSize);
+		AddGridAnimation(frames, texture, "walk_down", 3, 6, 10.0f, true, FrameSize, FrameSize);
+		AddGridAnimation(frames, texture, "walk_side", 4, 6, 10.0f, true, FrameSize, FrameSize);
+		AddGridAnimation(frames, texture, "walk_up", 5, 6, 10.0f, true, FrameSize, FrameSize);
+		AddGridAnimation(frames, texture, "attack_down", 6, 4, 12.0f, false, FrameSize, FrameSize);
+		AddGridAnimation(frames, texture, "attack_side", 7, 4, 12.0f, false, FrameSize, FrameSize);
+		AddGridAnimation(frames, texture, "attack_up", 8, 4, 12.0f, false, FrameSize, FrameSize);
+		AddGridAnimation(frames, texture, "death", 9, 4, 8.0f, false, FrameSize, FrameSize);
 		return frames;
 	}
 
-	private static void AddAnimation(SpriteFrames frames, Texture2D texture, string name, int row, int frameCount, float fps, bool loop)
+	private static SpriteFrames BuildScytheSpriteFrames()
 	{
-		frames.AddAnimation(name); frames.SetAnimationSpeed(name, fps); frames.SetAnimationLoop(name, loop);
-		for (int frame = 0; frame < frameCount; frame++)
-			frames.AddFrame(name, new AtlasTexture { Atlas = texture, Region = new Rect2(frame * FrameSize, row * FrameSize, FrameSize, FrameSize) });
+		// Use base locomotion/death animations; use scythe sheet only for combat animations.
+		SpriteFrames frames = BuildDefaultSpriteFrames();
+		Texture2D texture = GD.Load<Texture2D>("res://assets/images/characters/cute_Player_Scythe.png");
+
+		// (x, y, w, h) rects per row band (down, side, up), frames 1-4.
+		Rect2[] down = { new(11, 6, 16, 32), new(36, 6, 35, 32), new(78, 6, 21, 32), new(110, 6, 13, 32) };
+		Rect2[] side = { new(16, 43, 21, 25), new(39, 43, 30, 25), new(72, 43, 20, 25), new(111, 43, 13, 25) };
+		Rect2[] up   = { new(14, 75, 18, 25), new(37, 75, 32, 25), new(71, 75, 20, 25), new(110, 75, 13, 25) };
+
+		AddRectAnimation(frames, texture, "attack_down", down, 14.0f, false); // faster superior weapon
+		AddRectAnimation(frames, texture, "attack_side", side, 14.0f, false);
+		AddRectAnimation(frames, texture, "attack_up", up, 14.0f, false);
+		return frames;
+	}
+
+	private static SpriteFrames BuildCrossbowSpriteFrames()
+	{
+		// Use base locomotion/death animations; use crossbow sheet for combat/charge animations.
+		SpriteFrames frames = BuildDefaultSpriteFrames();
+		Texture2D texture = GD.Load<Texture2D>("res://assets/images/characters/cute_Player_Crossbow.png");
+
+		// (x, y, w, h) rects per row band (down, side, up), frames 1-4.
+		Rect2[] down = { new(14, 14, 13, 23), new(46, 14, 13, 23), new(77, 14, 13, 23), new(110, 14, 13, 23) };
+		Rect2[] side = { new(9, 45, 20, 18), new(40, 45, 20, 18), new(72, 45, 20, 18), new(104, 45, 20, 18) };
+		Rect2[] up   = { new(13, 73, 14, 22), new(45, 73, 14, 22), new(77, 73, 14, 22), new(110, 73, 14, 22) };
+
+		Rect2[] downCharge = { down[0], down[1], down[2] };
+		Rect2[] sideCharge = { side[0], side[1], side[2] };
+		Rect2[] upCharge   = { up[0], up[1], up[2] };
+		Rect2[] downRelease = { down[3] };
+		Rect2[] sideRelease = { side[3] };
+		Rect2[] upRelease   = { up[3] };
+
+		// Hold charge while still: play frames 1-2-3 and hold on frame 3.
+		AddRectAnimation(frames, texture, "charge_down", downCharge, 10.0f, false);
+		AddRectAnimation(frames, texture, "charge_side", sideCharge, 10.0f, false);
+		AddRectAnimation(frames, texture, "charge_up", upCharge, 10.0f, false);
+		// Release/fire: play frame 4 then return to idle.
+		AddRectAnimation(frames, texture, "attack_down", downRelease, 12.0f, false);
+		AddRectAnimation(frames, texture, "attack_side", sideRelease, 12.0f, false);
+		AddRectAnimation(frames, texture, "attack_up", upRelease, 12.0f, false);
+		return frames;
+	}
+
+	private static void AddRectAnimation(SpriteFrames frames, Texture2D texture, string name, Rect2[] rects, float fps, bool loop)
+	{
+		if (texture == null || rects == null || rects.Length == 0) return;
+		if (frames.HasAnimation(name)) frames.RemoveAnimation(name);
+		frames.AddAnimation(name);
+		frames.SetAnimationSpeed(name, fps);
+		frames.SetAnimationLoop(name, loop);
+		foreach (Rect2 rect in rects)
+		{
+			frames.AddFrame(name, new AtlasTexture
+			{
+				Atlas = texture,
+				Region = rect
+			});
+		}
+	}
+
+	private static void AddDeathFallback(SpriteFrames targetFrames)
+	{
+		// Ensure "death" animation exists for weapon-specific sheets.
+		if (targetFrames.HasAnimation("death")) return;
+		Texture2D texture = GD.Load<Texture2D>(PlayerTexturePath);
+		AddGridAnimation(targetFrames, texture, "death", 9, 4, 8.0f, false, FrameSize, FrameSize);
+	}
+
+	private static void AddGridAnimation(SpriteFrames frames, Texture2D texture, string name, int row, int frameCount, float fps, bool loop, int frameW, int frameH, int maxCols = int.MaxValue, int startFrame = 0)
+	{
+		if (texture == null) return;
+		if (frames.HasAnimation(name)) frames.RemoveAnimation(name);
+		frames.AddAnimation(name);
+		frames.SetAnimationSpeed(name, fps);
+		frames.SetAnimationLoop(name, loop);
+		int cols = Math.Min(frameCount, maxCols);
+		for (int i = 0; i < cols; i++)
+		{
+			int col = startFrame + i;
+			frames.AddFrame(name, new AtlasTexture
+			{
+				Atlas = texture,
+				Region = new Rect2(col * frameW, row * frameH, frameW, frameH)
+			});
+		}
 	}
 
 	public override Godot.Collections.Dictionary GetEntityState()

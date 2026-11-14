@@ -10,6 +10,15 @@ public partial class GameSession : Node
 	public string PendingNewSaveTitle { get; set; }
 	public string PendingNewSaveDescription { get; set; }
 	public string LastCreatedSaveId { get; set; }
+	public bool ShowControlsOnNextLevelLoad { get; set; }
+
+	public bool ConsumeShowControlsOnNextLevelLoad()
+	{
+		if (!ShowControlsOnNextLevelLoad)
+			return false;
+		ShowControlsOnNextLevelLoad = false;
+		return true;
+	}
 
 	public override void _Ready()
 	{
