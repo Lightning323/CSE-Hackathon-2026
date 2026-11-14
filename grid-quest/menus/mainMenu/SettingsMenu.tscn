@@ -94,6 +94,11 @@ layout_mode = 2
 placeholder_text = "Optional for LM Studio"
 secret = true
 
+[node name="ThinkingCheck" type="CheckBox" parent="MarginContainer/Root/Panel/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Enable thinking"
+
 [node name="StatusLabel" type="Label" parent="MarginContainer/Root/Panel/Form"]
 unique_name_in_owner = true
 layout_mode = 2

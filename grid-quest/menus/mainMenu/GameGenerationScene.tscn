@@ -1,9 +1,9 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://sbvdnpg0sb67"]
 
 [ext_resource type="Script" path="res://menus/mainMenu/GameGenerationScene.cs" id="1_script"]
-[ext_resource type="Theme" path="res://assets/main_theme.tres" id="2_theme"]
+[ext_resource type="Theme" uid="uid://b2tdhwtjuqch5" path="res://assets/main_theme.tres" id="2_theme"]
 
-[node name="GameGenerationScene" type="Control"]
+[node name="GameGenerationScene" type="Control" unique_id=875544477]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -13,7 +13,7 @@ grow_vertical = 2
 theme = ExtResource("2_theme")
 script = ExtResource("1_script")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="ColorRect" parent="." unique_id=1375479809]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -23,7 +23,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0, 0, 1)
 
-[node name="CenterContainer" type="CenterContainer" parent="."]
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=1521858982]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -31,36 +31,33 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Panel" type="PanelContainer" parent="CenterContainer"]
+[node name="Panel" type="PanelContainer" parent="CenterContainer" unique_id=2051523657]
 custom_minimum_size = Vector2(640, 240)
 layout_mode = 2
 
-[node name="VBox" type="VBoxContainer" parent="CenterContainer/Panel"]
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/Panel" unique_id=2117478514]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="TitleLabel" type="Label" parent="CenterContainer/Panel/VBox"]
+[node name="TitleLabel" type="Label" parent="CenterContainer/Panel/VBox" unique_id=927387750]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "Generating New Game"
 horizontal_alignment = 1
 
-[node name="StepLabel" type="Label" parent="CenterContainer/Panel/VBox"]
+[node name="StepLabel" type="Label" parent="CenterContainer/Panel/VBox" unique_id=108334754]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Preparing..."
 autowrap_mode = 2
 
-[node name="ProgressBar" type="ProgressBar" parent="CenterContainer/Panel/VBox"]
+[node name="ProgressBar" type="ProgressBar" parent="CenterContainer/Panel/VBox" unique_id=337412750]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
-max_value = 100.0
-value = 0.0
 
-[node name="DetailLabel" type="Label" parent="CenterContainer/Panel/VBox"]
+[node name="DetailLabel" type="Label" parent="CenterContainer/Panel/VBox" unique_id=1074929789]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 12
-text = ""
 autowrap_mode = 2

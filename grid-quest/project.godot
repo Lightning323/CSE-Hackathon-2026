@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Grid Quest"
-run/main_scene="res://menus/mainMenu/MainMenu.tscn"
+run/main_scene="res://game_generator/GameGenerator.tscn"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 
