@@ -13,6 +13,7 @@
 [ext_resource type="PackedScene" path="res://menus/cheat_menu.tscn" id="17_cheat_menu"]
 [ext_resource type="Script" path="res://level/EnemySpawnOnKill.cs" id="18_enemy_spawn"]
 [ext_resource type="Script" path="res://level/DayNightCycle.cs" id="19_daynight"]
+[ext_resource type="PackedScene" path="res://menus/game_over_menu.tscn" id="20_game_over"]
 
 [node name="Level" type="Node2D" unique_id=426259724]
 y_sort_enabled = true
@@ -48,6 +49,8 @@ script = ExtResource("18_enemy_spawn")
 
 [node name="MonumentIndicator" type="TextureRect" parent="CanvasLayer"]
 script = ExtResource("14_monument_indicator")
+
+[node name="GameOverMenu" parent="CanvasLayer" instance=ExtResource("20_game_over")]
 
 [node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=394873551]
 script = ExtResource("19_daynight")

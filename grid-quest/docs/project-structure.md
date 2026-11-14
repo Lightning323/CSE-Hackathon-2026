@@ -189,12 +189,9 @@ sprites under `assets/images/characters/`. Knights are allied village protectors
 ## Main Menu and Saves
 
 - `menus/mainMenu/MainMenu.tscn` is the startup scene (`project.godot` `run/main_scene`) containing the menu UI layout; `menus/mainMenu/MainMenu.cs` handles behavior/wiring.
-- The main menu lists save folders from the app data saves directory (`OS.GetUserDataDir()/saves`), and supports **Play**, **Delete**, **New Save**, and **Settings**.
-- **New Save** opens a dialog for title and description, then transitions to `game_generator/GameGenerator.tscn`, which shows a progress bar and status descriptions while creating the save folder and generating `story.json` via `StoryGenerator`/`LlmApi` (with fallback if unavailable), then returns to the main menu and selects the new save (it does not automatically boot into the game).
-- `game_generator/StoryGenerator.cs` generates campaign/story JSON (campaign metadata + progression stages/objectives/rewards/modifiers) using `LlmApi` when available and writes the schema-compatible `story.json` for the new save. `GameSession` carries pending new-save inputs and the last created save ID across the generation scene transition.
-- **Play** sets the selected save as the active session save and boots into `res://level/character_dev/main_level.tscn`.
-- `menus/mainMenu/GameSession.cs` is registered as an autoload (`GameSession`) to store the currently selected/created save for the running session.
-- A debug button in the main menu opens the saves/app-data folder via `OS.ShellOpen`.
+- **Current simplified flow:** the main menu provides **Start Game** and **Settings**. Save list/selection, New Save, Delete, and game/story generation are not exposed in the UI (generation/save code remains in `game_generator/`, `menus/mainMenu/SaveManager.cs`, `menus/mainMenu/GameSession.cs` but is kept out of the active flow for now).
+- **Start Game** creates/reuses a temporary save (`OS.GetUserDataDir()/saves/temp_session`) via `SaveManager.GetOrCreateTemporarySave()`, stores it in the `GameSession` autoload, and boots into `res://level/character_dev/main_level.tscn`.
+- **In-game menu:** `menus/game_over_menu.tscn` + `menus/GameOverMenu.cs` (added to the level UI) pauses gameplay and provides **Exit to Main Menu**. It opens as "Paused" when `Esc` is pressed in-game (toggles closed with `Esc`, unless other modal UI is open) and opens as "Game Over" on player death.
 
 ## Main Menu Settings and LLM API
 
