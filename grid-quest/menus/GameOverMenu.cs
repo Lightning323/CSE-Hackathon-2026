@@ -44,7 +44,8 @@ public partial class GameOverMenu : Control
 		var inv = GetTree().GetFirstNodeInGroup("inventory_ui") as Control;
 		var skills = GetTree().GetFirstNodeInGroup("skills_ui") as Control;
 		var cheat = GetTree().GetFirstNodeInGroup("cheat_ui") as Control;
-		if ((inv != null && inv.Visible) || (skills != null && skills.Visible) || (cheat != null && cheat.Visible))
+		var villagerChat = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
+		if ((inv != null && inv.Visible) || (skills != null && skills.Visible) || (cheat != null && cheat.Visible) || (villagerChat != null && villagerChat.Visible))
 			return;
 
 		if (Visible)

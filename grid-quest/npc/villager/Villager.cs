@@ -115,8 +115,50 @@ public partial class Villager : CharacterBody2D
 		if (!IsClosestInteractableVillager(player))
 			return;
 
-		ShowDialogueForCurrentState(forceRefresh: true, autoHide: true);
+		var chatUi = GetTree().GetFirstNodeInGroup("villager_chat_ui") as VillagerChatUi;
+		if (chatUi != null)
+		{
+			chatUi.Open(this);
+		}
+		else
+		{
+			ShowDialogueForCurrentState(forceRefresh: true, autoHide: true);
+		}
 		GetViewport().SetInputAsHandled();
+	}
+
+	public string DisplayNameForChat()
+	{
+		if (_hasHome && _homeVillageIndex >= 0)
+			return $"Villager (Village {_homeVillageIndex + 1})";
+		return "Villager";
+	}
+
+	public string BuildChatSystemPrompt()
+	{
+		string mood = _dialogueEmotion switch
+		{
+			DialogueEmotion.Chased => "frightened and urgent",
+			DialogueEmotion.Recovered => "relieved but shaken",
+			_ => "calm and friendly"
+		};
+		string threat = (_lastThreat != null && IsInstanceValid(_lastThreat)) ? "A threat is nearby." : "No immediate threat is visible.";
+		string location = _hasHome ? $"home village #{_homeVillageIndex + 1}" : "the wilderness";
+		return $"You are a villager NPC in the game Grid Quest. Stay in character and answer the player's question directly. " +
+			$"Current mood/state: {mood}. Location/context: {location}. {threat} " +
+			$"Health: {Health}/{MaxHealth}. Recent line: \"{_currentDialogueText}\". " +
+			"Keep responses concise (1-3 short sentences), helpful, and grounded in what a villager might know.";
+	}
+
+	public string BuildChatPrompt(string question)
+	{
+		var ctx = GetDialogueContext();
+		string state = ctx.TryGetValue("state", out var s) ? s.AsString() : _state.ToString();
+		string emotion = ctx.TryGetValue("emotion", out var e) ? e.AsString() : _dialogueEmotion.ToString();
+		return $"Player question: {question}\n\n" +
+			$"NPC runtime context: state={state}, emotion={emotion}, fleeing={IsFleeing}, was_recently_chased={_wasRecentlyChased}, " +
+			$"health={Health}/{MaxHealth}, has_home={_hasHome}, village_index={_homeVillageIndex}. " +
+			"Respond as the villager.";
 	}
 
 	public void SetHome(Rect2I cellBounds, Vector2I centerCell, int villageIndex)

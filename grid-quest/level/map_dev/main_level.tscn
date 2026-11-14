@@ -13,6 +13,7 @@
 [ext_resource type="PackedScene" path="res://menus/skills_ui.tscn" id="15_skills_ui"]
 [ext_resource type="PackedScene" path="res://menus/cheat_menu.tscn" id="16_cheat_menu"]
 [ext_resource type="Script" path="res://level/DayNightCycle.cs" id="17_daynight"]
+[ext_resource type="PackedScene" path="res://menus/villager_chat_ui.tscn" id="18_villager_chat"]
 
 [node name="Level" type="Node2D" unique_id=426259724]
 y_sort_enabled = true

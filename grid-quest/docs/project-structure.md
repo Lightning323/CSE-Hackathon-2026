@@ -55,9 +55,11 @@ grid-quest/
 │   ├── InventorySlotUi.cs     # Reusable inventory slot UI control
 │   ├── MonumentIndicator.cs   # Directional indicator pointing to the monument
 │   ├── SkillsUi.cs            # Monument upgrade menu/UI (purchasable player attributes)
+│   ├── VillagerChatUi.cs      # NPC chat interface (ask questions, streamed LLM replies)
 │   ├── cheat_menu.tscn        # Debug/cheat menu UI scene
 │   ├── inventory_ui.tscn      # Inventory/chest UI scene root
 │   ├── skills_ui.tscn         # Monument/skills upgrade UI scene
+│   ├── villager_chat_ui.tscn  # Villager chat UI scene
 │   ├── main_menu.tscn         # Legacy main menu scene
 │   └── mainMenu/
 │       ├── MainMenu.cs        # Save selection/creation UI and game boot flow
@@ -138,8 +140,8 @@ Coins collected in-world are tracked as gold in the player's wallet (used for mo
 
 - `npc/villager/Villager.cs` builds villager animations at runtime and runs simple idle/patrol/flee AI. Villagers target-threat flee from enemies, can take damage, and prefer to stay within/near their assigned home village (`SetHome`) by wandering locally and returning when displaced.
 - `npc/villager/VillagePopulationManager.cs` spawns a configurable number of villagers per generated village at startup and respawns villagers slowly after death when the village area is not visible to the active camera. Manual spawn inputs (`level/character_dev/VillagerSpawnInput.cs`) can also place/assign villagers to generated villages.
-- **Interaction & dialogue bubbles:** villagers display a dynamically sized speech bubble above their head (`npc/villager/villager.tscn`) with placeholder dialogue for `Idle`, `Chased`, and `Recovered` (done being chased/catching breath) states. Bubbles auto-show/update on state changes (including while chased and briefly after fleeing ends) and the player can interact with the nearest nearby villager using `F` to refresh/show context-appropriate dialogue.
-- **AI-ready context:** `Villager` exposes dialogue/emotional state and runtime context for future external dialogue generation via `CurrentDialogueEmotion`, `CurrentDialogueText`, and `GetDialogueContext()` (state/emotion, fleeing/recovery/threat/home/player proximity, health, current dialogue, and placeholder options per state).
+- **Interaction & chat:** villagers display a dynamically sized speech bubble above their head (`npc/villager/villager.tscn`) with placeholder dialogue for `Idle`, `Chased`, and `Recovered` states (auto-updated on state changes). Pressing `F` near the closest villager opens the villager chat interface (`menus/villager_chat_ui.tscn`, `VillagerChatUi.cs`) so the player can ask questions and receive streamed responses (via `LlmApi` with in-character prompt/context from `Villager`); `Esc`/`F`/Close closes it.
+- **Dialogue/chat context:** `Villager` exposes dialogue/emotional state and runtime context for dialogue/chat generation via `CurrentDialogueEmotion`, `CurrentDialogueText`, `GetDialogueContext()`, and chat prompt helpers (state/emotion, fleeing/recovery/threat/home/player proximity, health, current dialogue, etc.).
 
 ## Monument & Upgrades
 

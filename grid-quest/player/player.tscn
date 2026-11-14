@@ -93,8 +93,8 @@ show_percentage = false
 zoom = Vector2(2, 2)
 limit_left = 0
 limit_top = 0
-limit_right = 1600
-limit_bottom = 1600
+limit_right = 4800
+limit_bottom = 4800
 position_smoothing_enabled = true
 position_smoothing_speed = 8.0
 

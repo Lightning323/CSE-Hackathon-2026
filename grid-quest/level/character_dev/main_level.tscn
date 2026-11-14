@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://dodf7orbhnbtu" path="res://map/map.tscn" id="9_m5bjr"]
 [ext_resource type="PackedScene" path="res://menus/inventory_ui.tscn" id="10_inv"]
 [ext_resource type="PackedScene" path="res://menus/skills_ui.tscn" id="11_skills"]
+[ext_resource type="PackedScene" path="res://menus/villager_chat_ui.tscn" id="21_villager_chat"]
 [ext_resource type="Script" path="res://level/character_dev/VillagerSpawnInput.cs" id="12_villager_spawn"]
 [ext_resource type="Script" path="res://npc/villager/VillagePopulationManager.cs" id="13_village_mgr"]
 [ext_resource type="Script" path="res://menus/MonumentIndicator.cs" id="14_monument_indicator"]
@@ -49,6 +50,8 @@ script = ExtResource("18_enemy_spawn")
 
 [node name="MonumentIndicator" type="TextureRect" parent="CanvasLayer"]
 script = ExtResource("14_monument_indicator")
+
+[node name="VillagerChatUi" parent="CanvasLayer" instance=ExtResource("21_villager_chat")]
 
 [node name="GameOverMenu" parent="CanvasLayer" instance=ExtResource("20_game_over")]
 
