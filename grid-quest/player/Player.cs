@@ -1,3 +1,4 @@
+
 using Godot;
 
 public partial class Player : CharacterBody2D
@@ -58,13 +59,29 @@ public partial class Player : CharacterBody2D
 			return;
 		}
 
-		if (Input.IsActionJustPressed("attack") && _attackTimer <= 0.0f)
+		// Spacebar attacks
+		if (Input.IsKeyPressed(Key.Space) && _attackTimer <= 0.0f)
 		{
 			StartAttack();
 			return;
 		}
 
-		Vector2 input = Input.GetVector("move_left", "move_right", "move_up", "move_down");
+		// WASD and arrow key movement
+		Vector2 input = Vector2.Zero;
+
+		if (Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left))
+			input.X -= 1;
+
+		if (Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right))
+			input.X += 1;
+
+		if (Input.IsKeyPressed(Key.W) || Input.IsKeyPressed(Key.Up))
+			input.Y -= 1;
+
+		if (Input.IsKeyPressed(Key.S) || Input.IsKeyPressed(Key.Down))
+			input.Y += 1;
+
+		input = input.Normalized();
 
 		if (input == Vector2.Zero)
 		{
