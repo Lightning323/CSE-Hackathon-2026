@@ -33,8 +33,8 @@ Decisions for how Grid Quest represents floor tiles, walls/fences, large props (
 
 ## Current Implementation
 
-- `map/` contains one C# file per map tile/item type defining its texture/path and node/layer factory (e.g. `GrassFloor`, `TownTree2`, `TownPlant1..3`) plus the grid script/scene.
-- `map/map_grid.cs` is attached as an external script to the `MapGrid` node (`map/map_grid.tscn`, instanced/used in `level/map.tscn`). It owns the logical grid (`Width`×`Height`, `CellSize`), an occupancy map, and composes layers by delegating to `map/*` factories: `Floor` (grass), `Objects` (collidable tree at center, occupying its cell), and `Items` (random plants placed only on empty cells).
-- The grid exposes helpers for future systems: `CellToWorldCenter`, `WorldToCell`, `IsInBounds`, `GetOccupant`, `TryPlaceOccupant`.
+- `map/` contains floor/tile definitions plus the grid script/scene, and `map/map_objects/` contains one C# class per map object type extending `MapObject` (base for walls/trees/bushes/fences/etc.), e.g. `TownTree2`, `TownPlant`.
+- `map/map_grid.cs` (`[Tool]`, attached to `map/map_grid.tscn`, instanced in `level/main_level.tscn`) owns a 200×200 logical grid (`CellSize` 16px), an occupancy map of `MapObject`s, and composes the map: `Floor` (grass, z-behind) and Y-sorted map-object children (collidable tree at center, random plants on empty cells) placed at cell base positions for correct depth ordering with entities. To keep the editor responsive it generates a 30×30 preview in-editor and the full 200×200 at runtime.
+- The grid exposes helpers for future systems: `CellToWorldCenter`, `CellToWorldBase`, `WorldToCell`, `IsInBounds`, `GetOccupant`, `TryPlaceOccupant`.
 
-This is a pragmatic, node-based/grid-occupancy approach. As content grows, static/dense layers (floor, walls/fences, bridges, static trees) can migrate to `TileMapLayer`+`TileSet` for batching while interactive objects remain grid-placed nodes tracked in occupancy.
+This is a pragmatic, node-based/grid-occupancy approach. As content grows, static/dense layers (floor, walls/fences, bridges, static trees) can migrate to `TileMapLayer`+`TileSet` for batching while interactive/stateful objects remain grid-placed `MapObject` nodes tracked in occupancy.

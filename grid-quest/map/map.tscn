@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://dodf7orbhnbtu"]
+
+[ext_resource type="Script" uid="uid://bt3yledahiagr" path="res://map/Map.cs" id="1_hgrid"]
+
+[node name="Map" type="Node2D" unique_id=1437051292]
+script = ExtResource("1_hgrid")

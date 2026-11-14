@@ -28,15 +28,15 @@ grid-quest/
 ├── level/
 │   ├── EnemyTestSpawner.cs    # Temporary number-key enemy spawner
 │   ├── KnightSpawnInput.cs    # Spawns an allied knight helper on G
-│   └── map.tscn               # Gameplay map, player, enemies, and test helpers
-├── map/                       # Map tile/item definitions, factories, and grid scene/script
-│   ├── map_grid.cs            # Grid/occupancy and map layer composition (attached script)
+│   └── main_level.tscn        # Main gameplay level (map, player, enemies, helpers)
+├── map/                       # Map tile definitions, grid scene/script, and object classes
+│   ├── map_grid.cs            # Grid/occupancy and map composition (attached script)
 │   ├── map_grid.tscn          # Reusable MapGrid scene
 │   ├── GrassFloor.cs
-│   ├── TownTree2.cs
-│   ├── TownPlant1.cs
-│   ├── TownPlant2.cs
-│   └── TownPlant3.cs
+│   └── map_objects/
+│       ├── MapObject.cs       # Base class for walls/trees/bushes/fences/etc.
+│       ├── TownTree2.cs
+│       └── TownPlant.cs
 ├── menus/
 │   └── main_menu.tscn         # Main menu
 ├── npc/
@@ -66,16 +66,10 @@ temporary debug invulnerability (remove when no longer needed).
 
 ## Map and Tiles
 
-- `map/map_grid.cs` (attached to the `MapGrid` node/scene, used in `level/map.tscn` and defined in `map/map_grid.tscn`) owns a logical 2D grid (`Width`×`Height`,
-  `CellSize` default 16px) and an occupancy map. The scene configures a 20×20 map.
-- **Floor:** `map/GrassFloor.cs` builds the floor layer from
-  `assets/images/map_tiles/grass/grass.png` (48×48), tiled across the map.
-- **Objects:** `map/TownTree2.cs` creates a collidable tree in the objects layer using
-  `assets/images/map_tiles/trees/town_tree-2.png`, marking its cell occupied.
-- **Items:** `map/TownPlant1..3.cs` place plant sprites from `assets/images/map_tiles/plants/`
-  on empty cells by chance (`PlantChance`), tracking them as occupants.
-- Grid helpers include `CellToWorldCenter`, `WorldToCell`, `IsInBounds`, `GetOccupant`, and
-  `TryPlaceOccupant`.
+- `map/map_grid.cs` (attached to `map/map_grid.tscn`, instanced in `level/main_level.tscn`) owns a logical 2D grid (`Width`×`Height`, `CellSize` default 16px) and an occupancy map of `MapObject`s. `main_level.tscn` configures a 200×200 map.
+- **Floor:** `map/GrassFloor.cs` builds the floor layer from `assets/images/map_tiles/grass/grass.png` (48×48), tiled across the map.
+- **Map objects:** `map/map_objects/MapObject.cs` is the base for walls/trees/bushes/fences/etc. `TownTree2` and `TownPlant` (variants 1–3) extend it and are placed as children of the Y-sorted `MapGrid` (trees occupy their base cell; plants placed on empty cells by chance). Tree uses a `StaticBody2D` collision at its base; sprites are offset so their base aligns to the cell and Y-sorting places entities in front/behind correctly.
+- Grid helpers include `CellToWorldCenter`, `CellToWorldBase`, `WorldToCell`, `IsInBounds`, `GetOccupant`, and `TryPlaceOccupant`.
 - See [map-architecture.md](./map-architecture.md) for tile-versus-node decisions.
 
 ## Enemies
