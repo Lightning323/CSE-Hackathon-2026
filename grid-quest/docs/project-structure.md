@@ -26,27 +26,23 @@ grid-quest/
 │   ├── skeleton_enemy.tscn    # Medium skeleton variant
 │   └── elite_skeleton_enemy.tscn # Hard skeleton variant
 ├── level/
-│   ├── EnemyTestSpawner.cs    # Temporary number-key enemy spawner (1/2)
+│   ├── EnemyTestSpawner.cs    # Temporary number-key enemy spawner
 │   ├── KnightSpawnInput.cs    # Spawns an allied knight helper on G
-│   ├── VillagerSpawnInput.cs  # Spawns a random villager on V
-│   └── main_level.tscn        # Main gameplay level (player, enemies, map grid, spawners)
-├── map/                       # Map tile/item definitions, factories, and grid scene/script
-│   ├── map_grid.cs            # Grid/occupancy and map layer composition (attached script)
+│   └── main_level.tscn        # Main gameplay level (map, player, enemies, helpers)
+├── map/                       # Map tile definitions, grid scene/script, and object classes
+│   ├── map_grid.cs            # Grid/occupancy and map composition (attached script)
 │   ├── map_grid.tscn          # Reusable MapGrid scene
 │   ├── GrassFloor.cs
-│   ├── TownTree2.cs
-│   ├── TownPlant1.cs
-│   ├── TownPlant2.cs
-│   └── TownPlant3.cs
+│   └── map_objects/
+│       ├── MapObject.cs       # Base class for walls/trees/bushes/fences/etc.
+│       ├── TownTree2.cs
+│       └── TownPlant.cs
 ├── menus/
 │   └── main_menu.tscn         # Main menu
 ├── npc/
-│   ├── knight/
-│   │   ├── KnightNpc.cs       # Allied knight AI, combat, regeneration, and patrol
-│   │   └── knight_npc.tscn    # Knight character scene
-│   └── villager/
-│       ├── Villager.cs        # Villager AI, flee/patrol behavior, and appearance/gender
-│       └── villager.tscn      # Villager character scene
+│   └── knight/
+│       ├── KnightNpc.cs       # Allied knight AI, combat, and regeneration
+│       └── knight_npc.tscn    # Knight character scene
 └── player/
 	├── Player.cs              # Player movement, combat, health, and animations
 	├── Player.cs.uid          # Godot-generated script UID
@@ -64,31 +60,24 @@ grid-quest/
 | 6-8 | attack down / side / up | 4 |
 | 9 | death | 4 |
 
-Movement supports 8 directions (including diagonals) with WASD or arrow keys and is allowed during
-attacks. Space attacks; the player can damage enemies and knights. Health is shown in the player
-health bar. `H` toggles temporary debug invulnerability (remove when no longer needed). `G` spawns
-an allied knight helper and `V` spawns a random villager.
+Movement is 4-directional with WASD or arrow keys and is allowed during attacks. Space attacks;
+the player can damage enemies and knights. Health is shown in the player health bar. `H` toggles
+temporary debug invulnerability (remove when no longer needed).
 
 ## Map and Tiles
 
-- `map/map_grid.cs` (attached to the `MapGrid` node/scene, used in `level/map.tscn` and defined in `map/map_grid.tscn`) owns a logical 2D grid (`Width`×`Height`,
-  `CellSize` default 16px) and an occupancy map. The scene configures a 20×20 map.
-- **Floor:** `map/GrassFloor.cs` builds the floor layer from
-  `assets/images/map_tiles/grass/grass.png` (48×48), tiled across the map.
-- **Objects:** `map/TownTree2.cs` creates a collidable tree in the objects layer using
-  `assets/images/map_tiles/trees/town_tree-2.png`, marking its cell occupied.
-- **Items:** `map/TownPlant1..3.cs` place plant sprites from `assets/images/map_tiles/plants/`
-  on empty cells by chance (`PlantChance`), tracking them as occupants.
-- Grid helpers include `CellToWorldCenter`, `WorldToCell`, `IsInBounds`, `GetOccupant`, and
-  `TryPlaceOccupant`.
+- `map/map_grid.cs` (attached to `map/map_grid.tscn`, instanced in `level/main_level.tscn`) owns a logical 2D grid (`Width`×`Height`, `CellSize` default 16px) and an occupancy map of `MapObject`s. `main_level.tscn` configures a 200×200 map.
+- **Floor:** `map/GrassFloor.cs` builds the floor layer from `assets/images/map_tiles/grass/grass.png` (48×48), tiled across the map.
+- **Map objects:** `map/map_objects/MapObject.cs` is the base for walls/trees/bushes/fences/etc. `TownTree2` and `TownPlant` (variants 1–3) extend it and are placed as children of the Y-sorted `MapGrid` (trees occupy their base cell; plants placed on empty cells by chance). Tree uses a `StaticBody2D` collision at its base; sprites are offset so their base aligns to the cell and Y-sorting places entities in front/behind correctly.
+- Grid helpers include `CellToWorldCenter`, `CellToWorldBase`, `WorldToCell`, `IsInBounds`, `GetOccupant`, and `TryPlaceOccupant`.
 - See [map-architecture.md](./map-architecture.md) for tile-versus-node decisions.
 
 ## Enemies
 
 `Enemy.cs` builds `SpriteFrames` at runtime from a configurable 32×32 sprite sheet. It exposes
-movement, health, combat, texture, and animation settings. Enemies target the closest player,
-allied knight, or villager, move toward it, and attack with a timed windup that applies damage at
-the end of the attack animation if the target is still in range.
+movement, health, combat, texture, and animation settings. Enemies target the closest player or
+allied knight, move toward it, and attack with a timed windup that applies damage at the end of the
+attack animation if the target is still in range.
 
 | Scene | Variant | Speed | Health | Attack | Appearance/notes |
 | --- | --- | --- | --- | --- | --- |
@@ -97,27 +86,16 @@ the end of the attack animation if the target is still in range.
 | `elite_skeleton_enemy.tscn` | Hard | 70 | 6 | 2 dmg, 26 range, 0.7s cooldown | Larger red-tinted skeleton |
 
 The temporary slime enemy variant was removed because of broken sprite-sheet animation mapping.
-`level/main_level.tscn` includes a temporary `EnemyTestSpawner`: press `1` for a skeleton or `2`
-for an elite skeleton to spawn additional test enemies at its position. Remove the spawner when no
-longer needed.
+`map.tscn` includes a temporary `EnemyTestSpawner`: press `1` for a skeleton or `2` for an elite
+skeleton to spawn additional test enemies at its position. Remove the spawner when no longer
+needed.
 
 ## Allied Knight NPC
 
 `npc/knight/KnightNpc.cs` builds `SpriteFrames` at runtime from the `forest_hero` character
 sprites under `assets/images/characters/`. Knights are allied helpers: they target and attack
-enemies, can take damage, and regenerate slowly after a delay out of combat. When no enemies are
-present, they patrol/wander slowly between random points. No knights spawn by default; press `G` to
-spawn one near the player. The player can also damage knights.
-
-## Villagers
-
-`npc/villager/Villager.cs` builds animated sprites at runtime by picking one of six villager types
-from `assets/images/characters/villagers/` (folk-dogwalker, folk-grandma, school-teacher,
-season-pumpkin, shop-barista, work-chef). Each spawned villager randomly selects one type and uses
-its animations (idle/walk by facing direction) while fleeing or patrolling. Villagers can be targeted
-by enemies, run away from nearby enemies at player speed, and have less health than the player. When
-safe (no nearby enemies), they patrol/wander slowly between random points. No villagers spawn by
-default; press `V` to spawn one random villager.
+enemies, can take damage, and regenerate slowly after a delay out of combat. No knights spawn by
+default; press `G` to spawn one near the player. The player can also damage knights.
 
 ## Notes
 
