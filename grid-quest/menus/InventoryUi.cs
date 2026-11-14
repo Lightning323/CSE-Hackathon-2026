@@ -283,10 +283,59 @@ public partial class InventoryUi : Control
 			return;
 		}
 
+		// Coins should never occupy player backpack slots: convert to wallet immediately.
+		if (from.ContainerId == "chest" && to.ContainerId == "player")
+		{
+			var src = _openChest?.Contents?.Get(from.SlotIndex);
+			var dst = _player.Inventory?.Get(to.SlotIndex);
+			if (src != null && !src.IsEmpty && src.ItemId == "coin")
+			{
+				if (dst == null) return;
+				if (dst.IsEmpty)
+				{
+					_player.AddGold(src.Count);
+					src.ItemId = null; src.Count = 0;
+				}
+				else if (dst.ItemId == "coin")
+				{
+					_player.AddGold(src.Count + dst.Count);
+					src.ItemId = null; src.Count = 0;
+					dst.ItemId = null; dst.Count = 0;
+				}
+				// If destination has a non-coin item, keep chest coins in place (no silent swap).
+				_player.SyncEquippedFromId();
+				return;
+			}
+		}
+		else if (from.ContainerId == "player" && to.ContainerId == "player")
+		{
+			var src = _player.Inventory?.Get(from.SlotIndex);
+			var dst = _player.Inventory?.Get(to.SlotIndex);
+			if (src != null && dst != null && !src.IsEmpty && src.ItemId == "coin")
+			{
+				if (dst.IsEmpty)
+				{
+					_player.AddGold(src.Count);
+					src.ItemId = null; src.Count = 0;
+					_player.SyncEquippedFromId();
+					return;
+				}
+				if (dst.ItemId == "coin")
+				{
+					_player.AddGold(src.Count + dst.Count);
+					src.ItemId = null; src.Count = 0;
+					dst.ItemId = null; dst.Count = 0;
+					_player.SyncEquippedFromId();
+					return;
+				}
+			}
+		}
+
 		var a = GetContainer(from.ContainerId);
 		var b = GetContainer(to.ContainerId);
 		if (a == null || b == null) return;
 		InventoryContainer.SwapOrMove(a, from.SlotIndex, b, to.SlotIndex);
+		_player.ConvertInventoryCoinsToGold();
 		_player.SyncEquippedFromId();
 	}
 
@@ -381,6 +430,17 @@ public partial class InventoryUi : Control
 	{
 		if (_player?.Inventory == null || _openChest?.Contents == null) return;
 		var chest = _openChest.Contents;
+
+		// Coins go directly to wallet.
+		for (int i = 0; i < chest.Slots.Length; i++)
+		{
+			var s = chest.Slots[i];
+			if (s.IsEmpty || s.ItemId != "coin") continue;
+			_player.AddGold(s.Count);
+			s.ItemId = null; s.Count = 0;
+		}
+
+		// First pass for non-coin items.
 		for (int i = 0; i < chest.Slots.Length; i++)
 		{
 			var s = chest.Slots[i];
@@ -389,13 +449,10 @@ public partial class InventoryUi : Control
 			{
 				s.ItemId = null; s.Count = 0;
 			}
-			else
-			{
-				// partial left if any; try to compute remainder by attempting add per-unit fallback not necessary, AddItem mutated? no
-			}
 		}
-		// second pass careful: AddItem as written consumes count but doesn't report leftover except bool; rebuild by trying to move stacks
+		// Second pass to move remaining partial/non-stacked items where possible.
 		CompactTakeAll();
+		_player.ConvertInventoryCoinsToGold();
 		Refresh();
 	}
 
@@ -416,6 +473,12 @@ public partial class InventoryUi : Control
 		var chest = _openChest.Contents;
 		var s = chest.Slots[idx];
 		if (s.IsEmpty) return;
+		if (s.ItemId == "coin")
+		{
+			_player.AddGold(s.Count);
+			s.ItemId = null; s.Count = 0;
+			return;
+		}
 		var def = ItemCatalog.Get(s.ItemId);
 		if (def == null) return;
 
@@ -453,6 +516,7 @@ public partial class InventoryUi : Control
 		if (_player == null || !IsInstanceValid(_player)) _player = GetTree().GetFirstNodeInGroup("player") as Player;
 		if (_player != null)
 		{
+			_player.ConvertInventoryCoinsToGold();
 			_goldLabel.Text = $"Coins: {_player.Gold}";
 			var w = string.IsNullOrEmpty(_player.EquippedWeaponId) ? new ItemStack() : new ItemStack { ItemId = _player.EquippedWeaponId, Count = 1 };
 			_weaponSlot.SetStack(w);

@@ -56,6 +56,9 @@ public partial class Fireball : Area2D
 
 	private void OnBodyEntered(Node2D body)
 	{
+		if (body == null || !IsInstanceValid(body))
+			return;
+
 		if (body.IsInGroup("enemies") && body.HasMethod("TakeDamage"))
 		{
 			int damage = Damage;
@@ -73,7 +76,26 @@ public partial class Fireball : Area2D
 				_sourcePlayer.Call("NotifyProjectileHit", body);
 			}
 			QueueFree();
+			return;
 		}
+
+		if (IsWallBody(body))
+		{
+			QueueFree();
+		}
+	}
+
+	private static bool IsWallBody(Node body)
+	{
+		// Stop on wall objects (border/building walls), but allow trees/props and other bodies.
+		Node current = body;
+		while (current != null)
+		{
+			if (current.IsInGroup("walls"))
+				return true;
+			current = current.GetParent();
+		}
+		return false;
 	}
 
 	private void OnAreaEntered(Area2D area)

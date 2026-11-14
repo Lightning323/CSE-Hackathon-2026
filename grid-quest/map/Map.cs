@@ -221,6 +221,51 @@ public partial class Map : Node2D
 		return CellToWorldCenter(village.Center.X, village.Center.Y);
 	}
 
+	public Vector2 GetRandomPlayerSpawnPosition()
+	{
+		// Stay within the camera-reachable/playable region used by current camera limits and monument placement.
+		const int minX = 2;
+		const int minY = 2;
+		const int maxX = 97;
+		const int maxY = 97;
+		var rng = new RandomNumberGenerator();
+		rng.Randomize();
+
+		for (int i = 0; i < 500; i++)
+		{
+			int x = rng.RandiRange(minX, maxX);
+			int y = rng.RandiRange(minY, maxY);
+			if (!IsCellValidForPlayerSpawn(x, y))
+				continue;
+			return CellToWorldCenter(x, y);
+		}
+
+		// Fallback: deterministic scan for any valid grass spawn tile.
+		for (int y = minY; y <= maxY; y++)
+		{
+			for (int x = minX; x <= maxX; x++)
+			{
+				if (IsCellValidForPlayerSpawn(x, y))
+					return CellToWorldCenter(x, y);
+			}
+		}
+
+		return CellToWorldCenter(Width / 2, Height / 2);
+	}
+
+	private bool IsCellValidForPlayerSpawn(int x, int y)
+	{
+		if (!IsInBounds(x, y))
+			return false;
+		// Border walls occupy map edge cells.
+		if (x <= 0 || y <= 0 || x >= Width - 1 || y >= Height - 1)
+			return false;
+		// Must be a grass tile (not a carved stone/path tile) and unoccupied.
+		if (_pathCells[x, y] || _occupiedCells[x, y])
+			return false;
+		return true;
+	}
+
 	private void ClearGeneratedLayers()
 	{
 		foreach (string name in new[] { "Floor", "Objects" })

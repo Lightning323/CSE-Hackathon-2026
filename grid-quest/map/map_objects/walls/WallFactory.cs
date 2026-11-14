@@ -7,6 +7,11 @@ public partial class WallFactory : MapObjectFactory
 	public const string ScenePath = "res://map/map_objects/walls/stone_wall.tscn";
 	private static readonly PackedScene Scene = GD.Load<PackedScene>(ScenePath);
 
+	public override void _Ready()
+	{
+		AddToGroup("walls");
+	}
+
 	public static WallFactory Instantiate(Vector2 worldPosition)
 	{
 		var wall = Scene.Instantiate<WallFactory>();
