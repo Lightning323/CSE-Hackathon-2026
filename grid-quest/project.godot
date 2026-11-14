@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Grid Quest"
-run/main_scene="res://tests/llm_hello_world_test.tscn"
+run/main_scene="uid://c5nhbyh7dkbuv"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 

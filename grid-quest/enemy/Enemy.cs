@@ -8,6 +8,8 @@ public partial class Enemy : CharacterBody2D
 	[Export] public float AttackRange { get; set; } = 24.0f;
 	[Export] public float AttackCooldown { get; set; } = 0.8f;
 	[Export] public float AgroRange { get; set; } = 180.0f;
+	[Export] public float HordeAgroRange { get; set; } = 1200.0f;
+	[Export] public bool ForceChasePlayer { get; set; } = false;
 	[Export] public int CoinDropCount { get; set; } = 1;
 	[Export(PropertyHint.File, "*.png")] public string TexturePath { get; set; } = "res://assets/images/enemies/skeleton/cute_Skeleton.png";
 	[Export] public int IdleFrameCount { get; set; } = 6;
@@ -84,12 +86,16 @@ public partial class Enemy : CharacterBody2D
 		}
 
 		_player = FindClosestTarget();
+		Node2D playerNode = GetTree().GetFirstNodeInGroup("player") as Node2D;
+		if (ForceChasePlayer && playerNode != null && IsInstanceValid(playerNode))
+			_player = playerNode;
 
 		if (_player != null)
 		{
 			Vector2 toPlayer = _player.GlobalPosition - GlobalPosition;
 			float distance = toPlayer.Length();
-			if (distance <= AgroRange && distance > 0.001f)
+			float agroRange = (ForceChasePlayer && _player == playerNode) ? Mathf.Max(AgroRange, HordeAgroRange) : AgroRange;
+			if (distance <= agroRange && distance > 0.001f)
 			{
 				Vector2 direction = toPlayer / distance;
 				UpdateFacing(direction);

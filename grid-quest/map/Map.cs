@@ -434,18 +434,19 @@ public partial class Map : Node2D
 		return objectsRoot;
 	}
 
+	// Camera limits in current player setup stop at 1600x1600 world units (100x100 cells, indices 0-99).
+	private const int CameraMinCell = 1; // inside border wall at 0
+	private const int CameraMaxCell = 98; // inside border wall at 99
+
 	private Vector2I PickMonumentCell(RandomNumberGenerator rng)
 	{
-		// Camera limits in current player setup stop at 1600x1600 world units (100x100 cells).
-		// Keep monument within that reachable area, away from edges, and biased toward center.
-		const int cameraMaxCellX = 100;
-		const int cameraMaxCellY = 100;
+		// Keep monument within the reachable camera area, away from edges, and biased toward center.
 		const int edgeMargin = 18;
 
-		int minX = edgeMargin;
-		int maxX = cameraMaxCellX - edgeMargin - 1;
-		int minY = edgeMargin;
-		int maxY = cameraMaxCellY - edgeMargin - 1;
+		int minX = CameraMinCell + edgeMargin;
+		int maxX = CameraMaxCell - edgeMargin;
+		int minY = CameraMinCell + edgeMargin;
+		int maxY = CameraMaxCell - edgeMargin;
 
 		int x = BiasedCenterRange(rng, minX, maxX);
 		int y = BiasedCenterRange(rng, minY, maxY);
@@ -464,13 +465,18 @@ public partial class Map : Node2D
 	{
 		var houses = new List<Vector2I>();
 		var centers = new List<Vector2I>();
-		int targetVillages = 12;
+		int targetVillages = 4; // limited to fit within camera-reachable map area
 		int attempts = 0;
 
-		while (centers.Count < targetVillages && attempts < 600)
+		while (centers.Count < targetVillages && attempts < 800)
 		{
 			attempts++;
-			var center = new Vector2I(rng.RandiRange(20, Width - 21), rng.RandiRange(20, Height - 21));
+			// Village extent (bounds + house/path margins + town-tree ring) must stay within camera bounds.
+			const int centerMarginX = 16;
+			const int centerMarginY = 16;
+			var center = new Vector2I(
+				rng.RandiRange(CameraMinCell + centerMarginX, CameraMaxCell - centerMarginX),
+				rng.RandiRange(CameraMinCell + centerMarginY, CameraMaxCell - centerMarginY));
 			if (!IsVillageCenterValid(center, centers))
 				continue;
 
@@ -484,24 +490,38 @@ public partial class Map : Node2D
 
 	private bool IsVillageCenterValid(Vector2I center, List<Vector2I> centers)
 	{
-		if (center.X < 20 || center.Y < 20 || center.X >= Width - 20 || center.Y >= Height - 20)
+		Rect2I cameraArea = new(CameraMinCell, CameraMinCell, CameraMaxCell - CameraMinCell + 1, CameraMaxCell - CameraMinCell + 1);
+		Rect2I fullExtent = GetVillageFullExtent(center);
+		if (!cameraArea.Encloses(fullExtent))
 			return false;
 		if (center.DistanceTo(_monumentCell) < 34)
 			return false;
 
 		foreach (Vector2I other in centers)
 		{
-			if (center.DistanceTo(other) < 32)
+			if (center.DistanceTo(other) < 34)
 				return false;
 		}
 
 		return true;
 	}
 
+	private static Rect2I GetVillageBoundsForCenter(Vector2I center)
+	{
+		return new Rect2I(center.X - 12, center.Y - 11, 25, 23);
+	}
+
+	private static Rect2I GetVillageFullExtent(Vector2I center)
+	{
+		// Includes village bounds, carved paths around houses/center, and town-tree ring.
+		Rect2I bounds = GetVillageBoundsForCenter(center);
+		return new Rect2I(bounds.Position.X - 3, bounds.Position.Y - 3, bounds.Size.X + 6, bounds.Size.Y + 6);
+	}
+
 	private VillageArea GenerateVillage(Vector2I center, RandomNumberGenerator rng, List<Vector2I> houses, int villageIndex)
 	{
-		Rect2I bounds = new(center.X - 12, center.Y - 11, 25, 23);
-		bounds = bounds.Intersection(new Rect2I(2, 2, Width - 4, Height - 4));
+		Rect2I bounds = GetVillageBoundsForCenter(center);
+		bounds = bounds.Intersection(new Rect2I(CameraMinCell, CameraMinCell, CameraMaxCell - CameraMinCell + 1, CameraMaxCell - CameraMinCell + 1));
 		CarveRect(center.X - 2, center.Y - 1, 5, 3, true, true);
 
 		var slots = new List<Vector2I>
@@ -641,9 +661,9 @@ public partial class Map : Node2D
 
 	private void CarveMonumentApproachPaths(Vector2I cell)
 	{
-		// Cardinal approach paths to make the monument easier to find.
-		CarvePathLine(cell.X, 1, cell.X, Height - 2);
-		CarvePathLine(1, cell.Y, Width - 2, cell.Y);
+		// Cardinal approach paths to make the monument easier to find (kept within camera area).
+		CarvePathLine(cell.X, CameraMinCell, cell.X, CameraMaxCell);
+		CarvePathLine(CameraMinCell, cell.Y, CameraMaxCell, cell.Y);
 		// Widen crossing around monument slightly
 		CarveRect(cell.X - 1, cell.Y - 2, 3, 5, true, true);
 		CarveRect(cell.X - 2, cell.Y - 1, 5, 3, true, true);

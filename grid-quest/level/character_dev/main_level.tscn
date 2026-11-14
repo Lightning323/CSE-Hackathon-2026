@@ -13,6 +13,8 @@
 [ext_resource type="PackedScene" path="res://menus/cheat_menu.tscn" id="17_cheat_menu"]
 [ext_resource type="Script" path="res://level/EnemySpawnOnKill.cs" id="18_enemy_spawn"]
 [ext_resource type="Script" path="res://level/DayNightCycle.cs" id="19_daynight"]
+[ext_resource type="Script" path="res://level/SurvivalStats.cs" id="20_survival_stats"]
+[ext_resource type="Script" path="res://menus/SurvivalTimerUi.cs" id="21_survival_timer"]
 
 [node name="Level" type="Node2D" unique_id=426259724]
 y_sort_enabled = true
@@ -36,6 +38,9 @@ script = ExtResource("16_knight_mgr")
 [node name="EnemySpawnOnKill" type="Node" parent="."]
 script = ExtResource("18_enemy_spawn")
 
+[node name="SurvivalStats" type="Node" parent="."]
+script = ExtResource("20_survival_stats")
+
 [node name="Map" parent="." unique_id=1437051292 instance=ExtResource("9_m5bjr")]
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1127083425]
@@ -48,6 +53,9 @@ script = ExtResource("18_enemy_spawn")
 
 [node name="MonumentIndicator" type="TextureRect" parent="CanvasLayer"]
 script = ExtResource("14_monument_indicator")
+
+[node name="SurvivalTimer" type="Label" parent="CanvasLayer"]
+script = ExtResource("21_survival_timer")
 
 [node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=394873551]
 script = ExtResource("19_daynight")

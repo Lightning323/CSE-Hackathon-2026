@@ -65,6 +65,8 @@ public partial class Villager : CharacterBody2D
 	private string _currentDialogueText = "";
 	private Node2D _lastThreat;
 	private float _lastThreatDistance = float.MaxValue;
+	private bool _fleeDialogueLocked;
+	private string _fleeDialogueText = "";
 
 	private enum State
 	{
@@ -254,6 +256,12 @@ public partial class Villager : CharacterBody2D
 		{
 			_lastThreat = threat;
 			_lastThreatDistance = GlobalPosition.DistanceTo(threat.GlobalPosition);
+			if (!_wasRecentlyChased && !_fleeDialogueLocked)
+			{
+				// Start a new flee episode with one dialogue line for the whole flee.
+				_fleeDialogueLocked = true;
+				_fleeDialogueText = PickDialogueLine(DialogueEmotion.Chased);
+			}
 			_wasRecentlyChased = true;
 			_recoveryTimer = 0.0f;
 			SetDialogueEmotionState(DialogueEmotion.Chased, forceText: _dialogueEmotion != DialogueEmotion.Chased);
@@ -276,11 +284,15 @@ public partial class Villager : CharacterBody2D
 			{
 				_wasRecentlyChased = false;
 				_recoveryTimer = 0.0f;
+				_fleeDialogueLocked = false;
+				_fleeDialogueText = "";
 				SetDialogueEmotionState(DialogueEmotion.Idle, forceText: _dialogueEmotion != DialogueEmotion.Idle);
 			}
 		}
 		else
 		{
+			_fleeDialogueLocked = false;
+			_fleeDialogueText = "";
 			SetDialogueEmotionState(DialogueEmotion.Idle, forceText: false);
 		}
 
@@ -473,16 +485,35 @@ public partial class Villager : CharacterBody2D
 		bool changed = _dialogueEmotion != emotion;
 		_dialogueEmotion = emotion;
 
-		if (changed || forceText || string.IsNullOrEmpty(_currentDialogueText))
-		{
-			SetDialogueForEmotion(emotion, show: emotion == DialogueEmotion.Chased || changed);
-		}
-
-		// Keep chased dialogue visible while fleeing.
 		if (emotion == DialogueEmotion.Chased)
 		{
-			_dialogueVisibleTimer = Mathf.Max(_dialogueVisibleTimer, 0.25f);
+			// Keep one chased line for the entire flee episode.
+			string desired = _fleeDialogueLocked && !string.IsNullOrEmpty(_fleeDialogueText)
+				? _fleeDialogueText
+				: _currentDialogueText;
+			if (string.IsNullOrEmpty(desired))
+			{
+				desired = PickDialogueLine(DialogueEmotion.Chased);
+				_fleeDialogueLocked = true;
+				_fleeDialogueText = desired;
+			}
+
+			if (changed || _currentDialogueText != desired)
+			{
+				_currentDialogueText = desired;
+				if (_dialogueLabel != null)
+					_dialogueLabel.Text = _currentDialogueText;
+				UpdateBubbleLayout();
+			}
+
+			_dialogueVisibleTimer = 9999.0f;
 			SetBubbleVisible(true);
+			return;
+		}
+
+		if (changed || forceText || string.IsNullOrEmpty(_currentDialogueText))
+		{
+			SetDialogueForEmotion(emotion, show: changed);
 		}
 	}
 
@@ -497,7 +528,8 @@ public partial class Villager : CharacterBody2D
 
 		if (show)
 		{
-			ShowDialogueForCurrentState(forceRefresh: false, autoHide: emotion != DialogueEmotion.Chased);
+			SetBubbleVisible(true);
+			_dialogueVisibleTimer = emotion == DialogueEmotion.Chased ? 9999.0f : DialogueDisplayDuration;
 		}
 	}
 
