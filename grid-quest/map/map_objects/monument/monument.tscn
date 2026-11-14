@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://x7h1txal7j04"]
+
+[ext_resource type="Script" uid="uid://dnmas8kb202yb" path="res://map/map_objects/monument/Monument.cs" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://c6kskesgpwt1i" path="res://assets/images/map_tiles/forest_rock-monument.png" id="2_tex"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_mon"]
+size = Vector2(72, 40.5)
+
+[node name="Monument" type="Node2D" unique_id=105607688]
+y_sort_enabled = true
+script = ExtResource("1_script")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=736854853]
+texture_filter = 1
+texture = ExtResource("2_tex")
+offset = Vector2(0, -16)
+
+[node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=884442367]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D" unique_id=1017435279]
+position = Vector2(0, -2.25)
+shape = SubResource("RectangleShape2D_mon")

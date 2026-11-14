@@ -66,18 +66,31 @@ temporary debug invulnerability (remove when no longer needed).
 
 ## Map and Tiles
 
-- `map/map_grid.cs` (attached to `map/map_grid.tscn`, instanced in `level/main_level.tscn`) owns a logical 2D grid (`Width`×`Height`, `CellSize` default 16px) and an occupancy map of `MapObject`s. `main_level.tscn` configures a 200×200 map.
-- **Floor:** `map/GrassFloor.cs` builds the floor layer from `assets/images/map_tiles/grass/grass.png` (48×48), tiled across the map.
-- **Map objects:** `map/map_objects/MapObjectFactory.cs` is the base for walls/trees/bushes/fences/etc. `TreeFactory` (`map/map_objects/tree/`, scene-backed `town_tree_2.tscn`), `PlantFactory` (`map/map_objects/plant/`, variants 1–3), and `WallFactory` (`map/map_objects/walls/`, scene-backed `stone_wall.tscn`) extend it and can be placed as children of the Y-sorted `MapGrid`. Trees/walls block movement (with collision at the base); plants do not. Sprites are offset so their base aligns to the cell for correct Y-sorting.
-- Grid helpers include `CellToWorldCenter`, `CellToWorldBase`, `WorldToCell`, `IsInBounds`, `GetOccupant`, and `TryPlaceOccupant`.
+- `map/Map.cs` (attached to `map/map.tscn`) procedurally generates the 200×200 map at runtime (`MapConstants.CELL_SIZE` = 16px) and composes it into a `Floor` layer and an `Objects` layer (`Walls`, `Plants`, `Decor`, `Houses`, `Trees`).
+- **Ground:** the base terrain is grass everywhere (`assets/images/map_tiles/floor/grass.png`). Procedural villages and monument approach routes carve stone path tiles (`assets/images/map_tiles/floor/stone.png`).
+- **Villages:** generation places several spaced village clumps and exposes their bounds/centers as `Map.Villages` (`VillageArea`). Each village includes a small path network, 3–4 houses, reserved/clear areas, and local decorations (plants and town-bush props). Houses are scene-backed map objects (`map/map_objects/house/house.tscn`, `HouseFactory.cs`) using `assets/images/map_tiles/cute_House_1_Wood_Base_Blue.png` with collision at the base.
+- **Monument:** the stone monument (`map/map_objects/monument/`) spawns at a random location within the camera-reachable map bounds, biased toward the center and kept away from edges, with reserved clearance from villages/objects and cardinal (N/S/E/W) path lines carved for discoverability. `Map` exposes `MonumentWorldPosition`.
+- **Forest/wilderness decorations:** outside village/reserved areas the generator scatters natural props including colliding, y-sorted forest trees (orange/pink/dried variants), rocks, and trunks, plus non-blocking forest bushes and ground plants for denser, more natural terrain. Blocking decor/trees use base-aligned sprites and collision shapes for correct depth and movement.
+- **Map objects/layering:** `map/map_objects/MapObjectFactory.cs` is the base for walls/trees/bushes/houses/props. `TreeFactory`, `WallFactory`, and `HouseFactory` are scene-backed factories; `PlantFactory` creates lightweight non-blocking plant nodes; `map/map_objects/props/PropFactory.cs` creates configurable decorative props (sprite offset, optional collision, y-sort). Border walls are placed in a non-y-sorted `Walls` layer behind y-sorted actors/objects so players, plants, and other objects render over the walls.
+- **Map helpers/data:** `Map` provides `CellToWorldCenter`, `CellToWorldBase`, village metadata (`Villages`, `GetRandomPointInVillage`), monument position, and size helpers for other systems.
+- `FloorTiles` / `FloorTileFactory` (`map/map_floors/`) build floor sprites.
 - See [map-architecture.md](./map-architecture.md) for tile-versus-node decisions.
+
+## Villagers
+
+- `npc/villager/Villager.cs` builds villager animations at runtime and runs simple idle/patrol/flee AI. Villagers target-threat flee from enemies, can take damage, and prefer to stay within/near their assigned home village (`SetHome`) by wandering locally and returning when displaced.
+- `npc/villager/VillagePopulationManager.cs` spawns a configurable number of villagers per generated village at startup and respawns villagers slowly after death when the village area is not visible to the active camera. Manual spawn inputs (`level/character_dev/VillagerSpawnInput.cs`) can also place/assign villagers to generated villages.
+- **Interaction & dialogue bubbles:** villagers display a dynamically sized speech bubble above their head (`npc/villager/villager.tscn`) with placeholder dialogue for `Idle`, `Chased`, and `Recovered` (done being chased/catching breath) states. Bubbles auto-show/update on state changes (including while chased and briefly after fleeing ends) and the player can interact with the nearest nearby villager using `F` to refresh/show context-appropriate dialogue.
+- **AI-ready context:** `Villager` exposes dialogue/emotional state and runtime context for future external dialogue generation via `CurrentDialogueEmotion`, `CurrentDialogueText`, and `GetDialogueContext()` (state/emotion, fleeing/recovery/threat/home/player proximity, health, current dialogue, and placeholder options per state).
+
+## Monument Discovery
+
+- `map/map_objects/monument/Monument.cs` tracks discovery when the player comes within discovery range (or interacts). `menus/MonumentIndicator.cs` (added to level UI layers) displays a `meta_pickaxe.png` directional arrow that always points toward the monument from the screen center (texture top treated as the pointing direction).
 
 ## Enemies
 
 `Enemy.cs` builds `SpriteFrames` at runtime from a configurable 32×32 sprite sheet. It exposes
-movement, health, combat, texture, and animation settings. Enemies target the closest player or
-allied knight, move toward it, and attack with a timed windup that applies damage at the end of the
-attack animation if the target is still in range.
+movement, health, combat, texture, and animation settings. Enemies target the closest player, allied knight, or villager, move toward them, and attack with a timed windup that applies damage at the end of the attack animation if the target is still in range.
 
 | Scene | Variant | Speed | Health | Attack | Appearance/notes |
 | --- | --- | --- | --- | --- | --- |
@@ -85,10 +98,7 @@ attack animation if the target is still in range.
 | `skeleton_enemy.tscn` | Medium | 50 | 3 | 1 dmg, 24 range, 0.8s cooldown | Standard skeleton |
 | `elite_skeleton_enemy.tscn` | Hard | 70 | 6 | 2 dmg, 26 range, 0.7s cooldown | Larger red-tinted skeleton |
 
-The temporary slime enemy variant was removed because of broken sprite-sheet animation mapping.
-`map.tscn` includes a temporary `EnemyTestSpawner`: press `1` for a skeleton or `2` for an elite
-skeleton to spawn additional test enemies at its position. Remove the spawner when no longer
-needed.
+`level/EnemySpawnOnKill.cs` performs occasional off-camera monster spawns (with a population cap and refill when empty), favoring normal skeletons over elite skeletons. `level/character_dev/EnemyTestSpawner.cs` remains a temporary manual test spawner (keys `1`/`2`). Remove temporary spawners when no longer needed.
 
 ## Allied Knight NPC
 

@@ -3,10 +3,12 @@
 [ext_resource type="Script" uid="uid://jwokb8fyf0v1" path="res://level/map_dev/MainLevel.cs" id="1_wpjvl"]
 [ext_resource type="PackedScene" uid="uid://dasd1exc7g0m2" path="res://player/player.tscn" id="2_player"]
 [ext_resource type="Script" uid="uid://bj4xtuiotm4im" path="res://level/KnightSpawnInput.cs" id="7_knight_spawn"]
-[ext_resource type="Script" path="res://level/VillagerSpawnInput.cs" id="8_villager_spawn"]
+[ext_resource type="Script" path="res://level/character_dev/VillagerSpawnInput.cs" id="8_villager_spawn"]
 [ext_resource type="Script" path="res://level/EnemySpawnOnKill.cs" id="9_enemyspawn"]
 [ext_resource type="PackedScene" uid="uid://dodf7orbhnbtu" path="res://map/map.tscn" id="10_wpjvl"]
 [ext_resource type="PackedScene" path="res://menus/inventory_ui.tscn" id="11_inv"]
+[ext_resource type="Script" path="res://npc/villager/VillagePopulationManager.cs" id="12_village_mgr"]
+[ext_resource type="Script" path="res://menus/MonumentIndicator.cs" id="13_monument_indicator"]
 
 [node name="Level" type="Node2D" unique_id=426259724]
 y_sort_enabled = true
@@ -24,8 +26,14 @@ script = ExtResource("8_villager_spawn")
 [node name="EnemySpawnOnKill" type="Node" parent="."]
 script = ExtResource("9_enemyspawn")
 
+[node name="VillagePopulationManager" type="Node" parent="."]
+script = ExtResource("12_village_mgr")
+
 [node name="Map" parent="." unique_id=1437051292 instance=ExtResource("10_wpjvl")]
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
 [node name="InventoryUi" parent="CanvasLayer" instance=ExtResource("11_inv")]
+
+[node name="MonumentIndicator" type="TextureRect" parent="CanvasLayer"]
+script = ExtResource("13_monument_indicator")

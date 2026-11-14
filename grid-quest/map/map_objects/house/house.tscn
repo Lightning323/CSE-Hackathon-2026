@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://cmmkl5yqb65r"]
+
+[ext_resource type="Script" uid="uid://bqt2pij862hvk" path="res://map/map_objects/house/HouseFactory.cs" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://cg7a0e43q0hau" path="res://assets/images/map_tiles/cute_House_1_Wood_Base_Blue.png" id="2_tex"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_house"]
+size = Vector2(68, 45)
+
+[node name="House" type="Node2D" unique_id=339340862]
+y_sort_enabled = true
+script = ExtResource("1_script")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1141921850]
+texture_filter = 1
+texture = ExtResource("2_tex")
+offset = Vector2(0, -56)
+
+[node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=591338055]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D" unique_id=1549790530]
+position = Vector2(1, -27.5)
+shape = SubResource("RectangleShape2D_house")

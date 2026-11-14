@@ -7,6 +7,10 @@
 [ext_resource type="PackedScene" path="res://enemy/elite_skeleton_enemy.tscn" id="5_7ii3e"]
 [ext_resource type="PackedScene" uid="uid://dodf7orbhnbtu" path="res://map/map.tscn" id="9_m5bjr"]
 [ext_resource type="PackedScene" path="res://menus/inventory_ui.tscn" id="10_inv"]
+[ext_resource type="PackedScene" path="res://menus/skills_ui.tscn" id="11_skills"]
+[ext_resource type="Script" path="res://level/character_dev/VillagerSpawnInput.cs" id="12_villager_spawn"]
+[ext_resource type="Script" path="res://npc/villager/VillagePopulationManager.cs" id="13_village_mgr"]
+[ext_resource type="Script" path="res://menus/MonumentIndicator.cs" id="14_monument_indicator"]
 
 [node name="Level" type="Node2D" unique_id=426259724]
 y_sort_enabled = true
@@ -36,9 +40,18 @@ position = Vector2(576, 420)
 [node name="KnightSpawnInput" type="Node" parent="." unique_id=327385053]
 
 [node name="VillagerSpawnInput" type="Node" parent="." unique_id=1122821778]
+script = ExtResource("12_villager_spawn")
+
+[node name="VillagePopulationManager" type="Node" parent="."]
+script = ExtResource("13_village_mgr")
 
 [node name="Map" parent="." unique_id=1437051292 instance=ExtResource("9_m5bjr")]
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
 [node name="InventoryUi" parent="CanvasLayer" instance=ExtResource("10_inv")]
+
+[node name="SkillsUi" parent="CanvasLayer" instance=ExtResource("11_skills")]
+
+[node name="MonumentIndicator" type="TextureRect" parent="CanvasLayer"]
+script = ExtResource("14_monument_indicator")

@@ -12,7 +12,7 @@ public partial class VillagerSpawnInput : Node
 		if (!pressed) return;
 
 		Node instance = VillagerScene.Instantiate();
-		if (instance is not Node2D villager)
+		if (instance is not Villager villager)
 		{
 			instance.QueueFree();
 			return;
@@ -20,27 +20,14 @@ public partial class VillagerSpawnInput : Node
 
 		Node2D parent = GetTree().CurrentScene as Node2D ?? GetParent<Node2D>();
 		Node2D player = GetTree().GetFirstNodeInGroup("player") as Node2D;
+		Map map = parent.GetNodeOrNull<Map>("Map");
 		Vector2 spawnPos = player?.GlobalPosition ?? Vector2.Zero;
+		int villageIndex = -1;
 
-		Node grid = parent.GetNodeOrNull("MapGrid");
-		if (grid != null && grid.HasMethod("CellToWorldCenter"))
+		if (map != null && map.Villages.Count > 0)
 		{
-			int width = grid.Get("Width").AsInt32();
-			int height = grid.Get("Height").AsInt32();
-			if (width > 0 && height > 0)
-			{
-				for (int i = 0; i < 12; i++)
-				{
-					int x = GD.RandRange(0, width - 1);
-					int y = GD.RandRange(0, height - 1);
-					Vector2 candidate = (Vector2)grid.Call("CellToWorldCenter", x, y);
-					if (player == null || candidate.DistanceTo(player.GlobalPosition) >= 32.0f)
-					{
-						spawnPos = candidate;
-						break;
-					}
-				}
-			}
+			villageIndex = (int)(GD.Randi() % (uint)map.Villages.Count);
+			spawnPos = map.GetRandomPointInVillage(villageIndex);
 		}
 		else if (player != null)
 		{
@@ -50,6 +37,12 @@ public partial class VillagerSpawnInput : Node
 		}
 
 		villager.GlobalPosition = spawnPos;
+		if (map != null && villageIndex >= 0 && villageIndex < map.Villages.Count)
+		{
+			Map.VillageArea village = map.Villages[villageIndex];
+			villager.SetHome(village.Bounds, village.Center, villageIndex);
+		}
+
 		parent.AddChild(villager);
 		GetViewport().SetInputAsHandled();
 	}
