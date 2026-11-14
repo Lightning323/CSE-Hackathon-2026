@@ -56,6 +56,18 @@ animations = [{
 [sub_resource type="CircleShape2D" id="CircleShape2D_tkfdd"]
 radius = 6.0
 
+[sub_resource type="Gradient" id="Gradient_g6k8r"]
+offsets = PackedFloat32Array(0, 0.77205884)
+colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_qjkh3"]
+gradient = SubResource("Gradient_g6k8r")
+width = 300
+height = 300
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 1)
+
 [node name="Player" type="CharacterBody2D" unique_id=2036068050]
 script = ExtResource("1_oul6g")
 
@@ -86,5 +98,6 @@ limit_bottom = 1600
 position_smoothing_enabled = true
 position_smoothing_speed = 8.0
 
-[node name="PointLight2D" type="PointLight2D" parent="." unique_id=1355431204]
+[node name="PointLight2D" type="PointLight2D" parent="." unique_id=703777635]
 shadow_enabled = true
+texture = SubResource("GradientTexture2D_qjkh3")

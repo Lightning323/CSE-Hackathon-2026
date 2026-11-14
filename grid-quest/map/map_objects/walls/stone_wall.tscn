@@ -24,5 +24,6 @@ texture = ExtResource("2_d85uq")
 shape = SubResource("RectangleShape2D_tkfdd")
 
 [node name="LightOccluder2D" type="LightOccluder2D" parent="." unique_id=1233978164]
+show_behind_parent = true
 position = Vector2(-8, -8)
 occluder = SubResource("OccluderPolygon2D_tkfdd")
