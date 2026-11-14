@@ -18,16 +18,4 @@ public partial class TreeFactory : MapObjectFactory
 	{
 		return Instantiate(new Vector2(x * MapConstants.CELL_SIZE + MapConstants.CELL_SIZE / 2.0f, y * MapConstants.CELL_SIZE + MapConstants.CELL_SIZE));
 	}
-
-	public override void _Ready()
-	{
-		BlocksMovement = true;
-		YSortEnabled = true;
-
-		var sprite = GetNodeOrNull<Sprite2D>("Sprite2D");
-		if (sprite?.Texture != null)
-		{
-			sprite.Offset = new Vector2(0, -sprite.Texture.GetHeight() / 2.0f);
-		}
-	}
 }

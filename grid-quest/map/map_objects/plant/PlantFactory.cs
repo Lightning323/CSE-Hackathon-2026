@@ -9,7 +9,7 @@ public partial class PlantFactory : MapObjectFactory
 	public const string Plant2TexturePath = "res://assets/images/map_tiles/plants/town_plant-2.png";
 	public const string Plant3TexturePath = "res://assets/images/map_tiles/plants/town_plant-3.png";
 
-	private static PlantFactory Create(int x, int y, string texturePath, string name)
+	private static PlantFactory _Create(int x, int y, string texturePath, string name)
 	{
 		Texture2D texture = GD.Load<Texture2D>(texturePath);
 		var plant = new PlantFactory
@@ -33,13 +33,13 @@ public partial class PlantFactory : MapObjectFactory
 		return plant;
 	}
 
-	public static PlantFactory CreateVariant(int x, int y, int variant)
+	public static PlantFactory Create(int x, int y, int variant)
 	{
 		return variant switch
 		{
-			1 => Create(x, y, Plant1TexturePath, "TownPlant1"),
-			2 => Create(x, y, Plant2TexturePath, "TownPlant2"),
-			_ => Create(x, y, Plant3TexturePath, "TownPlant3"),
+			1 => _Create(x, y, Plant1TexturePath, "TownPlant1"),
+			2 => _Create(x, y, Plant2TexturePath, "TownPlant2"),
+			_ => _Create(x, y, Plant3TexturePath, "TownPlant3"),
 		};
 	}
 }

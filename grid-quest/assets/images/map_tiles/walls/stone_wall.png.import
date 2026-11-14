@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cyle7lbkxcpxf"
-path="res://.godot/imported/forest_coin-3.png-f72517c523e3826615186b75856079a0.ctex"
+uid="uid://bmh4c87crqj2n"
+path="res://.godot/imported/stone_wall.png-f835ae9cb5102d726c5686f89753b74e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/items/forest_coin-3.png"
-dest_files=["res://.godot/imported/forest_coin-3.png-f72517c523e3826615186b75856079a0.ctex"]
+source_file="res://assets/images/map_tiles/walls/stone_wall.png"
+dest_files=["res://.godot/imported/stone_wall.png-f835ae9cb5102d726c5686f89753b74e.ctex"]
 
 [params]
 

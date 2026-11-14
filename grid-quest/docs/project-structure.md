@@ -68,7 +68,7 @@ temporary debug invulnerability (remove when no longer needed).
 
 - `map/map_grid.cs` (attached to `map/map_grid.tscn`, instanced in `level/main_level.tscn`) owns a logical 2D grid (`Width`×`Height`, `CellSize` default 16px) and an occupancy map of `MapObject`s. `main_level.tscn` configures a 200×200 map.
 - **Floor:** `map/GrassFloor.cs` builds the floor layer from `assets/images/map_tiles/grass/grass.png` (48×48), tiled across the map.
-- **Map objects:** `map/map_objects/MapObject.cs` is the base for walls/trees/bushes/fences/etc. `TownTree2` and `TownPlant` (variants 1–3) extend it and are placed as children of the Y-sorted `MapGrid` (trees occupy their base cell; plants placed on empty cells by chance). Tree uses a `StaticBody2D` collision at its base; sprites are offset so their base aligns to the cell and Y-sorting places entities in front/behind correctly.
+- **Map objects:** `map/map_objects/MapObjectFactory.cs` is the base for walls/trees/bushes/fences/etc. `TreeFactory` (`map/map_objects/tree/`, scene-backed `town_tree_2.tscn`), `PlantFactory` (`map/map_objects/plant/`, variants 1–3), and `WallFactory` (`map/map_objects/walls/`, scene-backed `stone_wall.tscn`) extend it and can be placed as children of the Y-sorted `MapGrid`. Trees/walls block movement (with collision at the base); plants do not. Sprites are offset so their base aligns to the cell for correct Y-sorting.
 - Grid helpers include `CellToWorldCenter`, `CellToWorldBase`, `WorldToCell`, `IsInBounds`, `GetOccupant`, and `TryPlaceOccupant`.
 - See [map-architecture.md](./map-architecture.md) for tile-versus-node decisions.
 

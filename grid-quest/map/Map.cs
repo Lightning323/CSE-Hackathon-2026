@@ -46,6 +46,8 @@ public partial class Map : Node2D
 		return floorLayer;
 	}
 
+	
+
 	private static Node2D ObjectLayer(int width, int height)
 	{
 		Node2D objectsRoot = new() { Name = "Objects", YSortEnabled = true };
@@ -55,15 +57,24 @@ public partial class Map : Node2D
 
 		for (int y = 0; y < height; y++)
 		{
+			
+
 			for (int x = 0; x < width; x++)
 			{
+				if(x == 0 || y == 0 || x == width - 1 || y == height - 1)
+				{
+					objectsRoot.AddChild(WallFactory.Create(x, y));
+				}
+			
+				
+
 				if (MiscUtils.isCheckerboard(x, y) && rng.RandiRange(0, 100) < 1)
 				{
 					treesLayer.AddChild(TreeFactory.Create(x, y));
 				}
 				if (!MiscUtils.isCheckerboard(x, y) && rng.RandiRange(0, 10) < 3)
 				{
-					plantsLayer.AddChild(PlantFactory.CreateVariant(x, y, rng.RandiRange(1, 3)));
+					plantsLayer.AddChild(PlantFactory.Create(x, y, rng.RandiRange(1, 3)));
 				}
 			}
 		}

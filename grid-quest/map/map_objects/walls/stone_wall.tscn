@@ -1,0 +1,21 @@
+[gd_scene format=3 uid="uid://cnoeiig4tyexv"]
+
+[ext_resource type="Script" path="res://map/map_objects/walls/WallFactory.cs" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://bmh4c87crqj2n" path="res://assets/images/map_tiles/walls/stone_wall.png" id="2_d85uq"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_tkfdd"]
+size = Vector2(16, 17)
+
+[node name="StoneWall" type="Node2D" unique_id=632157261]
+y_sort_enabled = true
+script = ExtResource("1_script")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=543765388]
+texture_filter = 1
+position = Vector2(0, 2)
+texture = ExtResource("2_d85uq")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=1853068121]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D" unique_id=1034241893]
+shape = SubResource("RectangleShape2D_tkfdd")
