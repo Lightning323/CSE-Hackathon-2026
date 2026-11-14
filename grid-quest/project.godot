@@ -11,9 +11,14 @@ config_version=5
 [application]
 
 config/name="Grid Quest"
-run/main_scene="uid://ddxtte0xls8ph"
+run/main_scene="res://menus/mainMenu/MainMenu.tscn"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 config/icon="res://icon.svg"
+
+[autoload]
+
+GameSession="*res://menus/mainMenu/GameSession.cs"
+LlmApi="*res://menus/mainMenu/LlmApi.cs"
 
 [dotnet]
 

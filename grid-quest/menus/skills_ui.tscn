@@ -1,8 +1,11 @@
-[gd_scene format=3 uid="uid://skills_ui_001"]
+[gd_scene format=3 uid="uid://skills_ui_001" load_steps=2]
 
 [ext_resource type="Script" path="res://menus/SkillsUi.cs" id="1_script"]
 
+[ext_resource type="Theme" path="res://assets/main_theme.tres" id="1_main_theme"]
+
 [node name="SkillsUi" type="Control"]
+theme = ExtResource("1_main_theme")
 process_mode = 3
 layout_mode = 3
 anchors_preset = 15
