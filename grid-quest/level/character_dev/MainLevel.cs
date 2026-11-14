@@ -7,6 +7,7 @@ public partial class MainLevel : Node2D
 	public override void _Ready()
 	{
 		GD.Print("_Ready");
+		 YSortEnabled = true;
 	}
 
 	// Called every frame. 'delta' is the elapsed time since the previous frame.

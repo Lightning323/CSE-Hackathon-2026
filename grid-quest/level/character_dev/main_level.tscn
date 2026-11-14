@@ -1,0 +1,38 @@
+[gd_scene format=3 uid="uid://ddxtte0xls8ph"]
+
+[ext_resource type="Script" uid="uid://c7dqdoq22nup6" path="res://level/character_dev/MainLevel.cs" id="1_fcrcf"]
+[ext_resource type="PackedScene" uid="uid://dasd1exc7g0m2" path="res://player/player.tscn" id="2_0hvbd"]
+[ext_resource type="PackedScene" path="res://enemy/enemy.tscn" id="3_57x3f"]
+[ext_resource type="PackedScene" path="res://enemy/skeleton_enemy.tscn" id="4_01uyu"]
+[ext_resource type="PackedScene" path="res://enemy/elite_skeleton_enemy.tscn" id="5_7ii3e"]
+[ext_resource type="PackedScene" uid="uid://dodf7orbhnbtu" path="res://map/map.tscn" id="9_m5bjr"]
+
+[node name="Level" type="Node2D" unique_id=426259724]
+script = ExtResource("1_fcrcf")
+
+[node name="Player" parent="." unique_id=1496126262 groups=["player"] instance=ExtResource("2_0hvbd")]
+position = Vector2(160, 160)
+
+[node name="Enemy" parent="." unique_id=630926247 instance=ExtResource("3_57x3f")]
+position = Vector2(120, 120)
+
+[node name="SkeletonEnemy" parent="." unique_id=805776756 instance=ExtResource("4_01uyu")]
+position = Vector2(300, 220)
+
+[node name="EliteSkeletonEnemy" parent="." unique_id=1767535368 instance=ExtResource("5_7ii3e")]
+position = Vector2(840, 220)
+AttackDamage = 1
+AttackRange = 24.0
+AttackCooldown = 0.8
+IdleFps = 6.0
+WalkFps = 10.0
+AttackFps = 10.0
+
+[node name="EnemyTestSpawner" type="Node2D" parent="." unique_id=1614745774]
+position = Vector2(576, 420)
+
+[node name="KnightSpawnInput" type="Node" parent="." unique_id=327385053]
+
+[node name="VillagerSpawnInput" type="Node" parent="." unique_id=1122821778]
+
+[node name="Map" parent="." unique_id=1437051292 instance=ExtResource("9_m5bjr")]

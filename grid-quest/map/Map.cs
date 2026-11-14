@@ -9,6 +9,7 @@ public partial class Map : Node2D
 	public const int Width = 200;
 	public const int Height = 200;
 
+
 	public override void _Ready()
 	{
 		YSortEnabled = true;
@@ -57,17 +58,11 @@ public partial class Map : Node2D
 		{
 			for (int x = 0; x < width; x++)
 			{
-				if (x == cx && y == cy)
-				{
-					itemsLayer.AddChild(TreeFactory.Create(x, y));
-					continue;
-				}
-
 				if (MiscUtils.isCheckerboard(x, y) && rng.RandiRange(0, 100) < 1)
 				{
 					itemsLayer.AddChild(TreeFactory.Create(x, y));
 				}
-				else if (!MiscUtils.isCheckerboard(x, y) && rng.RandiRange(0, 10) < 3)
+				 if (!MiscUtils.isCheckerboard(x, y) && rng.RandiRange(0, 10) < 3)
 				{
 					itemsLayer.AddChild(PlantFactory.CreateVariant(x, y, rng.RandiRange(1, 3)));
 				}
