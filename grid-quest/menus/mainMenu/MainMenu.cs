@@ -7,6 +7,7 @@ public partial class MainMenu : Control
 {
 	private const string LevelScenePath = "res://level/character_dev/main_level.tscn";
 	private const string SettingsScenePath = "res://menus/mainMenu/SettingsMenu.tscn";
+	private const string GenerationScenePath = "res://menus/mainMenu/GameGenerationScene.tscn";
 
 	private ItemList _saveList;
 	private Button _playButton;
@@ -18,6 +19,7 @@ public partial class MainMenu : Control
 	private Label _descriptionLabel;
 	private Label _pathLabel;
 	private Label _appDataLabel;
+	private Label _statusLabel;
 	private ConfirmationDialog _createDialog;
 	private LineEdit _newTitleEdit;
 	private TextEdit _newDescriptionEdit;
@@ -36,6 +38,7 @@ public partial class MainMenu : Control
 		_descriptionLabel = GetNode<Label>("%DescriptionLabel");
 		_pathLabel = GetNode<Label>("%PathLabel");
 		_appDataLabel = GetNode<Label>("%AppDataLabel");
+		_statusLabel = GetNode<Label>("%StatusLabel");
 		_createDialog = GetNode<ConfirmationDialog>("%CreateDialog");
 		_newTitleEdit = GetNode<LineEdit>("%NewTitleEdit");
 		_newDescriptionEdit = GetNode<TextEdit>("%NewDescriptionEdit");
@@ -50,7 +53,19 @@ public partial class MainMenu : Control
 		_createDialog.Confirmed += OnCreateSaveConfirmed;
 
 		_appDataLabel.Text = $"App data: {OS.GetUserDataDir()}";
+
+		var session = GameSession.Instance ?? GetNodeOrNull<GameSession>("/root/GameSession");
 		RefreshSaves();
+		if (session != null && !string.IsNullOrWhiteSpace(session.LastCreatedSaveId))
+		{
+			SelectSaveById(session.LastCreatedSaveId);
+			_statusLabel.Text = "New save created with story.json (not started).";
+			session.LastCreatedSaveId = null;
+		}
+		else
+		{
+			_statusLabel.Text = "";
+		}
 	}
 
 	private void RefreshSaves()
@@ -131,9 +146,18 @@ public partial class MainMenu : Control
 
 	private void OnCreateSaveConfirmed()
 	{
-		var info = SaveManager.CreateSave(_newTitleEdit.Text, _newDescriptionEdit.Text);
-		RefreshSaves();
-		SelectSaveById(info.Id);
+		var session = GameSession.Instance ?? GetNodeOrNull<GameSession>("/root/GameSession");
+		if (session == null)
+		{
+			GD.PushError("GameSession autoload not found; cannot start game generation.");
+			return;
+		}
+
+		session.PendingNewSaveTitle = _newTitleEdit.Text;
+		session.PendingNewSaveDescription = _newDescriptionEdit.Text;
+		var err = GetTree().ChangeSceneToFile(GenerationScenePath);
+		if (err != Error.Ok)
+			GD.PushError($"Failed to open generation scene '{GenerationScenePath}': {err}");
 	}
 
 	private void SelectSaveById(string id)
@@ -157,6 +181,7 @@ public partial class MainMenu : Control
 
 		SaveManager.DeleteSave(save);
 		RefreshSaves();
+		_statusLabel.Text = "";
 	}
 
 	private void OnPlayPressed()

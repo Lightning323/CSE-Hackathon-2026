@@ -63,6 +63,9 @@ grid-quest/
 │       ├── SettingsMenu.cs    # LLM settings menu behavior
 │       ├── SettingsMenu.tscn  # LLM settings scene (UI in scene)
 │       ├── SaveManager.cs     # Save discovery/creation/deletion in app data
+│       ├── StoryGenerator.cs   # LLM/fallback campaign story generation and JSON serialization
+│       ├── GameGenerationScene.cs # Game generation flow scene behavior
+│       ├── GameGenerationScene.tscn # Generation progress UI scene
 │       ├── LlmSettingsStore.cs # LLM provider/model/key persistence in app data
 │       ├── LlmApi.cs          # Autoload LLM API for in-game requests/tests
 │       └── GameSession.cs     # Autoload holding currently selected save
@@ -162,7 +165,8 @@ sprites under `assets/images/characters/`. Knights are allied village protectors
 
 - `menus/mainMenu/MainMenu.tscn` is the startup scene (`project.godot` `run/main_scene`) containing the menu UI layout; `menus/mainMenu/MainMenu.cs` handles behavior/wiring.
 - The main menu lists save folders from the app data saves directory (`OS.GetUserDataDir()/saves`), and supports **Play**, **Delete**, **New Save**, and **Settings**.
-- **New Save** opens a dialog for title and description, creates a new per-save folder under the saves directory with a `save.json` metadata file, and refreshes/selects it in the list (it does not automatically boot into the game).
+- **New Save** opens a dialog for title and description, then transitions to `menus/mainMenu/GameGenerationScene.tscn`, which shows a progress bar and status descriptions while creating the save folder and generating `story.json` via `StoryGenerator`/`LlmApi` (with fallback if unavailable), then returns to the main menu and selects the new save (it does not automatically boot into the game).
+- `menus/mainMenu/StoryGenerator.cs` generates campaign/story JSON (campaign metadata + progression stages/objectives/rewards/modifiers) using `LlmApi` when available and writes the schema-compatible `story.json` for the new save. `GameSession` carries pending new-save inputs and the last created save ID across the generation scene transition.
 - **Play** sets the selected save as the active session save and boots into `res://level/character_dev/main_level.tscn`.
 - `menus/mainMenu/GameSession.cs` is registered as an autoload (`GameSession`) to store the currently selected/created save for the running session.
 - A debug button in the main menu opens the saves/app-data folder via `OS.ShellOpen`.

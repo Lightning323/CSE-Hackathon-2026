@@ -1,7 +1,17 @@
-[gd_resource type="Theme" format=3 uid="uid://b2tdhwtjuqch5"]
+[gd_resource type="Theme" load_steps=3 format=3 uid="uid://b2tdhwtjuqch5"]
 
 [ext_resource type="FontFile" uid="uid://d1ig5qk878567" path="res://assets/fonts/pixel_operator/PixelOperator.ttf" id="1_font"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel_border"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 5
+border_width_top = 10
+border_width_right = 5
+border_width_bottom = 10
+border_color = Color(1, 1, 1, 1)
 
 [resource]
 default_font = ExtResource("1_font")
 default_font_size = 16
+Panel/styles/panel = SubResource("StyleBoxFlat_panel_border")
+PanelContainer/styles/panel = SubResource("StyleBoxFlat_panel_border")

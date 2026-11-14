@@ -26,7 +26,7 @@ Guidance and mandatory protocols for AI coding agents working on **Grid Quest**,
 ---
 
 ## 3. Coding Conventions
-
+- **When making Godot scenes, MAKE THE SCENE, dont write a bunch of code that produces the scene, make the scene itself, add the code ONLY as a means to do what the scene itself cannot.**
 - **Style:** Match existing scene (`.tscn`) and script formatting. One script per node where it makes sense.
 - **C# Standards:**
   - Indentation: Tabs.

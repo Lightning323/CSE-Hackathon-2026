@@ -95,6 +95,22 @@ public static class SaveManager
 		return info;
 	}
 
+	public static string GetStoryPath(SaveInfo info)
+	{
+		if (info == null || string.IsNullOrWhiteSpace(info.FolderPath))
+			return null;
+		return Path.Combine(info.FolderPath, "story.json");
+	}
+
+	public static void WriteStoryJson(SaveInfo info, string storyJson)
+	{
+		var path = GetStoryPath(info);
+		if (string.IsNullOrWhiteSpace(path))
+			return;
+		Directory.CreateDirectory(info.FolderPath);
+		File.WriteAllText(path, storyJson ?? "{}");
+	}
+
 	public static void WriteSaveInfo(SaveInfo info)
 	{
 		if (info == null || string.IsNullOrWhiteSpace(info.FolderPath))
