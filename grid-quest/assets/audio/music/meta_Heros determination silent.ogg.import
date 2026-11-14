@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://qrddapy78mvv"
+path="res://.godot/imported/meta_Heros determination silent.ogg-6e5144cfb491b03d85f2f95642fe1135.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/audio/music/meta_Heros determination silent.ogg"
+dest_files=["res://.godot/imported/meta_Heros determination silent.ogg-6e5144cfb491b03d85f2f95642fe1135.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

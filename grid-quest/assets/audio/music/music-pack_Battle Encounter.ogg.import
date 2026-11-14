@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://d16fmevl6oy7b"
+path="res://.godot/imported/music-pack_Battle Encounter.ogg-bce2a911d06cdf3150c991dac411a0a0.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/audio/music/music-pack_Battle Encounter.ogg"
+dest_files=["res://.godot/imported/music-pack_Battle Encounter.ogg-bce2a911d06cdf3150c991dac411a0a0.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4
