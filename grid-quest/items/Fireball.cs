@@ -8,6 +8,7 @@ public partial class Fireball : Area2D
 	private float _life = 2.0f;
 	private float _knockbackStrength = 0.0f;
 	private Player _sourcePlayer;
+	private global::GridQuest.Entities.Player.PlayerEntity _sourcePlayerEntity;
 
 	public override void _Ready()
 	{
@@ -22,11 +23,14 @@ public partial class Fireball : Area2D
 
 	public void Init(Vector2 direction, Vector2 fromPos, float speed = 220.0f, int damage = 2, float knockbackStrength = 0.0f, Player sourcePlayer = null)
 	{
+		_sourcePlayerEntity = sourcePlayer;
+
 		GlobalPosition = fromPos;
 		Speed = speed;
 		Damage = damage;
 		_knockbackStrength = knockbackStrength;
 		_sourcePlayer = sourcePlayer;
+		_sourcePlayerEntity = sourcePlayer;
 		_dir = direction.Normalized();
 		// bias toward nearest enemy (one-time)
 		Node2D nearest = null;
@@ -62,18 +66,18 @@ public partial class Fireball : Area2D
 		if (body.IsInGroup("enemies") && body.HasMethod("TakeDamage"))
 		{
 			int damage = Damage;
-			if (_sourcePlayer != null && IsInstanceValid(_sourcePlayer))
+			if (_sourcePlayerEntity != null && IsInstanceValid(_sourcePlayerEntity))
 			{
-				damage = _sourcePlayer.ComputeDamageForTarget(body as Node2D, Damage);
+				damage = _sourcePlayerEntity.ComputeDamageForTarget(body as Node2D, Damage);
 			}
 			body.Call("TakeDamage", damage);
 			if (_knockbackStrength > 0.0f && body.HasMethod("ApplyKnockback"))
 			{
 				body.Call("ApplyKnockback", _dir, _knockbackStrength);
 			}
-			if (_sourcePlayer != null && IsInstanceValid(_sourcePlayer) && _sourcePlayer.HasMethod("NotifyProjectileHit"))
+			if (_sourcePlayerEntity != null && IsInstanceValid(_sourcePlayerEntity))
 			{
-				_sourcePlayer.Call("NotifyProjectileHit", body);
+				_sourcePlayerEntity.NotifyProjectileHit(body as Node2D);
 			}
 			QueueFree();
 			return;

@@ -83,19 +83,56 @@ grid-quest/
 │       ├── LlmApi.cs          # Autoload LLM API (streaming, hooks, provider requests)
 │       └── LlmSettingsStore.cs # LLM settings model/persistence in app data
 ├── npc/
-│   └── knight/
-│       ├── KnightNpc.cs       # Allied knight AI, combat, and regeneration
-│       └── knight_npc.tscn    # Knight character scene
+│   ├── knight/
+│   │   ├── KnightNpc.cs       # Compatibility wrapper -> entities/npc/KnightEntity.cs
+│   │   └── knight_npc.tscn    # Knight character scene
+│   └── villager/
+│       ├── Villager.cs        # Compatibility wrapper -> entities/npc/VillagerEntity.cs
+│       └── villager.tscn      # Villager character scene
 └── player/
-	├── Player.cs              # Player movement, combat, health, upgrades, and animations
+	├── Player.cs              # Compatibility wrapper -> entities/player/PlayerEntity.cs
 	├── PlayerUpgradeDefs.cs   # Monument upgrade definitions and cost scaling
 	├── Player.cs.uid          # Godot-generated script UID
 	└── player.tscn            # Player character scene
 ```
 
+## Entity Architecture (`entities/`)
+
+Grid Quest now uses a shared entity class hierarchy under `entities/` to centralize common RPG/actor state and LLM/tool-facing APIs:
+
+- **`entities/base/Entity.cs` (`GridQuest.Entities.Base.Entity`)**: common base for all entities (player, enemy, villager, knight). Includes shared core data/APIs:
+  - Health/state: `Health`, `MaxHealth`, `IsDead`, damage/heal hooks and methods (`TakeDamageAmount`, `Heal`)
+  - Combat/stat fields: `Speed`, `AttackDamage`, `AttackRange`, `AttackCooldown`
+  - Equipment/inventory/money: `EquippedWeaponId` (weapon slot), `Inventory` (`InventoryContainer`), `Money`, `AddMoney`/`TrySpendMoney`, `AddItem`
+  - State export for tools/debugging: `GetEntityState()`, `GetEntityStateJson()`
+- **`entities/base/NpcEntity.cs` (`GridQuest.Entities.Base.NpcEntity`)**: extends `Entity` for non-playable/controllable entities with LLM-friendly control/state APIs:
+  - Intent/navigation requests: `GoToPosition(...)`, `GoToEntity(...)`, `ClearIntent()`, intent/target state
+  - Arbitrary structured state: `RememberState`, `RecallState`, `ApplyNpcStateData`, `GetNpcStateData`
+  - Internal chat/history for LLM context: `AppendChatHistory`, `GetChatHistory`, `GetChatHistoryState`
+  - Control-state export: `GetNpcControlState()`, `GetNpcControlStateJson()`
+- **`entities/player/PlayerEntity.cs` (`GridQuest.Entities.Player.PlayerEntity`)**: player implementation (input, upgrades, combat, lighting/progression) inheriting `Entity`
+- **`entities/enemy/EnemyEntity.cs` (`GridQuest.Entities.Enemy.EnemyEntity`)**: enemy implementation (aggro/wander/combat/loot) inheriting `NpcEntity` for tool-readable/control APIs
+- **`entities/npc/VillagerEntity.cs` (`GridQuest.Entities.Npc.VillagerEntity`)**: villager NPC implementation inheriting `NpcEntity` (dialogue/trust/advice/flee/home behavior + chat/LLM helpers)
+- **`entities/npc/KnightEntity.cs` (`GridQuest.Entities.Npc.KnightEntity`)**: knight NPC implementation inheriting `NpcEntity` (village protection/combat/regen/patrol)
+
+### Scene Compatibility Wrappers
+
+Existing scene/script paths are preserved via thin `[GlobalClass]` wrappers so `.tscn` references and legacy type lookups continue to work:
+
+- `player/Player.cs` → inherits `GridQuest.Entities.Player.PlayerEntity`
+- `enemy/Enemy.cs` → inherits `GridQuest.Entities.Enemy.EnemyEntity`
+- `npc/villager/Villager.cs` → inherits `GridQuest.Entities.Npc.VillagerEntity`
+- `npc/knight/KnightNpc.cs` → inherits `GridQuest.Entities.Npc.KnightEntity`
+
+### LLM / Tool-Control API Notes
+
+- NPCs and enemies expose `GetNpcControlState()` / JSON variants for reading current intent, stats, inventory/money/weapon, chat history, and arbitrary state.
+- Common tool-style convenience methods are provided on controllable entities (e.g. `ToolGoTo`, `ToolGoToEntity`, `ToolRemember`, `ToolAppendChat` where applicable) to simplify tool-call wiring.
+- Villagers additionally expose chat/advice prompt builders and runtime dialogue/trust context methods for in-game LLM interactions.
+
 ## Player
 
-`Player.cs` builds its `SpriteFrames` at runtime from `assets/images/characters/cute_Player.png` (32x32 frames, six columns):
+`player/Player.cs` is a compatibility wrapper around `entities/player/PlayerEntity.cs`, which builds its `SpriteFrames` at runtime from `assets/images/characters/cute_Player.png` (32x32 frames, six columns):
 
 | Row | Animation | Frames |
 | --- | --- | --- |

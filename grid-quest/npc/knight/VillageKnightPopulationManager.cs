@@ -90,7 +90,7 @@ public partial class VillageKnightPopulationManager : Node
 		parent.AddChild(knight);
 	}
 
-	private void OnKnightDied(KnightNpc knight, int villageIndex)
+	private void OnKnightDied(GridQuest.Entities.Npc.KnightEntity knight, int villageIndex)
 	{
 		if (villageIndex < 0)
 			return;

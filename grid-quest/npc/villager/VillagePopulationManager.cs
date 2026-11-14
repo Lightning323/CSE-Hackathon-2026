@@ -84,7 +84,7 @@ public partial class VillagePopulationManager : Node
 		parent.AddChild(villager);
 	}
 
-	private void OnVillagerDied(Villager villager, int villageIndex)
+	private void OnVillagerDied(GridQuest.Entities.Npc.VillagerEntity villager, int villageIndex)
 	{
 		if (villageIndex < 0)
 			return;
