@@ -1,9 +1,9 @@
 using Godot;
-using GridQuest.PlayerUpgrades;
+using GridQuest.entities.player;
 
 public partial class SkillsUi : Control
 {
-	private Player _player;
+	private global::Player _player;
 	private Label _coinsLabel;
 	private VBoxContainer _list;
 	private Label _statusLabel;
@@ -120,7 +120,7 @@ public partial class SkillsUi : Control
 	private void ResolvePlayer()
 	{
                 if (_player == null || !GodotObject.IsInstanceValid(_player))
-                        _player = GetTree().GetFirstNodeInGroup("player") as Player;
+                        _player = GetTree().GetFirstNodeInGroup("player") as global::Player;
 
 	}
 
@@ -139,8 +139,6 @@ public partial class SkillsUi : Control
 
 	public override void _Input(InputEvent @event)
 	{
-		var villagerChat = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
-		if (villagerChat != null && villagerChat.Visible) return;
 		if (!Visible) return;
 		bool closePressed = @event.IsActionPressed("interact") || @event.IsActionPressed("ui_cancel") || @event.IsActionPressed("pause_menu");
 		if (!closePressed && @event is InputEventKey key && key.Pressed && !key.Echo && (key.Keycode == Key.F || key.Keycode == Key.Escape))

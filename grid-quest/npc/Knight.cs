@@ -8,9 +8,9 @@ namespace GridQuest.Entities.Npc;
 /// Allied knight NPC: protects village, fights enemies, regenerates out of combat.
 /// Extends <see cref="NpcEntity"/> for shared entity stats/inventory/money and LLM/tool control APIs.
 /// </summary>
-public partial class KnightEntity : NpcEntity
+public partial class Knight : NpcEntity
 {
-	[Signal] public delegate void DiedEventHandler(KnightEntity knight, int villageIndex);
+	[Signal] public delegate void DiedEventHandler(Knight knight, int villageIndex);
 
 	[Export] public new float Speed { get => base.Speed; set => base.Speed = value; }
 	[Export] public new int MaxHealth { get => base.MaxHealth; set => base.MaxHealth = value; }
@@ -23,9 +23,9 @@ public partial class KnightEntity : NpcEntity
 
 	private const string HeroBasePath = "res://assets/images/characters/";
 
-	private AnimatedSprite2D _sprite;
-	private ProgressBar _healthBar;
-	private Node2D _targetEnemy;
+	private AnimatedSprite2D _sprite = null!;
+	private ProgressBar _healthBar = null!;
+	private Node2D? _targetEnemy;
 	private State _state = State.Idle;
 	private string _facing = "down";
 	private bool _faceLeft;
@@ -48,7 +48,7 @@ public partial class KnightEntity : NpcEntity
 		base.Speed = 55.0f; base.MaxHealth = 8; base.AttackDamage = 1; base.AttackRange = 24.0f; base.AttackCooldown = 1.75f;
 		base._Ready(); Health = MaxHealth;
 		_sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
-		_healthBar = GetNodeOrNull<ProgressBar>("HealthBar");
+		_healthBar = GetNodeOrNull<ProgressBar>("HealthBar")!;
 		_sprite.SpriteFrames = BuildSpriteFrames();
 		_sprite.AnimationFinished += OnAnimationFinished;
 		_sprite.Play("idle_down");
@@ -125,9 +125,9 @@ public partial class KnightEntity : NpcEntity
 		_regenAccumulator -= heal; Health = Mathf.Min(MaxHealth, Health + heal); UpdateHealthBar();
 	}
 
-	private Node2D FindClosestEnemy()
+	private Node2D? FindClosestEnemy()
 	{
-		Node2D closest = null; float closestDistSq = float.MaxValue; Vector2 origin = GlobalPosition;
+		Node2D? closest = null; float closestDistSq = float.MaxValue; Vector2 origin = GlobalPosition;
 		foreach (Node node in GetTree().GetNodesInGroup("enemies"))
 		{
 			if (node is not Node2D enemy || !IsInstanceValid(enemy)) continue;
@@ -210,7 +210,7 @@ public partial class KnightEntity : NpcEntity
 			for (int i = 0; i < 10; i++) { float x = (float)GD.RandRange(area.Position.X, area.End.X); float y = (float)GD.RandRange(area.Position.Y, area.End.Y); Vector2 candidate = new(x, y); if (candidate.DistanceTo(origin) >= 16.0f) { _patrolTarget = candidate; return; } }
 			_patrolTarget = _homeCenterWorld; return;
 		}
-		Node2D map = GetTree().CurrentScene as Node2D; Node grid = map?.GetNodeOrNull<Node>("MapGrid") ?? map?.GetNodeOrNull<Node>("Map");
+		Node2D? map = GetTree().CurrentScene as Node2D; Node? grid = map?.GetNodeOrNull<Node>("MapGrid") ?? map?.GetNodeOrNull<Node>("Map");
 		if (grid != null && grid.HasMethod("CellToWorldCenter"))
 		{
 			int width = grid.Get("Width").AsInt32(); if (width <= 0 && grid.Get("MapWidth").VariantType != Variant.Type.Nil) width = grid.Get("MapWidth").AsInt32();
@@ -258,10 +258,7 @@ public partial class KnightEntity : NpcEntity
 		return state;
 	}
 
-	/// <summary>Tool-call convenience: move to world coordinates.</summary>
 	public bool ToolGoTo(float x, float y, string reason = "") => GoToPosition(new Vector2(x, y), reason);
-	/// <summary>Tool-call convenience: move to entity by name/group.</summary>
 	public bool ToolGoToEntity(string entityId, string reason = "") => GoToEntity(entityId, reason);
-	/// <summary>Tool-call convenience: set arbitrary NPC memory/state.</summary>
 	public void ToolRemember(string key, string value) => RememberState(key, value);
 }

@@ -50,16 +50,14 @@ grid-quest/
 │       ├── tree/              # Tree factory/scene
 │       └── walls/             # Wall factory/scene
 ├── menus/
-│   ├── CheatMenu.cs           # Debug/cheat menu (invincibility, add coins, add weapons, villager trust debug)
+│   ├── CheatMenu.cs           # Debug/cheat menu (invincibility, add coins, add weapons)
 │   ├── InventoryUi.cs         # Inventory + chest UI (drag/drop, move, take-all)
 │   ├── InventorySlotUi.cs     # Reusable inventory slot UI control
 │   ├── MonumentIndicator.cs   # Directional indicator pointing to the monument
 │   ├── SkillsUi.cs            # Monument upgrade menu/UI (purchasable player attributes)
-│   ├── VillagerChatUi.cs      # NPC chat interface (ask questions, streamed LLM replies)
 │   ├── cheat_menu.tscn        # Debug/cheat menu UI scene
 │   ├── inventory_ui.tscn      # Inventory/chest UI scene root
 │   ├── skills_ui.tscn         # Monument/skills upgrade UI scene
-│   ├── villager_chat_ui.tscn  # Villager chat UI scene
 │   ├── main_menu.tscn         # Legacy main menu scene
 │   └── mainMenu/
 │       ├── MainMenu.cs        # Save selection/creation UI and game boot flow
@@ -82,13 +80,10 @@ grid-quest/
 │   └── llm/
 │       ├── LlmApi.cs          # Autoload LLM API (streaming, hooks, provider requests)
 │       └── LlmSettingsStore.cs # LLM settings model/persistence in app data
-├── npc/
-│   ├── knight/
-│   │   ├── KnightNpc.cs       # Compatibility wrapper -> entities/npc/KnightEntity.cs
-│   │   └── knight_npc.tscn    # Knight character scene
-│   └── villager/
-│       ├── Villager.cs        # Compatibility wrapper -> entities/npc/VillagerEntity.cs
-│       └── villager.tscn      # Villager character scene
+├── npc/                       # Knight NPC (no subpackages)
+│   ├── Knight.cs              # Allied knight implementation (extends NpcEntity)
+│   ├── VillageKnightPopulationManager.cs # Spawns/respawns knights per generated village
+│   └── knight_npc.tscn        # Knight character scene
 └── player/
 	├── Player.cs              # Compatibility wrapper -> entities/player/PlayerEntity.cs
 	├── PlayerUpgradeDefs.cs   # Monument upgrade definitions and cost scaling
@@ -112,8 +107,8 @@ Grid Quest now uses a shared entity class hierarchy under `entities/` to central
   - Control-state export: `GetNpcControlState()`, `GetNpcControlStateJson()`
 - **`entities/player/PlayerEntity.cs` (`GridQuest.Entities.Player.PlayerEntity`)**: player implementation (input, upgrades, combat, lighting/progression) inheriting `Entity`
 - **`entities/enemy/EnemyEntity.cs` (`GridQuest.Entities.Enemy.EnemyEntity`)**: enemy implementation (aggro/wander/combat/loot) inheriting `NpcEntity` for tool-readable/control APIs
-- **`entities/npc/VillagerEntity.cs` (`GridQuest.Entities.Npc.VillagerEntity`)**: villager NPC implementation inheriting `NpcEntity` (dialogue/trust/advice/flee/home behavior + chat/LLM helpers)
-- **`entities/npc/KnightEntity.cs` (`GridQuest.Entities.Npc.KnightEntity`)**: knight NPC implementation inheriting `NpcEntity` (village protection/combat/regen/patrol)
+- **`npc/Knight.cs` (`GridQuest.Entities.Npc.Knight`)**: knight NPC implementation inheriting `NpcEntity` (village protection/combat/regen/patrol, LLM/tool APIs)
+- **`npc/VillageKnightPopulationManager.cs`**: spawns/respawns knights per generated village
 
 ### Scene Compatibility Wrappers
 
@@ -121,14 +116,12 @@ Existing scene/script paths are preserved via thin `[GlobalClass]` wrappers so `
 
 - `player/Player.cs` → inherits `GridQuest.Entities.Player.PlayerEntity`
 - `enemy/Enemy.cs` → inherits `GridQuest.Entities.Enemy.EnemyEntity`
-- `npc/villager/Villager.cs` → inherits `GridQuest.Entities.Npc.VillagerEntity`
-- `npc/knight/KnightNpc.cs` → inherits `GridQuest.Entities.Npc.KnightEntity`
+- `npc/knight_npc.tscn` uses `res://npc/Knight.cs`
 
 ### LLM / Tool-Control API Notes
 
 - NPCs and enemies expose `GetNpcControlState()` / JSON variants for reading current intent, stats, inventory/money/weapon, chat history, and arbitrary state.
 - Common tool-style convenience methods are provided on controllable entities (e.g. `ToolGoTo`, `ToolGoToEntity`, `ToolRemember`, `ToolAppendChat` where applicable) to simplify tool-call wiring.
-- Villagers additionally expose chat/advice prompt builders and runtime dialogue/trust context methods for in-game LLM interactions.
 
 ## Player
 
@@ -173,15 +166,6 @@ Coins collected in-world are tracked as gold in the player's wallet (used for mo
 - `FloorTiles` / `FloorTileMapFactory` (`map/map_floors/`) build/configure floor `TileMapLayer`s and the shared grass/stone `TileSet`.
 - See [map-architecture.md](./map-architecture.md) for tile-versus-node decisions.
 
-## Villagers
-
-- `npc/villager/Villager.cs` builds villager animations at runtime and runs simple idle/patrol/flee AI. Villagers target-threat flee from enemies, can take damage, and prefer to stay within/near their assigned home village (`SetHome`) by wandering locally and returning when displaced.
-- `npc/villager/VillagePopulationManager.cs` spawns a configurable number of villagers per generated village at startup and respawns villagers slowly after death when the village area is not visible to the active camera. Manual spawn inputs (`level/character_dev/VillagerSpawnInput.cs`) can also place/assign villagers to generated villages.
-- **Interaction & chat:** villagers display a dynamically sized speech bubble above their head (`npc/villager/villager.tscn`) with state-based dialogue. Pressing `F` or controller **X** (`interact`) near the closest villager opens the villager chat interface (`menus/villager_chat_ui.tscn`, `VillagerChatUi.cs`) for streamed in-character responses (via `LlmApi` and `Villager` context); `Esc`/controller **B/Start**/Close closes it. Typing responses remains keyboard-based, and chat input is consumed while open so gameplay/menu keybinds do not trigger while typing.
-- **Trust & advice system:** calm villagers can ask the player for life advice during chat. Player responses are evaluated (LLM-based rating with fallback heuristics) to update a per-villager trust score based on communication/helpfulness. Higher trust makes villagers more likely to randomly gift coin drops when the player is nearby, showing contextual thank-you speech-bubble messages (e.g. for help/upgrades). Gift frequency/amount scales with trust to support upgrade progression.
-- **Flee/recovery dialogue:** while being chased, villagers show flee messages with a **10-second cooldown** between messages (one message, then at least 10s before another can appear if still chased). Recovered/idle dialogue states continue to update contextually, and temporary gift/trust messages can appear as speech-bubble dialogue.
-- **Dialogue/chat context:** `Villager` exposes dialogue/emotional/trust state and runtime context for dialogue/chat and advice evaluation via methods/properties such as `CurrentDialogueEmotion`, `CurrentDialogueText`, `Trust`, `GetDialogueContext()`, and chat/advice prompt helpers (state/emotion, fleeing/recovery/threat/home/player proximity, health, current dialogue, trust, etc.).
-
 ## Monument & Upgrades
 
 - `map/map_objects/monument/Monument.cs` tracks discovery when the player comes within discovery/interact range and opens the monument upgrade UI (`skills_ui`) when the player presses `F` nearby (with basic priority checks to avoid conflicting with chest/villager interactions). `menus/MonumentIndicator.cs` (added to level UI layers) displays a `meta_pickaxe.png` directional arrow that always points toward the monument from the screen center (texture top treated as the pointing direction).
@@ -204,9 +188,9 @@ Enemy combat integrates with player upgrade effects: `Enemy.cs` supports knockba
 
 ## Allied Knight NPC
 
-`npc/knight/KnightNpc.cs` builds `SpriteFrames` at runtime from the `forest_hero` character
+`npc/Knight.cs` builds `SpriteFrames` at runtime from the `forest_hero` character
 sprites under `assets/images/characters/`. Knights are allied village protectors: they target and attack nearby monsters threatening their village, can take damage, regenerate slowly after a delay out of combat, and can be assigned a home village (`SetHome`) to patrol/return near and stay in the village area.
-- `npc/knight/VillageKnightPopulationManager.cs` spawns 2 knights per generated village at startup (within village bounds) and respawns them quickly (10s) when the village area is not visible to the camera to maintain the garrison.
+- `npc/VillageKnightPopulationManager.cs` spawns 2 knights per generated village at startup (within village bounds) and respawns them quickly (10s) when the village area is not visible to the camera to maintain the garrison.
 - Manual spawn input (`G`) can still spawn a knight near the player (dev/testing). The player can also damage knights.
 
 ## Day/Night Cycle and Lighting

@@ -23,8 +23,8 @@ public partial class GameOverMenu : Control
 
 	private void ConnectToPlayer()
 	{
-		var player = GetTree().GetFirstNodeInGroup("player") as Player;
-		if (player != null && !player.IsConnected(Player.SignalName.Died, Callable.From(OnPlayerDied)))
+		var player = GetTree().GetFirstNodeInGroup("player") as global::Player;
+		if (player != null && !player.IsConnected(global::Player.SignalName.Died, Callable.From(OnPlayerDied)))
 			player.Died += OnPlayerDied;
 	}
 
@@ -47,8 +47,7 @@ public partial class GameOverMenu : Control
 		var inv = GetTree().GetFirstNodeInGroup("inventory_ui") as Control;
 		var skills = GetTree().GetFirstNodeInGroup("skills_ui") as Control;
 		var cheat = GetTree().GetFirstNodeInGroup("cheat_ui") as Control;
-		var villagerChat = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
-		if ((inv != null && inv.Visible) || (skills != null && skills.Visible) || (cheat != null && cheat.Visible) || (villagerChat != null && villagerChat.Visible))
+		if ((inv != null && inv.Visible) || (skills != null && skills.Visible) || (cheat != null && cheat.Visible))
 			return;
 
 		if (Visible)

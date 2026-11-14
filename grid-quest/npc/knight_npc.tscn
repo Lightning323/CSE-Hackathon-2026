@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://c3knight_npc01"]
 
-[ext_resource type="Script" path="res://npc/knight/KnightNpc.cs" id="1_script"]
+[ext_resource type="Script" path="res://npc/Knight.cs" id="1_script"]
 [ext_resource type="Texture2D" path="res://assets/images/characters/forest_hero-idle-front.png" id="2_tex"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_idle0"]

@@ -1,5 +1,7 @@
 using Godot;
 
+namespace GridQuest.entities.enemy;
+
 /// <summary>
 /// Scene/script compatibility wrapper. Enemy implementation lives in entities/enemy/.
 /// </summary>

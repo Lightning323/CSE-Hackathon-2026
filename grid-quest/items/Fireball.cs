@@ -8,7 +8,6 @@ public partial class Fireball : Area2D
 	private float _life = 2.0f;
 	private float _knockbackStrength = 0.0f;
 	private Player _sourcePlayer;
-	private global::GridQuest.Entities.Player.PlayerEntity _sourcePlayerEntity;
 
 	public override void _Ready()
 	{
@@ -23,16 +22,12 @@ public partial class Fireball : Area2D
 
 	public void Init(Vector2 direction, Vector2 fromPos, float speed = 220.0f, int damage = 2, float knockbackStrength = 0.0f, Player sourcePlayer = null)
 	{
-		_sourcePlayerEntity = sourcePlayer;
-
 		GlobalPosition = fromPos;
 		Speed = speed;
 		Damage = damage;
 		_knockbackStrength = knockbackStrength;
 		_sourcePlayer = sourcePlayer;
-		_sourcePlayerEntity = sourcePlayer;
 		_dir = direction.Normalized();
-		// bias toward nearest enemy (one-time)
 		Node2D nearest = null;
 		float best = 300.0f * 300.0f;
 		foreach (Node n in GetTree().GetNodesInGroup("enemies"))
@@ -46,7 +41,7 @@ public partial class Fireball : Area2D
 		if (nearest != null)
 		{
 			Vector2 toEnemy = (nearest.GlobalPosition - fromPos).Normalized();
-			_dir = _dir.Lerp(toEnemy, 0.3f).Normalized(); // small sway/bias, can overshoot
+			_dir = _dir.Lerp(toEnemy, 0.3f).Normalized();
 		}
 		Rotation = _dir.Angle();
 	}
@@ -66,32 +61,23 @@ public partial class Fireball : Area2D
 		if (body.IsInGroup("enemies") && body.HasMethod("TakeDamage"))
 		{
 			int damage = Damage;
-			if (_sourcePlayerEntity != null && IsInstanceValid(_sourcePlayerEntity))
-			{
-				damage = _sourcePlayerEntity.ComputeDamageForTarget(body as Node2D, Damage);
-			}
+			if (_sourcePlayer != null && IsInstanceValid(_sourcePlayer))
+				damage = _sourcePlayer.ComputeDamageForTarget(body as Node2D, Damage);
 			body.Call("TakeDamage", damage);
 			if (_knockbackStrength > 0.0f && body.HasMethod("ApplyKnockback"))
-			{
 				body.Call("ApplyKnockback", _dir, _knockbackStrength);
-			}
-			if (_sourcePlayerEntity != null && IsInstanceValid(_sourcePlayerEntity))
-			{
-				_sourcePlayerEntity.NotifyProjectileHit(body as Node2D);
-			}
+			if (_sourcePlayer != null && IsInstanceValid(_sourcePlayer))
+				_sourcePlayer.NotifyProjectileHit(body as Node2D);
 			QueueFree();
 			return;
 		}
 
 		if (IsWallBody(body))
-		{
 			QueueFree();
-		}
 	}
 
 	private static bool IsWallBody(Node body)
 	{
-		// Stop on wall objects (border/building walls), but allow trees/props and other bodies.
 		Node current = body;
 		while (current != null)
 		{
@@ -102,8 +88,5 @@ public partial class Fireball : Area2D
 		return false;
 	}
 
-	private void OnAreaEntered(Area2D area)
-	{
-		// ignore
-	}
+	private void OnAreaEntered(Area2D area) { }
 }

@@ -172,12 +172,12 @@ public partial class EnemyEntity : NpcEntity
 			_target.Call("TakeDamage", AttackDamage, this);
 	}
 
-	private Node2D FindClosestTarget()
+	private Node2D? FindClosestTarget()
 	{
-		Node2D closest = null;
+		Node2D? closest = null;
 		float bestDist = float.MaxValue;
 		Vector2 origin = GlobalPosition;
-		foreach (string group in new[] { "player", "knights", "villagers", "civilians" })
+		foreach (string group in new[] { "player", "knights", "allies" })
 		{
 			foreach (Node node in GetTree().GetNodesInGroup(group))
 			{

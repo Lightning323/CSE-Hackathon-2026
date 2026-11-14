@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace GridQuest.PlayerUpgrades;
+namespace GridQuest.entities.player;
 
 public sealed class UpgradeDef
 {

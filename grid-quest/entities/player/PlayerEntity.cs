@@ -2,11 +2,10 @@
 using Godot;
 using GridQuest.Entities.Base;
 using GridQuest.Items;
-using GridQuest.PlayerUpgrades;
 using System;
 using System.Collections.Generic;
 
-namespace GridQuest.Entities.Player;
+namespace GridQuest.entities.player;
 
 /// <summary>
 /// Player-controlled entity implementation.
@@ -28,9 +27,10 @@ public partial class PlayerEntity : Entity
 	private const string PlayerTexturePath = "res://assets/images/characters/cute_Player.png";
 	private static readonly PackedScene FireballScene = GD.Load<PackedScene>("res://items/fireball.tscn");
 
-	private AnimatedSprite2D _sprite;
-	private ProgressBar _healthBar;
-	private PointLight2D _pointLight;
+	private AnimatedSprite2D _sprite = null!;
+	private ProgressBar _healthBar = null!;
+	private PointLight2D _pointLight = null!;
+	private Camera2D? _camera;
 	private State _state = State.Idle;
 	private string _facing = "down";
 	private bool _faceLeft;
@@ -113,8 +113,9 @@ public partial class PlayerEntity : Entity
 		AttackRange = CurrentAttackRange;
 
 		_sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
-		_healthBar = GetNodeOrNull<ProgressBar>("HealthBar");
-		_pointLight = GetNodeOrNull<PointLight2D>("PointLight2D");
+		_healthBar = GetNodeOrNull<ProgressBar>("HealthBar")!;
+		_pointLight = GetNodeOrNull<PointLight2D>("PointLight2D")!;
+		_camera = GetNodeOrNull<Camera2D>("Camera2D");
 		_sprite.SpriteFrames = BuildSpriteFrames();
 		_sprite.AnimationFinished += OnAnimationFinished;
 		_sprite.Play("idle_down");
@@ -122,6 +123,14 @@ public partial class PlayerEntity : Entity
 		UpdateHealthBar();
 		UpdatePlayerLight();
 		CallDeferred(nameof(ApplyRandomSpawnIfNeeded));
+		CallDeferred(nameof(EnsureCameraCurrent));
+	}
+
+	private void EnsureCameraCurrent()
+	{
+		_camera ??= GetNodeOrNull<Camera2D>("Camera2D") ?? GetViewport().GetCamera2D();
+		if (_camera != null && IsInstanceValid(_camera))
+			_camera.MakeCurrent();
 	}
 
 	private void ApplyRandomSpawnIfNeeded()
@@ -137,14 +146,14 @@ public partial class PlayerEntity : Entity
 	private void UpdatePlayerLight()
 	{
 		if (_pointLight == null || !IsInstanceValid(_pointLight)) return;
-		global::Map map = GetTree().Root.FindChild("Map", true, false) as global::Map;
+		global::Map? map = GetTree().Root.FindChild("Map", true, false) as global::Map;
 		bool insideBuilding = map != null && map.IsWorldPositionInsideBuilding(GlobalPosition);
 		_pointLight.RangeItemCullMask = 1;
 		_pointLight.ShadowEnabled = insideBuilding;
 		bool shouldEnable = insideBuilding;
 		if (!insideBuilding)
 		{
-			DayNightCycle cycle = GetTree().GetFirstNodeInGroup("day_night_cycle") as DayNightCycle;
+			DayNightCycle? cycle = GetTree().GetFirstNodeInGroup("day_night_cycle") as DayNightCycle;
 			shouldEnable = cycle != null && cycle.DaylightFactor < 0.45f;
 		}
 		_pointLight.Enabled = shouldEnable;
@@ -260,7 +269,7 @@ public partial class PlayerEntity : Entity
 
 	public override void TakeDamage(int amount) => TakeDamage(amount, null);
 
-	public void TakeDamage(int amount, Node2D attacker)
+	public void TakeDamage(int amount, Node2D? attacker)
 	{
 		if (IsDead || amount <= 0) return;
 		if (DebugInvulnerable) return;
@@ -280,7 +289,7 @@ public partial class PlayerEntity : Entity
 		return Mathf.Max(0, before - Health);
 	}
 
-	private void ApplyThorns(Node2D attacker)
+	private void ApplyThorns(Node2D? attacker)
 	{
 		int thorns = CurrentThornsDamage;
 		if (thorns <= 0 || attacker == null || !IsInstanceValid(attacker)) return;
@@ -329,7 +338,7 @@ public partial class PlayerEntity : Entity
 
 	private void DamageEnemiesInRange() { DamageGroupInRange("enemies"); DamageGroupInRange("knights"); }
 
-	private bool IsBossTarget(Node2D target)
+	private bool IsBossTarget(Node2D? target)
 	{
 		if (target == null) return false;
 		if (target.IsInGroup("boss") || target.IsInGroup("bosses")) return true;
@@ -337,14 +346,14 @@ public partial class PlayerEntity : Entity
 		return v.VariantType == Variant.Type.Bool && v.AsBool();
 	}
 
-	public int ComputeDamageForTarget(Node2D target, int baseDamage)
+	public int ComputeDamageForTarget(Node2D? target, int baseDamage)
 	{
 		float dmg = baseDamage;
 		if (IsBossTarget(target)) dmg *= CurrentBossBonusMultiplier;
 		return Mathf.Max(1, Mathf.RoundToInt(dmg));
 	}
 
-	private void ApplyOnHitEffects(Node2D target)
+	private void ApplyOnHitEffects(Node2D? target)
 	{
 		if (target == null || !IsInstanceValid(target)) return;
 		if (GetUpgradeLevel("movement_speed_after_killing_an_enemy") > 0)
@@ -378,7 +387,7 @@ public partial class PlayerEntity : Entity
 		}
 	}
 
-	public void NotifyProjectileHit(Node2D target) => ApplyOnHitEffects(target);
+	public void NotifyProjectileHit(Node2D? target) => ApplyOnHitEffects(target);
 
 	private void UpdateFacing(Vector2 input)
 	{

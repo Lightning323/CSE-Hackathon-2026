@@ -4,7 +4,7 @@ using GridQuest.Map.MapObjects;
 
 public partial class InventoryUi : Control
 {
-	private Player _player;
+	private global::Player _player;
 	private Chest _openChest;
 
 	private Label _titleLabel;
@@ -128,22 +128,18 @@ public partial class InventoryUi : Control
 
 	private void ResolvePlayer()
 	{
-		_player = GetTree().GetFirstNodeInGroup("player") as Player;
+		_player = GetTree().GetFirstNodeInGroup("player") as global::Player;
 		Refresh();
 	}
 
 	public override void _Input(InputEvent @event)
 	{
 		if (@event.IsEcho()) return;
-		var villagerChat = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
-		if (villagerChat != null && villagerChat.Visible)
-			return;
 
 		bool togglePressed = @event.IsActionPressed("toggle_inventory");
 		bool interactPressed = @event.IsActionPressed("interact");
 		bool cancelPressed = @event.IsActionPressed("ui_cancel") || @event.IsActionPressed("pause_menu");
 
-		// Fallbacks for direct device events (and when actions are remapped in-editor)
 		if (@event is InputEventKey key && key.Pressed && !key.Echo)
 		{
 			if (key.Keycode == Key.E || key.Keycode == Key.Tab || key.Keycode == Key.I) togglePressed = true;
@@ -166,7 +162,7 @@ public partial class InventoryUi : Control
 				GetViewport().SetInputAsHandled();
 				return;
 			}
-			// No chest interaction consumed; allow monument/villager handlers to process it.
+			// No chest interaction consumed; allow other handlers (e.g. monument) to process it.
 		}
 
 		if (togglePressed)
@@ -534,7 +530,7 @@ public partial class InventoryUi : Control
 
 	public void Refresh()
 	{
-		if (_player == null || !IsInstanceValid(_player)) _player = GetTree().GetFirstNodeInGroup("player") as Player;
+		if (_player == null || !IsInstanceValid(_player)) _player = GetTree().GetFirstNodeInGroup("player") as global::Player;
 		if (_player != null)
 		{
 			_player.ConvertInventoryCoinsToGold();

@@ -1,3 +1,4 @@
+#nullable enable
 using Godot;
 
 public partial class Monument : Node2D
@@ -7,7 +8,7 @@ public partial class Monument : Node2D
 
 	public bool Discovered { get; private set; }
 
-	private Sprite2D _sprite;
+	private Sprite2D? _sprite;
 	private bool _playerNear;
 
 	public override void _Ready()
@@ -25,17 +26,13 @@ public partial class Monument : Node2D
 		float dist = GlobalPosition.DistanceTo(player.GlobalPosition);
 		bool near = dist <= InteractRange;
 		if (dist <= DiscoveryRange)
-		{
 			Discovered = true;
-		}
 		SetHighlight(near);
 		_playerNear = near;
 	}
 
 	public override void _Input(InputEvent @event)
 	{
-		var villagerChat = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
-		if (villagerChat != null && villagerChat.Visible) return;
 		if (!_playerNear) return;
 		bool interactPressed = @event.IsActionPressed("interact");
 		if (!interactPressed && @event is InputEventKey key && key.Pressed && !key.Echo && key.Keycode == Key.F)
@@ -43,17 +40,10 @@ public partial class Monument : Node2D
 		if (!interactPressed)
 			return;
 
-		// Prefer chest interactions and avoid opening while a chest panel is already open.
 		var inventoryUi = GetTree().GetFirstNodeInGroup("inventory_ui") as InventoryUi;
 		if (inventoryUi != null && inventoryUi.Visible)
-		{
-			// If inventory is open for chest interaction, F is reserved for chest/UI behavior.
-			// (Chest-open state is handled by InventoryUi.TryInteractChest; this avoids conflicts.)
 			return;
-		}
 		if (IsPlayerNearChest())
-			return;
-		if (IsPlayerNearVillager())
 			return;
 
 		Discovered = true;
@@ -72,18 +62,6 @@ public partial class Monument : Node2D
 		foreach (var node in GetTree().GetNodesInGroup("chests"))
 		{
 			if (node is Node2D chest && IsInstanceValid(chest) && player.GlobalPosition.DistanceTo(chest.GlobalPosition) <= 40.0f)
-				return true;
-		}
-		return false;
-	}
-
-	private bool IsPlayerNearVillager()
-	{
-		var player = GetTree().GetFirstNodeInGroup("player") as Node2D;
-		if (player == null) return false;
-		foreach (var node in GetTree().GetNodesInGroup("villager_npcs"))
-		{
-			if (node is Villager villager && IsInstanceValid(villager) && player.GlobalPosition.DistanceTo(villager.GlobalPosition) <= villager.InteractRange)
 				return true;
 		}
 		return false;

@@ -2,7 +2,7 @@ using Godot;
 
 public partial class CheatMenu : Control
 {
-	private Player _player;
+	private global::Player _player;
 	private CheckButton _invincibilityToggle;
 	private Label _statusLabel;
 
@@ -27,12 +27,12 @@ public partial class CheatMenu : Control
 		dim.MouseFilter = MouseFilterEnum.Ignore;
 		AddChild(dim);
 
-		var panel = new PanelContainer { CustomMinimumSize = new Vector2(360, 300) };
+		var panel = new PanelContainer { CustomMinimumSize = new Vector2(360, 240) };
 		panel.SetAnchorsPreset(LayoutPreset.TopLeft);
 		panel.OffsetLeft = 20;
 		panel.OffsetTop = 20;
 		panel.OffsetRight = 380;
-		panel.OffsetBottom = 320;
+		panel.OffsetBottom = 260;
 		var sb = new StyleBoxFlat { BgColor = new Color(0.10f, 0.10f, 0.13f, 0.96f) };
 		sb.SetCornerRadiusAll(8);
 		sb.SetContentMarginAll(10);
@@ -53,6 +53,7 @@ public partial class CheatMenu : Control
 		_invincibilityToggle.Toggled += OnInvincibilityToggled;
 		root.AddChild(_invincibilityToggle);
 
+		root.AddChild(new Label { Text = "Add Coins:" });
 		var coinsRow = new HBoxContainer();
 		coinsRow.AddThemeConstantOverride("separation", 6);
 		var add10 = new Button { Text = "+10 Coins" };
@@ -61,7 +62,6 @@ public partial class CheatMenu : Control
 		add100.Pressed += () => AddCoins(100);
 		coinsRow.AddChild(add10);
 		coinsRow.AddChild(add100);
-		root.AddChild(new Label { Text = "Add Coins:" });
 		root.AddChild(coinsRow);
 
 		root.AddChild(new Label { Text = "Add Weapon to Inventory:" });
@@ -75,17 +75,6 @@ public partial class CheatMenu : Control
 		weaponRow.AddChild(staff);
 		root.AddChild(weaponRow);
 
-		root.AddChild(new Label { Text = "Villager Trust (debug):" });
-		var trustRow = new HBoxContainer();
-		trustRow.AddThemeConstantOverride("separation", 6);
-		var trustNear = new Button { Text = "+25 Nearest" };
-		trustNear.Pressed += () => AdjustNearestVillagerTrust(25);
-		var trustAll = new Button { Text = "+25 All Nearby" };
-		trustAll.Pressed += () => AdjustNearbyVillagersTrust(25, 180.0f);
-		trustRow.AddChild(trustNear);
-		trustRow.AddChild(trustAll);
-		root.AddChild(trustRow);
-
 		_statusLabel = new Label { Text = "Press ` to close." };
 		_statusLabel.AutowrapMode = TextServer.AutowrapMode.Word;
 		root.AddChild(_statusLabel);
@@ -94,15 +83,12 @@ public partial class CheatMenu : Control
 	private void ResolvePlayer()
 	{
 		if (_player == null || !IsInstanceValid(_player))
-			_player = GetTree().GetFirstNodeInGroup("player") as Player;
+			_player = GetTree().GetFirstNodeInGroup("player") as global::Player;
 		SyncFromPlayer();
 	}
 
 	public override void _Input(InputEvent @event)
 	{
-		var villagerChat = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
-		if (villagerChat != null && villagerChat.Visible)
-			return;
 		if (@event is InputEventKey key && key.Pressed && !key.Echo &&
 			(key.Keycode == Key.Quoteleft || key.PhysicalKeycode == Key.Quoteleft))
 		{
@@ -137,9 +123,7 @@ public partial class CheatMenu : Control
 	private void SyncFromPlayer()
 	{
 		if (_player != null && IsInstanceValid(_player) && _invincibilityToggle != null)
-		{
 			_invincibilityToggle.ButtonPressed = _player.DebugInvulnerable;
-		}
 	}
 
 	private void OnInvincibilityToggled(bool enabled)
@@ -164,48 +148,5 @@ public partial class CheatMenu : Control
 		if (_player == null) return;
 		bool added = _player.AddItem(itemId, 1);
 		_statusLabel.Text = added ? $"Added weapon: {itemId}" : $"Could not add {itemId} (inventory full?)";
-	}
-
-	private void AdjustNearestVillagerTrust(int delta)
-	{
-		ResolvePlayer();
-		if (_player == null) return;
-		Villager nearest = null;
-		float best = float.MaxValue;
-		foreach (Node node in GetTree().GetNodesInGroup("villager_npcs"))
-		{
-			if (node is not Villager villager || !IsInstanceValid(villager))
-				continue;
-			float d = _player.GlobalPosition.DistanceTo(villager.GlobalPosition);
-			if (d < best)
-			{
-				best = d;
-				nearest = villager;
-			}
-		}
-		if (nearest == null)
-		{
-			_statusLabel.Text = "No villager found.";
-			return;
-		}
-		nearest.DebugAdjustTrust(delta);
-		_statusLabel.Text = $"Nearest villager trust: {nearest.Trust}/100";
-	}
-
-	private void AdjustNearbyVillagersTrust(int delta, float radius)
-	{
-		ResolvePlayer();
-		if (_player == null) return;
-		int count = 0;
-		foreach (Node node in GetTree().GetNodesInGroup("villager_npcs"))
-		{
-			if (node is not Villager villager || !IsInstanceValid(villager))
-				continue;
-			if (_player.GlobalPosition.DistanceTo(villager.GlobalPosition) > radius)
-				continue;
-			villager.DebugAdjustTrust(delta);
-			count++;
-		}
-		_statusLabel.Text = count > 0 ? $"Raised trust for {count} nearby villager(s)." : "No nearby villagers.";
 	}
 }

@@ -2,7 +2,7 @@ using Godot;
 
 public partial class KnightSpawnInput : Node
 {
-	private static readonly PackedScene KnightScene = GD.Load<PackedScene>("res://npc/knight/knight_npc.tscn");
+	private static readonly PackedScene KnightScene = GD.Load<PackedScene>("res://npc/knight_npc.tscn");
 
 	public override void _UnhandledInput(InputEvent @event)
 	{
@@ -13,9 +13,7 @@ public partial class KnightSpawnInput : Node
 
 		Node2D player = GetTree().GetFirstNodeInGroup("player") as Node2D;
 		if (player == null)
-		{
 			return;
-		}
 
 		Node instance = KnightScene.Instantiate();
 		if (instance is Node2D knight)
