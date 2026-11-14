@@ -35,6 +35,7 @@ public partial class Player : CharacterBody2D
 
 	public int Health { get; private set; }
 	public int Gold { get; private set; }
+	public bool HasWeaponEquipped { get; set; } = true;
 	public bool IsDead => _state == State.Dead;
 
 	public override void _Ready()
@@ -76,29 +77,35 @@ public partial class Player : CharacterBody2D
 			return;
 		}
 
+		// freeze if inventory open
+		var inv = GetTree().GetFirstNodeInGroup("inventory_ui") as Control;
+		if (inv != null && inv.Visible)
+		{
+			Velocity = Vector2.Zero;
+			if (_state != State.Attack)
+			{
+				_state = State.Idle;
+				PlayAnimation($"idle_{_facing}");
+			}
+			MoveAndSlide();
+			return;
+		}
+
 		_attackTimer = Mathf.Max(0.0f, _attackTimer - (float)delta);
 
-		if (_state != State.Attack && Input.IsKeyPressed(Key.Space) && _attackTimer <= 0.0f)
+		if (_state != State.Attack && HasWeaponEquipped && (Input.IsKeyPressed(Key.Space) || Input.IsJoyButtonPressed(0, JoyButton.A)) && _attackTimer <= 0.0f)
 		{
 			StartAttack();
 		}
 
-		// WASD and arrow key movement (including during attacks).
 		Vector2 input = Vector2.Zero;
-
-		if (Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left))
-			input.X -= 1;
-
-		if (Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right))
-			input.X += 1;
-
-		if (Input.IsKeyPressed(Key.W) || Input.IsKeyPressed(Key.Up))
-			input.Y -= 1;
-
-		if (Input.IsKeyPressed(Key.S) || Input.IsKeyPressed(Key.Down))
-			input.Y += 1;
-
-		input = input.Normalized();
+		if (Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left)) input.X -= 1;
+		if (Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right)) input.X += 1;
+		if (Input.IsKeyPressed(Key.W) || Input.IsKeyPressed(Key.Up)) input.Y -= 1;
+		if (Input.IsKeyPressed(Key.S) || Input.IsKeyPressed(Key.Down)) input.Y += 1;
+		Vector2 joy = Input.GetVector("ui_left", "ui_right", "ui_up", "ui_down");
+		if (joy != Vector2.Zero) input = joy;
+		if (input.Length() > 1.0f) input = input.Normalized();
 
 		if (_state == State.Attack)
 		{

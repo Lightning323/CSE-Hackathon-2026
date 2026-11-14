@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://inv_ui_001"]
 
 [ext_resource type="Script" path="res://menus/InventoryUi.cs" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/images/items/meta_sword.png" id="2_sword"]
 
 [node name="InventoryUi" type="Control"]
 process_mode = 3
@@ -19,10 +20,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -120.0
-offset_top = -80.0
-offset_right = 120.0
-offset_bottom = 80.0
+offset_left = -240.0
+offset_top = -170.0
+offset_right = 240.0
+offset_bottom = 170.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -40,7 +41,7 @@ grow_vertical = 2
 
 [node name="Title" type="Label" parent="Panel/VBox"]
 layout_mode = 2
-text = "Inventory (E to close)"
+text = "Inventory (E/Y to close)"
 horizontal_alignment = 1
 
 [node name="GoldLabel" type="Label" parent="Panel/VBox"]
@@ -49,4 +50,236 @@ text = "Coins: 0"
 
 [node name="WeaponLabel" type="Label" parent="Panel/VBox"]
 layout_mode = 2
-text = "Weapon Slot: (empty)"
+text = "Weapon Slot:"
+
+[node name="WeaponSlot" type="Button" parent="Panel/VBox"]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+size_flags_horizontal = 0
+
+[node name="WeaponIcon" type="TextureRect" parent="Panel/VBox/WeaponSlot"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_sword")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="InvLabel" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = "Inventory (16 slots):"
+
+[node name="GridContainer" type="GridContainer" parent="Panel/VBox"]
+layout_mode = 2
+columns = 8
+
+[node name="Slot0" type="Button" parent="Panel/VBox/GridContainer"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+[node name="Icon0" type="TextureRect" parent="Panel/VBox/GridContainer/Slot0"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Slot1" type="Button" parent="Panel/VBox/GridContainer"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+[node name="Icon1" type="TextureRect" parent="Panel/VBox/GridContainer/Slot1"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Slot2" type="Button" parent="Panel/VBox/GridContainer"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+[node name="Icon2" type="TextureRect" parent="Panel/VBox/GridContainer/Slot2"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Slot3" type="Button" parent="Panel/VBox/GridContainer"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+[node name="Icon3" type="TextureRect" parent="Panel/VBox/GridContainer/Slot3"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Slot4" type="Button" parent="Panel/VBox/GridContainer"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+[node name="Icon4" type="TextureRect" parent="Panel/VBox/GridContainer/Slot4"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Slot5" type="Button" parent="Panel/VBox/GridContainer"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+[node name="Icon5" type="TextureRect" parent="Panel/VBox/GridContainer/Slot5"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Slot6" type="Button" parent="Panel/VBox/GridContainer"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+[node name="Icon6" type="TextureRect" parent="Panel/VBox/GridContainer/Slot6"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Slot7" type="Button" parent="Panel/VBox/GridContainer"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+[node name="Icon7" type="TextureRect" parent="Panel/VBox/GridContainer/Slot7"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Slot8" type="Button" parent="Panel/VBox/GridContainer"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+[node name="Icon8" type="TextureRect" parent="Panel/VBox/GridContainer/Slot8"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Slot9" type="Button" parent="Panel/VBox/GridContainer"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+[node name="Icon9" type="TextureRect" parent="Panel/VBox/GridContainer/Slot9"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Slot10" type="Button" parent="Panel/VBox/GridContainer"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+[node name="Icon10" type="TextureRect" parent="Panel/VBox/GridContainer/Slot10"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Slot11" type="Button" parent="Panel/VBox/GridContainer"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+[node name="Icon11" type="TextureRect" parent="Panel/VBox/GridContainer/Slot11"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Slot12" type="Button" parent="Panel/VBox/GridContainer"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+[node name="Icon12" type="TextureRect" parent="Panel/VBox/GridContainer/Slot12"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Slot13" type="Button" parent="Panel/VBox/GridContainer"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+[node name="Icon13" type="TextureRect" parent="Panel/VBox/GridContainer/Slot13"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Slot14" type="Button" parent="Panel/VBox/GridContainer"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+[node name="Icon14" type="TextureRect" parent="Panel/VBox/GridContainer/Slot14"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Slot15" type="Button" parent="Panel/VBox/GridContainer"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+[node name="Icon15" type="TextureRect" parent="Panel/VBox/GridContainer/Slot15"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5

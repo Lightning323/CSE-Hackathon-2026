@@ -6,10 +6,10 @@ public partial class VillagerSpawnInput : Node
 
 	public override void _UnhandledInput(InputEvent @event)
 	{
-		if (@event is not InputEventKey keyEvent || !keyEvent.Pressed || keyEvent.Echo || keyEvent.Keycode != Key.V)
-		{
-			return;
-		}
+		bool pressed = false;
+		if (@event is InputEventKey keyEvent && keyEvent.Pressed && !keyEvent.Echo && keyEvent.Keycode == Key.V) pressed = true;
+		if (@event is InputEventJoypadButton jb && jb.Pressed && jb.ButtonIndex == JoyButton.RightShoulder) pressed = true;
+		if (!pressed) return;
 
 		Node instance = VillagerScene.Instantiate();
 		if (instance is not Node2D villager)

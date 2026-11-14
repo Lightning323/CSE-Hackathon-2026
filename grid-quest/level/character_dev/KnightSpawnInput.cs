@@ -6,10 +6,10 @@ public partial class KnightSpawnInput : Node
 
 	public override void _UnhandledInput(InputEvent @event)
 	{
-		if (@event is not InputEventKey keyEvent || !keyEvent.Pressed || keyEvent.Echo || keyEvent.Keycode != Key.G)
-		{
-			return;
-		}
+		bool pressed = false;
+		if (@event is InputEventKey keyEvent && keyEvent.Pressed && !keyEvent.Echo && keyEvent.Keycode == Key.G) pressed = true;
+		if (@event is InputEventJoypadButton jb && jb.Pressed && jb.ButtonIndex == JoyButton.LeftShoulder) pressed = true;
+		if (!pressed) return;
 
 		Node2D player = GetTree().GetFirstNodeInGroup("player") as Node2D;
 		if (player == null)

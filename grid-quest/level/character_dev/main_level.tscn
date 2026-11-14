@@ -6,8 +6,10 @@
 [ext_resource type="PackedScene" path="res://enemy/skeleton_enemy.tscn" id="4_01uyu"]
 [ext_resource type="PackedScene" path="res://enemy/elite_skeleton_enemy.tscn" id="5_7ii3e"]
 [ext_resource type="PackedScene" uid="uid://dodf7orbhnbtu" path="res://map/map.tscn" id="9_m5bjr"]
+[ext_resource type="PackedScene" path="res://menus/inventory_ui.tscn" id="10_inv"]
 
 [node name="Level" type="Node2D" unique_id=426259724]
+y_sort_enabled = true
 script = ExtResource("1_fcrcf")
 
 [node name="Player" parent="." unique_id=1496126262 groups=["player"] instance=ExtResource("2_0hvbd")]
@@ -36,3 +38,7 @@ position = Vector2(576, 420)
 [node name="VillagerSpawnInput" type="Node" parent="." unique_id=1122821778]
 
 [node name="Map" parent="." unique_id=1437051292 instance=ExtResource("9_m5bjr")]
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="InventoryUi" parent="CanvasLayer" instance=ExtResource("10_inv")]
