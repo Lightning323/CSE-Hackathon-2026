@@ -252,6 +252,16 @@ sprites under `assets/images/characters/`. Knights are allied village protectors
 - `assets/main_theme.tres` is the shared UI theme and uses `assets/fonts/pixel_operator/PixelOperator.ttf` as the default font.
 - Menu/UI scenes (including `menus/mainMenu/MainMenu.tscn`, `menus/mainMenu/SettingsMenu.tscn`, inventory/skills menus) apply `res://assets/main_theme.tres` on their root controls.
 
+## Audio
+
+- `assets/audio/music/` and `assets/audio/sfx/` contain imported audio resources (`.ogg/.mp3/.wav`).
+- **Main level BGM:** `level/character_dev/MainLevel.cs` starts `res://assets/audio/sfx/forest_ancient_path.ogg` on a looping `AudioStreamPlayer` in the main gameplay level.
+- **Gameplay SFX:**
+  - Enemy death: `enemy/Enemy.cs` plays `res://assets/audio/sfx/forest_enemy-death.ogg` when an enemy dies.
+  - Player hurt: `player/Player.cs` plays `res://assets/audio/sfx/forest_hurt.ogg` on damage (non-overlapping while already playing).
+  - Coin pickup: `items/Coin.cs` plays `res://assets/audio/sfx/forest_item.ogg` on collection (overlapping allowed).
+  - Sword attack: `player/Player.cs` plays `res://assets/audio/sfx/forest_slash.ogg` when using a sword/melee attack (not fire staff).
+
 
 ## Tests
 
