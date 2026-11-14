@@ -5,9 +5,9 @@ public partial class EnemySpawnOnKill : Node
 	private static readonly PackedScene SkeletonScene = GD.Load<PackedScene>("res://enemy/skeleton_enemy.tscn");
 	private static readonly PackedScene EliteScene = GD.Load<PackedScene>("res://enemy/elite_skeleton_enemy.tscn");
 
-	[Export] public float SpawnCheckInterval { get; set; } = 4.0f;
-	[Export] public float SpawnChance { get; set; } = 0.45f;
-	[Export] public int MaxEnemies { get; set; } = 12;
+	[Export] public float SpawnCheckInterval { get; set; } = 3.0f;
+	[Export] public float SpawnChance { get; set; } = 0.6f;
+	[Export] public int MaxEnemies { get; set; } = 16;
 	[Export] public float EliteChance { get; set; } = 0.12f;
 
 	private float _timer;

@@ -93,9 +93,10 @@ Coins collected in-world are tracked as gold and added to inventory as stackable
 
 - `map/Map.cs` (attached to `map/map.tscn`) procedurally generates the 200×200 map at runtime (`MapConstants.CELL_SIZE` = 16px) and composes it into a `Floor` layer and an `Objects` layer (`Walls`, `Plants`, `Decor`, `Houses`, `Trees`), and can place generated buildings/rooms.
 - **Ground:** the base terrain is grass everywhere (`assets/images/map_tiles/floor/grass.png`). Procedural villages and monument approach routes carve stone path tiles (`assets/images/map_tiles/floor/stone.png`).
-- **Villages:** generation places several spaced village clumps and exposes their bounds/centers as `Map.Villages` (`VillageArea`). Each village includes a small path network, 3–4 houses, reserved/clear areas, and local decorations (plants and town-bush props). Houses are scene-backed map objects (`map/map_objects/house/house.tscn`, `HouseFactory.cs`) using `assets/images/map_tiles/cute_House_1_Wood_Base_Blue.png` with collision at the base.
+- **Villages:** generation places multiple spaced village clumps (without overlap with each other, the monument, paths/reserved areas, or map borders) and exposes their bounds/centers as `Map.Villages` (`VillageArea`). Each village includes a small path network, 3–4 houses, and naturally decorated interiors with plants and town bushes placed on non-path, non-occupied ground. Houses are scene-backed map objects (`map/map_objects/house/house.tscn`, `HouseFactory.cs`) using `assets/images/map_tiles/cute_House_1_Wood_Base_Blue.png` with collision at the base.
+- **Village-only town trees:** colliding, y-sorted town trees (`assets/images/map_tiles/trees/town_tree-1.png`, `town_tree-2.png`) are placed only in a ring around village bounds as village-edge decoration (separate from forest trees), avoiding paths/objects/reserved areas and overlap.
 - **Monument:** the stone monument (`map/map_objects/monument/`) spawns at a random location within the camera-reachable map bounds, biased toward the center and kept away from edges, with reserved clearance from villages/objects and cardinal (N/S/E/W) path lines carved for discoverability. `Map` exposes `MonumentWorldPosition`.
-- **Forest/wilderness decorations:** outside village/reserved areas the generator scatters natural props including colliding, y-sorted forest trees (orange/pink/dried variants), rocks, and trunks, plus non-blocking forest bushes and ground plants for denser, more natural terrain. Blocking decor/trees use base-aligned sprites and collision shapes for correct depth and movement.
+- **Forest/wilderness decorations:** outside villages (and a small buffer around village bounds reserved for village decor) the generator scatters natural props including colliding, y-sorted forest trees (orange/pink/dried variants), rocks, and trunks, plus non-blocking forest bushes and ground plants for denser, more natural terrain. Blocking decor/trees use base-aligned sprites and collision shapes for correct depth and movement.
 - **Buildings/rooms, gates, and chests:** `RoomGenerator.cs` builds rectangular rooms with configurable wall edges (`Solid`/`Opening`/`Gate`), optional floors, and a chest. `Map.GenerateBuilding(...)`/`GenerateBuildings()` place rooms while avoiding overlap with reserved procedural areas (villages/monument/paths). Gates (`map/map_objects/gate/`) and chests (`map/map_objects/chest/`) are interactive/stateful map objects integrated with the inventory system.
 - **Map objects/layering:** `map/map_objects/MapObjectFactory.cs` is the base for walls/trees/bushes/houses/props/gates/chests. `TreeFactory`, `WallFactory`, and `HouseFactory` are scene-backed factories; `PlantFactory` creates lightweight non-blocking plant nodes; `map/map_objects/props/PropFactory.cs` creates configurable decorative props (sprite offset, optional collision, y-sort). Border walls are placed in a non-y-sorted `Walls` layer behind y-sorted actors/objects so players, plants, and other objects render over the walls.
 - **Map helpers/data:** `Map` provides `CellToWorldCenter`, `CellToWorldBase`, village metadata (`Villages`, `GetRandomPointInVillage`), monument position, and size helpers for other systems.
@@ -124,14 +125,14 @@ movement, health, combat, texture, and animation settings. Enemies target the cl
 | `skeleton_enemy.tscn` | Medium | 50 | 3 | 1 dmg, 24 range, 0.8s cooldown | Standard skeleton |
 | `elite_skeleton_enemy.tscn` | Hard | 70 | 6 | 2 dmg, 26 range, 0.7s cooldown | Larger red-tinted skeleton |
 
-`level/EnemySpawnOnKill.cs` performs occasional off-camera monster spawns (with a population cap and refill when empty), favoring normal skeletons over elite skeletons. `level/character_dev/EnemyTestSpawner.cs` remains a temporary manual test spawner (keys `1`/`2`). Remove temporary spawners when no longer needed.
+`level/EnemySpawnOnKill.cs` performs occasional off-camera monster spawns (with a population cap and refill when empty), favoring normal skeletons over elite skeletons. Spawn pacing/cap are tuned for more frequent ambient monsters around the map. `level/character_dev/EnemyTestSpawner.cs` remains a temporary manual test spawner (keys `1`/`2`). Remove temporary spawners when no longer needed.
 
 ## Allied Knight NPC
 
 `npc/knight/KnightNpc.cs` builds `SpriteFrames` at runtime from the `forest_hero` character
-sprites under `assets/images/characters/`. Knights are allied helpers: they target and attack
-enemies, can take damage, and regenerate slowly after a delay out of combat. No knights spawn by
-default; press `G` to spawn one near the player. The player can also damage knights.
+sprites under `assets/images/characters/`. Knights are allied village protectors: they target and attack nearby monsters threatening their village, can take damage, regenerate slowly after a delay out of combat, and can be assigned a home village (`SetHome`) to patrol/return near and stay in the village area.
+- `npc/knight/VillageKnightPopulationManager.cs` spawns 2 knights per generated village at startup (within village bounds) and respawns them quickly (10s) when the village area is not visible to the camera to maintain the garrison.
+- Manual spawn input (`G`) can still spawn a knight near the player (dev/testing). The player can also damage knights.
 
 ## Notes
 
