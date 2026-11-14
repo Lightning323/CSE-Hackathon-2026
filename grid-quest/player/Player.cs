@@ -22,6 +22,7 @@ public partial class Player : CharacterBody2D
 
 	private AnimatedSprite2D _sprite;
 	private ProgressBar _healthBar;
+	private PointLight2D _pointLight;
 	private State _state = State.Idle;
 	private string _facing = "down";
 	private bool _faceLeft;
@@ -116,11 +117,13 @@ public partial class Player : CharacterBody2D
 		AttackRange = CurrentAttackRange;
 		_sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
 		_healthBar = GetNodeOrNull<ProgressBar>("HealthBar");
+		_pointLight = GetNodeOrNull<PointLight2D>("PointLight2D");
 		_sprite.SpriteFrames = BuildSpriteFrames();
 		_sprite.AnimationFinished += OnAnimationFinished;
 		_sprite.Play("idle_down");
 		SyncEquippedFromId();
 		UpdateHealthBar();
+		UpdatePlayerLight();
 		CallDeferred(nameof(ApplyRandomSpawnIfNeeded));
 	}
 
@@ -135,6 +138,67 @@ public partial class Player : CharacterBody2D
 			return;
 
 		GlobalPosition = map.GetRandomPlayerSpawnPosition();
+	}
+
+	public override void _Process(double delta)
+	{
+		UpdatePlayerLight();
+	}
+
+	private void UpdatePlayerLight()
+	{
+		if (_pointLight == null || !IsInstanceValid(_pointLight))
+			return;
+
+		Map map = GetTree().Root.FindChild("Map", true, false) as Map;
+		bool insideBuilding = map != null && map.IsWorldPositionInsideBuilding(GlobalPosition);
+
+		// Keep light contained by wall occluders when indoors.
+		_pointLight.RangeItemCullMask = 1;
+		_pointLight.ShadowEnabled = insideBuilding;
+
+		bool shouldEnable;
+		if (insideBuilding)
+		{
+			// Turn on inside buildings to explore dark interiors.
+			shouldEnable = true;
+		}
+		else
+		{
+			DayNightCycle cycle = GetTree().GetFirstNodeInGroup("day_night_cycle") as DayNightCycle;
+			if (cycle == null)
+			{
+				shouldEnable = false;
+			}
+			else
+			{
+				// Off during bright day; on around sunset/night and off again around sunrise.
+				shouldEnable = cycle.DaylightFactor < 0.45f;
+			}
+		}
+
+		_pointLight.Enabled = shouldEnable;
+		if (!shouldEnable)
+		{
+			_pointLight.Energy = 0.0f;
+			_pointLight.TextureScale = 1.0f;
+			_pointLight.Color = Colors.White;
+			return;
+		}
+
+		if (insideBuilding)
+		{
+			// Dim indoor light and rely on wall occluders to keep it from leaking outside.
+			_pointLight.Energy = 0.95f;
+			_pointLight.TextureScale = 1.15f;
+			_pointLight.Color = new Color(1.0f, 0.98f, 0.92f, 1.0f);
+		}
+		else
+		{
+			_pointLight.Energy = 1.0f;
+			_pointLight.TextureScale = 1.0f;
+			_pointLight.Color = Colors.White;
+		}
 	}
 
 	public void AddGold(int amount)

@@ -28,6 +28,7 @@ public partial class Map : Node2D
 	private readonly bool[,] _reservedCells = new bool[Width, Height];
 	private readonly bool[,] _occupiedCells = new bool[Width, Height];
 	private readonly List<VillageArea> _villages = new();
+	private readonly List<Rect2I> _buildingInteriorRects = new();
 	private Vector2I _monumentCell = new(Width / 2, Height / 2);
 
 	public IReadOnlyList<VillageArea> Villages => _villages;
@@ -48,6 +49,7 @@ public partial class Map : Node2D
 		Array.Clear(_reservedCells, 0, _reservedCells.Length);
 		Array.Clear(_occupiedCells, 0, _occupiedCells.Length);
 		_villages.Clear();
+		_buildingInteriorRects.Clear();
 
 		var rng = new RandomNumberGenerator();
 		rng.Randomize();
@@ -82,6 +84,7 @@ public partial class Map : Node2D
 		building.Name = $"Building_{originX}_{originY}";
 		ReserveRect(originX - 1, originY - 1, width + 2, height + 2);
 		MarkOccupiedRect(originX, originY, width, height);
+		RegisterBuildingInterior(originX, originY, width, height);
 		AddChild(building);
 		return building;
 	}
@@ -98,6 +101,10 @@ public partial class Map : Node2D
 		// Reserve the entire footprint, including gaps, before wilderness objects are scattered.
 		ReserveRect(originX - 1, originY - 1, layout.Size.X + 2, layout.Size.Y + 2);
 		MarkOccupiedRect(originX, originY, layout.Size.X, layout.Size.Y);
+		foreach (BuildingRoom room in layout.Rooms)
+		{
+			RegisterBuildingInterior(originX + room.Bounds.Position.X, originY + room.Bounds.Position.Y, room.Bounds.Size.X, room.Bounds.Size.Y);
+		}
 		AddChild(building);
 		return building;
 	}
@@ -251,6 +258,29 @@ public partial class Map : Node2D
 		}
 
 		return CellToWorldCenter(Width / 2, Height / 2);
+	}
+
+	public bool IsWorldPositionInsideBuilding(Vector2 worldPosition)
+	{
+		foreach (Rect2I rect in _buildingInteriorRects)
+		{
+			Rect2 worldRect = new(
+				rect.Position.X * MapConstants.CELL_SIZE,
+				rect.Position.Y * MapConstants.CELL_SIZE,
+				rect.Size.X * MapConstants.CELL_SIZE,
+				rect.Size.Y * MapConstants.CELL_SIZE);
+			if (worldRect.HasPoint(worldPosition))
+				return true;
+		}
+		return false;
+	}
+
+	private void RegisterBuildingInterior(int originX, int originY, int width, int height)
+	{
+		// Track the interior area (inside perimeter walls) for lighting/indoor logic.
+		if (width <= 2 || height <= 2)
+			return;
+		_buildingInteriorRects.Add(new Rect2I(originX + 1, originY + 1, width - 2, height - 2));
 	}
 
 	private bool IsCellValidForPlayerSpawn(int x, int y)

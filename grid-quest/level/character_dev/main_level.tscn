@@ -12,6 +12,7 @@
 [ext_resource type="Script" path="res://npc/knight/VillageKnightPopulationManager.cs" id="16_knight_mgr"]
 [ext_resource type="PackedScene" path="res://menus/cheat_menu.tscn" id="17_cheat_menu"]
 [ext_resource type="Script" path="res://level/EnemySpawnOnKill.cs" id="18_enemy_spawn"]
+[ext_resource type="Script" path="res://level/DayNightCycle.cs" id="19_daynight"]
 
 [node name="Level" type="Node2D" unique_id=426259724]
 y_sort_enabled = true
@@ -49,4 +50,4 @@ script = ExtResource("18_enemy_spawn")
 script = ExtResource("14_monument_indicator")
 
 [node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=394873551]
-color = Color(0.23753911, 0.23753914, 0.23753911, 1)
+script = ExtResource("19_daynight")
