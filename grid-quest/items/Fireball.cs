@@ -12,6 +12,7 @@ public partial class Fireball : Area2D
 
 	public override void _Ready()
 	{
+		AddToGroup("projectiles");
 		BodyEntered += OnBodyEntered;
 		AreaEntered += OnAreaEntered;
 		var sprite = GetNodeOrNull<Sprite2D>("Sprite2D");
@@ -70,7 +71,19 @@ public partial class Fireball : Area2D
 			{
 				damage = _sourcePlayerEntity.ComputeDamageForTarget(body as Node2D, Damage);
 			}
-			body.Call("TakeDamage", damage);
+
+			if (body.HasMethod("TakeDamageAmount"))
+			{
+				if (_sourcePlayerEntity != null && IsInstanceValid(_sourcePlayerEntity))
+					body.Call("TakeDamageAmount", damage, _sourcePlayerEntity);
+				else
+					body.Call("TakeDamageAmount", damage, (Node2D?)null);
+			}
+			else
+			{
+				body.Call("TakeDamage", damage);
+			}
+
 			if (_knockbackStrength > 0.0f && body.HasMethod("ApplyKnockback"))
 			{
 				body.Call("ApplyKnockback", _dir, _knockbackStrength);

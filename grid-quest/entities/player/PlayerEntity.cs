@@ -31,6 +31,9 @@ public partial class PlayerEntity : Entity
 	private AnimatedSprite2D _sprite;
 	private ProgressBar _healthBar;
 	private PointLight2D _pointLight;
+	private Camera2D _camera;
+	private AudioStreamPlayer _hurtSfx;
+	private AudioStreamPlayer _slashSfx;
 	private State _state = State.Idle;
 	private string _facing = "down";
 	private bool _faceLeft;
@@ -43,6 +46,9 @@ public partial class PlayerEntity : Entity
 	private float _damageSpeedBuffTimer;
 	private float _killSpeedBuffTimer;
 	private float _lifestealAccumulator;
+	private float _aoeAuraTickTimer;
+	private Node2D _aoeAuraVisual;
+	private Line2D _aoeAuraLine;
 
 	public bool DebugInvulnerable { get; set; }
 
@@ -79,7 +85,6 @@ public partial class PlayerEntity : Entity
 	public float CurrentKnockbackStrength => 40.0f * GetUpgradeLevel("knockback_strength");
 	public float CurrentLifestealPerHit => GetUpgradeLevel("lifesteal") * 0.25f;
 	public int CurrentThornsDamage => GetUpgradeLevel("thorns_damage");
-	public float CurrentBossBonusMultiplier => 1.0f + GetUpgradeLevel("bonus_damage_to_bosses") * 0.2f;
 	public float CurrentArmorReductionPerHit => Mathf.Min(0.75f, GetUpgradeLevel("damage_reduction_armor") * 0.08f);
 	public float CurrentRegenPerSecond => GetUpgradeLevel("slow_health_regeneration") * 0.35f;
 	public float CurrentRegenDelay => Mathf.Max(0.25f, 3.0f - GetUpgradeLevel("health_regeneration_delay") * 0.25f);
@@ -93,6 +98,36 @@ public partial class PlayerEntity : Entity
 			if (_killSpeedBuffTimer > 0.0f) mult += GetUpgradeLevel("movement_speed_after_killing_an_enemy") * 0.12f;
 			return BaseSpeed * mult;
 		}
+	}
+
+	public float CurrentAoeAuraRadius
+	{
+		get
+		{
+			int level = GetUpgradeLevel("aoe_aura");
+			if (level <= 0) return 0.0f;
+			return 28.0f + (level - 1) * 4.0f; // slow range scaling
+		}
+	}
+
+	public int CurrentAoeAuraDamage
+	{
+		get
+		{
+			int level = GetUpgradeLevel("aoe_aura");
+			if (level <= 0) return 0;
+			return 1 + (level - 1) / 3; // slow damage scaling
+		}
+	}
+
+	public float CurrentAoeAuraTickInterval => 0.75f;
+
+	public float CurrentGoldDropMultiplier => 1.0f + GetUpgradeLevel("midas_touch") * 0.15f;
+
+	public int GetScaledMobGoldDrop(int baseGoldAmount)
+	{
+		if (baseGoldAmount <= 0) return 0;
+		return Mathf.Max(baseGoldAmount, Mathf.RoundToInt(baseGoldAmount * CurrentGoldDropMultiplier));
 	}
 
 	public override void _Ready()
@@ -115,10 +150,15 @@ public partial class PlayerEntity : Entity
 		_sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
 		_healthBar = GetNodeOrNull<ProgressBar>("HealthBar");
 		_pointLight = GetNodeOrNull<PointLight2D>("PointLight2D");
+		_camera = GetNodeOrNull<Camera2D>("Camera2D");
 		_sprite.SpriteFrames = BuildSpriteFrames();
 		_sprite.AnimationFinished += OnAnimationFinished;
 		_sprite.Play("idle_down");
 		SyncEquippedFromId();
+		SetupAudio();
+		SetupAoeAuraVisual();
+		UpdateAoeAuraVisual();
+		ApplyHealthBarStyle();
 		UpdateHealthBar();
 		UpdatePlayerLight();
 		CallDeferred(nameof(ApplyRandomSpawnIfNeeded));
@@ -132,7 +172,11 @@ public partial class PlayerEntity : Entity
 		GlobalPosition = map.GetRandomPlayerSpawnPosition();
 	}
 
-	public override void _Process(double delta) => UpdatePlayerLight();
+	public override void _Process(double delta)
+	{
+		UpdatePlayerLight();
+		UpdateAoeAuraVisual();
+	}
 
 	private void UpdatePlayerLight()
 	{
@@ -227,7 +271,8 @@ public partial class PlayerEntity : Entity
 		var inv = GetTree().GetFirstNodeInGroup("inventory_ui") as Control;
 		var skills = GetTree().GetFirstNodeInGroup("skills_ui") as Control;
 		var cheat = GetTree().GetFirstNodeInGroup("cheat_ui") as Control;
-		if ((inv != null && inv.Visible) || (skills != null && skills.Visible) || (cheat != null && cheat.Visible))
+		var trader = GetTree().GetFirstNodeInGroup("trader_ui") as Control;
+		if ((inv != null && inv.Visible) || (skills != null && skills.Visible) || (cheat != null && cheat.Visible) || (trader != null && trader.Visible))
 		{
 			Velocity = Vector2.Zero; _velocityCurrent = Vector2.Zero;
 			if (_state != State.Attack) { _state = State.Idle; PlayAnimation($"idle_{_facing}"); }
@@ -239,8 +284,11 @@ public partial class PlayerEntity : Entity
 		_damageRegenDelayTimer = Mathf.Max(0.0f, _damageRegenDelayTimer - dt);
 		_damageSpeedBuffTimer = Mathf.Max(0.0f, _damageSpeedBuffTimer - dt);
 		_killSpeedBuffTimer = Mathf.Max(0.0f, _killSpeedBuffTimer - dt);
+		_aoeAuraTickTimer = Mathf.Max(0.0f, _aoeAuraTickTimer - dt);
 		ApplyHealthRegen(dt);
+		UpdateAoeAura(dt);
 
+		SyncEquippedFromId();
 		if (_state != State.Attack && EquippedWeapon != "none" && Input.IsActionPressed("attack") && _attackTimer <= 0.0f)
 			StartAttack();
 
@@ -268,6 +316,7 @@ public partial class PlayerEntity : Entity
 		Health = Mathf.Max(0, Health - reduced);
 		_damageRegenDelayTimer = CurrentRegenDelay;
 		if (GetUpgradeLevel("movement_speed_after_taking_damage") > 0) _damageSpeedBuffTimer = Mathf.Max(_damageSpeedBuffTimer, 2.5f);
+		PlayHurtSfx();
 		ApplyThorns(attacker);
 		UpdateHealthBar();
 		if (Health == 0) Die();
@@ -301,12 +350,11 @@ public partial class PlayerEntity : Entity
 
 	public void Die()
 	{
-		if (IsDead) return;
+		if (_state == State.Dead) return;
 		_state = State.Dead; Health = 0; Velocity = Vector2.Zero; _velocityCurrent = Vector2.Zero;
 		_sprite.FlipH = _facing == "side" && _faceLeft;
 		PlayAnimation("death");
-		EmitSignal(SignalName.Died);
-		EmitSignal(SignalName.EntityDied);
+		UpdateHealthBar();
 	}
 
 	private void ShootFireball()
@@ -324,24 +372,145 @@ public partial class PlayerEntity : Entity
 		_attackTimer = CurrentAttackCooldown;
 		_sprite.FlipH = _facing == "side" && _faceLeft;
 		if (EquippedWeapon == "fire_staff") { ShootFireball(); }
-		else { _state = State.Attack; PlayAnimation($"attack_{_facing}"); DamageEnemiesInRange(); }
+		else { _state = State.Attack; PlayAnimation($"attack_{_facing}"); PlaySlashSfx(); DamageEnemiesInRange(); }
+	}
+
+	public override void _UnhandledInput(InputEvent @event)
+	{
+		if (@event is InputEventMouseButton mb && mb.Pressed)
+		{
+			if (_camera == null || !IsInstanceValid(_camera))
+				_camera = GetNodeOrNull<Camera2D>("Camera2D");
+			if (_camera == null) return;
+
+			float step = 0.15f;
+			Vector2 zoom = _camera.Zoom;
+			if (mb.ButtonIndex == MouseButton.WheelUp)
+				zoom += new Vector2(step, step);
+			else if (mb.ButtonIndex == MouseButton.WheelDown)
+				zoom -= new Vector2(step, step);
+			else
+				return;
+
+			zoom.X = Mathf.Clamp(zoom.X, 0.75f, 4.0f);
+			zoom.Y = Mathf.Clamp(zoom.Y, 0.75f, 4.0f);
+			_camera.Zoom = zoom;
+			GetViewport().SetInputAsHandled();
+		}
+	}
+
+	private void SetupAudio()
+	{
+		_hurtSfx = GetNodeOrNull<AudioStreamPlayer>("HurtSfx") ?? new AudioStreamPlayer { Name = "HurtSfx" };
+		if (_hurtSfx.GetParent() == null)
+			AddChild(_hurtSfx);
+		_hurtSfx.Stream = GD.Load<AudioStream>("res://assets/audio/sfx/forest_hurt.ogg");
+		_hurtSfx.VolumeDb = -6.0f;
+
+		_slashSfx = GetNodeOrNull<AudioStreamPlayer>("SlashSfx") ?? new AudioStreamPlayer { Name = "SlashSfx" };
+		if (_slashSfx.GetParent() == null)
+			AddChild(_slashSfx);
+		_slashSfx.Stream = GD.Load<AudioStream>("res://assets/audio/sfx/forest_slash.ogg");
+		_slashSfx.VolumeDb = -8.0f;
+	}
+
+	private void PlayHurtSfx()
+	{
+		if (_hurtSfx == null || _hurtSfx.Stream == null) return;
+		if (_hurtSfx.Playing) return;
+		_hurtSfx.Play();
+	}
+
+	private void PlaySlashSfx()
+	{
+		if (_slashSfx == null || _slashSfx.Stream == null) return;
+		_slashSfx.Play();
+	}
+
+	private void SetupAoeAuraVisual()
+	{
+		if (_aoeAuraVisual != null && IsInstanceValid(_aoeAuraVisual)) return;
+		_aoeAuraVisual = new Node2D { Name = "AoeAuraVisual", ZIndex = 5 };
+		_aoeAuraLine = new Line2D
+		{
+			Name = "Circle",
+			Width = 2.0f,
+			DefaultColor = new Color(0.45f, 0.9f, 1.0f, 0.55f),
+			Closed = true,
+			Antialiased = true,
+		};
+		_aoeAuraVisual.AddChild(_aoeAuraLine);
+		AddChild(_aoeAuraVisual);
+		_aoeAuraVisual.Visible = false;
+	}
+
+	private void UpdateAoeAuraVisual()
+	{
+		if (_aoeAuraVisual == null || !IsInstanceValid(_aoeAuraVisual) || _aoeAuraLine == null) return;
+		float radius = CurrentAoeAuraRadius;
+		bool visible = radius > 0.0f && !IsDead;
+		_aoeAuraVisual.Visible = visible;
+		if (!visible) return;
+
+		const int segments = 32;
+		var pts = new Vector2[segments];
+		for (int i = 0; i < segments; i++)
+		{
+			float t = (Mathf.Tau * i) / segments;
+			pts[i] = new Vector2(Mathf.Cos(t), Mathf.Sin(t)) * radius;
+		}
+		_aoeAuraLine.Points = pts;
+		float pulse = 0.45f + 0.1f * Mathf.Sin((float)Time.GetTicksMsec() / 180.0f);
+		_aoeAuraLine.DefaultColor = new Color(0.45f, 0.95f, 1.0f, pulse);
+	}
+
+	private void UpdateAoeAura(float delta)
+	{
+		int damage = CurrentAoeAuraDamage;
+		float radius = CurrentAoeAuraRadius;
+		if (damage <= 0 || radius <= 0.0f || IsDead) return;
+		if (_aoeAuraTickTimer > 0.0f) return;
+		_aoeAuraTickTimer = CurrentAoeAuraTickInterval;
+
+		ApplyAoeAuraDamageToGroup("enemies", radius, damage);
+		// Knights are damageable by player attacks in this game, but aura should focus hostile targets.
+	}
+
+	private void ApplyAoeAuraDamageToGroup(string group, float radius, int damage)
+	{
+		float radiusSq = radius * radius;
+		foreach (Node node in GetTree().GetNodesInGroup(group))
+		{
+			if (node is not Node2D target || !IsInstanceValid(target)) continue;
+			if (GlobalPosition.DistanceSquaredTo(target.GlobalPosition) > radiusSq) continue;
+			DealDamageToTarget(target, damage, applyKnockback: false);
+		}
+	}
+
+	private void DealDamageToTarget(Node2D target, int baseDamage, bool applyKnockback)
+	{
+		if (target == null || !IsInstanceValid(target) || !target.HasMethod("TakeDamage")) return;
+		int damage = ComputeDamageForTarget(target, baseDamage);
+		if (target.HasMethod("TakeDamageAmount"))
+			target.Call("TakeDamageAmount", damage, this);
+		else
+			target.Call("TakeDamage", damage);
+
+		if (applyKnockback && CurrentKnockbackStrength > 0.0f && target.HasMethod("ApplyKnockback"))
+		{
+			Vector2 dir = target.GlobalPosition - GlobalPosition;
+			if (dir.LengthSquared() < 0.001f) dir = _facing switch { "up" => Vector2.Up, "down" => Vector2.Down, "side" => _faceLeft ? Vector2.Left : Vector2.Right, _ => Vector2.Down };
+			target.Call("ApplyKnockback", dir.Normalized(), CurrentKnockbackStrength);
+		}
+		ApplyOnHitEffects(target);
 	}
 
 	private void DamageEnemiesInRange() { DamageGroupInRange("enemies"); DamageGroupInRange("knights"); }
 
-	private bool IsBossTarget(Node2D target)
-	{
-		if (target == null) return false;
-		if (target.IsInGroup("boss") || target.IsInGroup("bosses")) return true;
-		Variant v = target.Get("IsBoss");
-		return v.VariantType == Variant.Type.Bool && v.AsBool();
-	}
-
 	public int ComputeDamageForTarget(Node2D target, int baseDamage)
 	{
-		float dmg = baseDamage;
-		if (IsBossTarget(target)) dmg *= CurrentBossBonusMultiplier;
-		return Mathf.Max(1, Mathf.RoundToInt(dmg));
+		_ = target;
+		return Mathf.Max(1, baseDamage);
 	}
 
 	private void ApplyOnHitEffects(Node2D target)
@@ -366,15 +535,7 @@ public partial class PlayerEntity : Entity
 		{
 			if (node is not Node2D target || !IsInstanceValid(target)) continue;
 			if (target.GlobalPosition.DistanceTo(GlobalPosition) > CurrentAttackRange || !target.HasMethod("TakeDamage")) continue;
-			int damage = ComputeDamageForTarget(target, CurrentAttackDamage);
-			target.Call("TakeDamage", damage);
-			if (CurrentKnockbackStrength > 0.0f && target.HasMethod("ApplyKnockback"))
-			{
-				Vector2 dir = target.GlobalPosition - GlobalPosition;
-				if (dir.LengthSquared() < 0.001f) dir = _facing switch { "up" => Vector2.Up, "down" => Vector2.Down, "side" => _faceLeft ? Vector2.Left : Vector2.Right, _ => Vector2.Down };
-				target.Call("ApplyKnockback", dir.Normalized(), CurrentKnockbackStrength);
-			}
-			ApplyOnHitEffects(target);
+			DealDamageToTarget(target, CurrentAttackDamage, applyKnockback: true);
 		}
 	}
 
@@ -391,11 +552,36 @@ public partial class PlayerEntity : Entity
 
 	private void OnAnimationFinished()
 	{
-		if (IsDead) return;
+		if (_state == State.Dead)
+		{
+			EmitSignal(SignalName.Died);
+			EmitSignal(SignalName.EntityDied);
+			return;
+		}
 		if (_state == State.Attack) { _state = State.Idle; PlayAnimation($"idle_{_facing}"); }
 	}
 
-	private void UpdateHealthBar() { if (_healthBar == null) return; _healthBar.MaxValue = MaxHealth; _healthBar.Value = Health; }
+	private void ApplyHealthBarStyle()
+	{
+		if (_healthBar == null) return;
+		var bg = new StyleBoxFlat { BgColor = new Color(0.08f, 0.05f, 0.05f, 0.95f) };
+		bg.SetCornerRadiusAll(2);
+		var fill = new StyleBoxFlat { BgColor = new Color(1.0f, 0.45f, 0.45f, 1.0f) };
+		fill.SetCornerRadiusAll(2);
+		_healthBar.AddThemeStyleboxOverride("background", bg);
+		_healthBar.AddThemeStyleboxOverride("fill", fill);
+		_healthBar.SelfModulate = new Color(1, 1, 1, 1);
+	}
+
+	private void UpdateHealthBar() { if (_healthBar == null) return; ApplyHealthBarStyleIfNeeded(); _healthBar.MaxValue = MaxHealth; _healthBar.Value = Health; }
+
+	private bool _healthBarStyled;
+	private void ApplyHealthBarStyleIfNeeded()
+	{
+		if (_healthBarStyled || _healthBar == null) return;
+		ApplyHealthBarStyle();
+		_healthBarStyled = true;
+	}
 
 	private static SpriteFrames BuildSpriteFrames()
 	{

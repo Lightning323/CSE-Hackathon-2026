@@ -79,9 +79,9 @@ public partial class CheatMenu : Control
 		var trustRow = new HBoxContainer();
 		trustRow.AddThemeConstantOverride("separation", 6);
 		var trustNear = new Button { Text = "+25 Nearest" };
-		trustNear.Pressed += () => AdjustNearestVillagerTrust(25);
+		trustNear.Pressed += () => AdjustNearestVillagerTrust(2);
 		var trustAll = new Button { Text = "+25 All Nearby" };
-		trustAll.Pressed += () => AdjustNearbyVillagersTrust(25, 180.0f);
+		trustAll.Pressed += () => AdjustNearbyVillagersTrust(2, 180.0f);
 		trustRow.AddChild(trustNear);
 		trustRow.AddChild(trustAll);
 		root.AddChild(trustRow);
@@ -189,7 +189,7 @@ public partial class CheatMenu : Control
 			return;
 		}
 		nearest.DebugAdjustTrust(delta);
-		_statusLabel.Text = $"Nearest villager trust: {nearest.Trust}/100";
+		_statusLabel.Text = $"Nearest villager trust: {nearest.Trust}/10";
 	}
 
 	private void AdjustNearbyVillagersTrust(int delta, float radius)

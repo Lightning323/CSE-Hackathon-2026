@@ -32,6 +32,7 @@ position = Vector2(0, -4)
 shape = SubResource("CircleShape2D_villager")
 
 [node name="HealthBar" type="ProgressBar" parent="."]
+modulate = Color(1, 0.7, 0.7, 1)
 offset_left = -10.0
 offset_top = -18.0
 offset_right = 10.0
@@ -40,6 +41,18 @@ max_value = 3.0
 value = 3.0
 show_percentage = false
 mouse_filter = 2
+
+[node name="TraderLabel" type="Label" parent="."]
+visible = false
+offset_left = -24.0
+offset_top = -30.0
+offset_right = 24.0
+offset_bottom = -18.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.35, 0.7, 1, 1)
+theme_override_font_sizes/font_size = 8
+text = "Trader"
+horizontal_alignment = 1
 
 [node name="SpeechBubble" type="Node2D" parent="."]
 position = Vector2(0, -34)

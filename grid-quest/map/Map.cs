@@ -38,6 +38,7 @@ public partial class Map : Node2D
 
 	public override void _Ready()
 	{
+		AddToGroup("map");
 		YSortEnabled = true;
 		GenerateMap();
 	}
@@ -112,21 +113,42 @@ public partial class Map : Node2D
 	private void GenerateBuildings()
 	{
 		// Generate before wilderness decoration so entrances and interiors stay clear.
-		BuildingLayout dungeon = BuildingGenerator.Plan(8);
-		for (int y = 5; y + dungeon.Size.Y < 98; y += 5)
+		// Place a few varied procedural buildings (different room counts/sizes) for nicer variety.
+		var plans = new (int roomCount, int roomWidth, int roomHeight, ulong seed)[]
 		{
-			bool placed = false;
-			for (int x = 5; x + dungeon.Size.X < 98; x += 5)
-			{
-				if (GenerateDungeon(x, y, dungeon) == null) continue;
-				placed = true;
-				break;
-			}
-			if (placed) break;
+			(6, 8, 7, 101UL),
+			(4, 7, 6, 202UL),
+			(3, 6, 6, 303UL),
+		};
+
+		int placedBuildings = 0;
+		for (int i = 0; i < plans.Length && placedBuildings < 2; i++)
+		{
+			var p = plans[i];
+			BuildingLayout layout = BuildingGenerator.Plan(p.roomCount, p.roomWidth, p.roomHeight, p.seed);
+			if (TryPlaceDungeon(layout))
+				placedBuildings++;
 		}
-		// TryPlaceBuildingNear(24, 24, 8, 6, GridQuest.Map.WallFeature.Solid, GridQuest.Map.WallFeature.Gate, GridQuest.Map.WallFeature.Solid, GridQuest.Map.WallFeature.Solid);
-		// TryPlaceBuildingNear(70, 18, 10, 8, GridQuest.Map.WallFeature.Opening, GridQuest.Map.WallFeature.Solid, GridQuest.Map.WallFeature.Gate, GridQuest.Map.WallFeature.Solid);
-		// TryPlaceBuildingNear(24, 70, 12, 7, GridQuest.Map.WallFeature.Solid, GridQuest.Map.WallFeature.Gate, GridQuest.Map.WallFeature.Solid, GridQuest.Map.WallFeature.Opening, gatesOpen: true);
+
+		// Fallback: ensure at least one building appears if possible.
+		if (placedBuildings == 0)
+		{
+			BuildingLayout fallback = BuildingGenerator.Plan(5, 7, 6, 404UL);
+			TryPlaceDungeon(fallback);
+		}
+	}
+
+	private bool TryPlaceDungeon(BuildingLayout layout)
+	{
+		for (int y = 5; y + layout.Size.Y < 98; y += 4)
+		{
+			for (int x = 5; x + layout.Size.X < 98; x += 4)
+			{
+				if (GenerateDungeon(x, y, layout) != null)
+					return true;
+			}
+		}
+		return false;
 	}
 
 	private void TryPlaceBuildingNear(
@@ -298,20 +320,21 @@ public partial class Map : Node2D
 
 	private void ClearGeneratedLayers()
 	{
-		foreach (string name in new[] { "Floor", "Objects" })
-		{
-			Node existing = GetNodeOrNull<Node>(name);
-			existing?.QueueFree();
-		}
-
+		// Fully clear previously generated map content before regenerating to avoid stacking/overlap.
 		var toRemove = new List<Node>();
 		foreach (Node child in GetChildren())
 		{
-			if (child.Name.ToString().StartsWith("Building_", StringComparison.Ordinal))
+			string name = child.Name.ToString();
+			if (name == "Floor" || name == "Objects" || name.StartsWith("Building_", StringComparison.Ordinal))
 				toRemove.Add(child);
 		}
+
 		foreach (Node node in toRemove)
+		{
+			if (node.GetParent() == this)
+				RemoveChild(node);
 			node.QueueFree();
+		}
 	}
 
 	private TileMapLayer FloorLayer(int width, int height)

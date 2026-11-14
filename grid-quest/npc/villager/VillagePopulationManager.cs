@@ -4,7 +4,9 @@ using System.Collections.Generic;
 public partial class VillagePopulationManager : Node
 {
 	[Export] public int VillagersPerVillage { get; set; } = 4;
+	[Export] public int TradersPerVillage { get; set; } = 1;
 	[Export] public float RespawnDelaySeconds { get; set; } = 20.0f;
+	[Export] public float TraderRespawnDelaySeconds { get; set; } = 20.0f;
 
 	private readonly Dictionary<int, List<PendingRespawn>> _pending = new();
 	private Map _map;
@@ -13,10 +15,12 @@ public partial class VillagePopulationManager : Node
 	private sealed class PendingRespawn
 	{
 		public float TimeLeft;
+		public bool IsTrader;
 	}
 
 	public override void _Ready()
 	{
+		AddToGroup("village_population_manager");
 		CallDeferred(nameof(Initialize));
 	}
 
@@ -26,15 +30,26 @@ public partial class VillagePopulationManager : Node
 		if (_map == null)
 			return;
 
+		_pending.Clear();
 		var villages = _map.Villages;
 		for (int i = 0; i < villages.Count; i++)
 		{
 			_pending[i] = new List<PendingRespawn>();
 			for (int j = 0; j < VillagersPerVillage; j++)
 			{
-				SpawnVillager(i);
+				SpawnVillager(i, false);
+			}
+			for (int t = 0; t < TradersPerVillage; t++)
+			{
+				SpawnVillager(i, true);
 			}
 		}
+	}
+
+	public void ResetForNewMap()
+	{
+		_pending.Clear();
+		Initialize();
 	}
 
 	public override void _Process(double delta)
@@ -57,13 +72,14 @@ public partial class VillagePopulationManager : Node
 				if (IsVillageAreaOnScreen(i))
 					continue;
 
+				bool isTrader = list[p].IsTrader;
 				list.RemoveAt(p);
-				SpawnVillager(i);
+				SpawnVillager(i, isTrader);
 			}
 		}
 	}
 
-	private void SpawnVillager(int villageIndex)
+	private void SpawnVillager(int villageIndex, bool isTrader)
 	{
 		if (_map == null || villageIndex < 0 || villageIndex >= _map.Villages.Count)
 			return;
@@ -75,6 +91,7 @@ public partial class VillagePopulationManager : Node
 			return;
 		}
 
+		villager.IsTrader = isTrader;
 		Map.VillageArea village = _map.Villages[villageIndex];
 		villager.GlobalPosition = _map.GetRandomPointInVillage(villageIndex);
 		villager.SetHome(village.Bounds, village.Center, villageIndex);
@@ -93,7 +110,9 @@ public partial class VillagePopulationManager : Node
 			list = new List<PendingRespawn>();
 			_pending[villageIndex] = list;
 		}
-		list.Add(new PendingRespawn { TimeLeft = RespawnDelaySeconds });
+		bool isTrader = villager != null && villager.IsTrader;
+		float delay = isTrader ? TraderRespawnDelaySeconds : RespawnDelaySeconds;
+		list.Add(new PendingRespawn { TimeLeft = delay, IsTrader = isTrader });
 	}
 
 	private bool IsVillageAreaOnScreen(int villageIndex)

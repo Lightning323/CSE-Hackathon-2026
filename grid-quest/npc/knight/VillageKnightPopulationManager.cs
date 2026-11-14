@@ -19,6 +19,7 @@ public partial class VillageKnightPopulationManager : Node
 
 	public override void _Ready()
 	{
+		AddToGroup("village_knight_population_manager");
 		CallDeferred(nameof(Initialize));
 	}
 
@@ -28,6 +29,8 @@ public partial class VillageKnightPopulationManager : Node
 		if (_map == null)
 			return;
 
+		_pending.Clear();
+		_targetCounts.Clear();
 		var rng = new RandomNumberGenerator();
 		rng.Randomize();
 		var villages = _map.Villages;
@@ -41,6 +44,13 @@ public partial class VillageKnightPopulationManager : Node
 				SpawnKnight(i);
 			}
 		}
+	}
+
+	public void ResetForNewMap()
+	{
+		_pending.Clear();
+		_targetCounts.Clear();
+		Initialize();
 	}
 
 	public override void _Process(double delta)

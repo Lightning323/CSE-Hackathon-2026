@@ -95,14 +95,21 @@ public static class BuildingGenerator
 		_ = checked(originY + layout.Size.Y);
 		var building = new Node2D { Name = "Building", YSortEnabled = true };
 		var context = new RoomGenerationContext();
+		var rng = new RandomNumberGenerator();
+		rng.Seed = unchecked((ulong)(originX * 92821 + originY * 68917 + layout.Size.X * 31 + layout.Size.Y * 17 + layout.Rooms.Count * 97));
 		try
 		{
 			for (int i = 0; i < layout.Rooms.Count; i++)
 			{
 				BuildingRoom spec = layout.Rooms[i];
+				bool isEntranceRoom = spec.Bounds.Position.Y == 0 && spec.North != WallFeature.Solid;
+				bool includeChest = !isEntranceRoom && (i % 2 == 1 || rng.Randf() < 0.35f);
 				Node2D room = RoomGenerator.Create(originX + spec.Bounds.Position.X, originY + spec.Bounds.Position.Y,
 					spec.Bounds.Size.X, spec.Bounds.Size.Y, spec.North, spec.South, spec.East, spec.West,
-					gatesOpen, includeFloor, context);
+					gatesOpen, includeFloor, context,
+					includeChest: includeChest,
+					restockingChest: includeChest,
+					includeDecor: true);
 				room.Name = $"Room_{i}";
 				building.AddChild(room);
 			}

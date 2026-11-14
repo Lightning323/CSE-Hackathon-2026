@@ -53,7 +53,7 @@ public partial class KnightEntity : NpcEntity
 		_sprite.AnimationFinished += OnAnimationFinished;
 		_sprite.Play("idle_down");
 		AddToGroup("allies"); AddToGroup("knights"); AddToGroup("village_knights");
-		PickNewPatrolTarget(); UpdateHealthBar();
+		PickNewPatrolTarget(); ApplyHealthBarStyle(); UpdateHealthBar();
 	}
 
 	/// <summary>Sets the knight's protected village area/center/index.</summary>
@@ -175,6 +175,18 @@ public partial class KnightEntity : NpcEntity
 		_sprite.FlipH = _facing == "side" && _faceLeft;
 	}
 	private void PlayAnimation(string animation) { if (_sprite.Animation != animation) _sprite.Play(animation); }
+	private void ApplyHealthBarStyle()
+	{
+		if (_healthBar == null) return;
+		var bg = new StyleBoxFlat { BgColor = new Color(0.08f, 0.05f, 0.05f, 0.95f) };
+		bg.SetCornerRadiusAll(2);
+		var fill = new StyleBoxFlat { BgColor = new Color(1.0f, 0.45f, 0.45f, 1.0f) };
+		fill.SetCornerRadiusAll(2);
+		_healthBar.AddThemeStyleboxOverride("background", bg);
+		_healthBar.AddThemeStyleboxOverride("fill", fill);
+		_healthBar.SelfModulate = Colors.White;
+	}
+
 	private void UpdateHealthBar() { if (_healthBar == null) return; _healthBar.MaxValue = MaxHealth; _healthBar.Value = Health; }
 	private bool IsFarOutsideHome() => _hasHome && !_homeWorldRect.Grow(28.0f).HasPoint(GlobalPosition);
 

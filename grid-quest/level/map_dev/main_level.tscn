@@ -16,6 +16,7 @@
 [ext_resource type="Script" path="res://level/SurvivalStats.cs" id="18_survival_stats"]
 [ext_resource type="Script" path="res://menus/SurvivalTimerUi.cs" id="19_survival_timer"]
 [ext_resource type="PackedScene" path="res://menus/villager_chat_ui.tscn" id="20_villager_chat"]
+[ext_resource type="PackedScene" path="res://menus/trader_ui.tscn" id="21_trader_ui"]
 
 [node name="Level" type="Node2D" unique_id=426259724]
 y_sort_enabled = true
@@ -46,19 +47,21 @@ script = ExtResource("14_knight_mgr")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
-[node name="InventoryUi" parent="CanvasLayer" instance=ExtResource("11_inv")]
-
-[node name="SkillsUi" parent="CanvasLayer" instance=ExtResource("15_skills_ui")]
-
-[node name="CheatMenu" parent="CanvasLayer" instance=ExtResource("16_cheat_menu")]
-
 [node name="MonumentIndicator" type="TextureRect" parent="CanvasLayer"]
 script = ExtResource("13_monument_indicator")
 
 [node name="SurvivalTimer" type="Label" parent="CanvasLayer"]
 script = ExtResource("19_survival_timer")
 
+[node name="InventoryUi" parent="CanvasLayer" instance=ExtResource("11_inv")]
+
+[node name="SkillsUi" parent="CanvasLayer" instance=ExtResource("15_skills_ui")]
+
+[node name="CheatMenu" parent="CanvasLayer" instance=ExtResource("16_cheat_menu")]
+
 [node name="VillagerChatUi" parent="CanvasLayer" instance=ExtResource("20_villager_chat")]
+
+[node name="TraderUi" parent="CanvasLayer" instance=ExtResource("21_trader_ui")]
 
 [node name="CanvasModulate" type="CanvasModulate" parent="."]
 script = ExtResource("17_daynight")

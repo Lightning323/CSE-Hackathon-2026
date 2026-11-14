@@ -2,8 +2,10 @@ using Godot;
 
 public partial class DayNightCycle : CanvasModulate
 {
+	[Signal] public delegate void SunriseEventHandler();
+
 	[Export] public float CycleDurationSeconds { get; set; } = 300.0f; // full day-night-day cycle
-	[Export] public float StartTimeSeconds { get; set; } = 75.0f; // begin near sunrise by default
+	[Export] public float StartTimeSeconds { get; set; } = 66.0f; // begin at sunrise by default
 
 	// 0 = deep night, 1 = full day
 	public float DaylightFactor { get; private set; } = 1.0f;
@@ -11,12 +13,14 @@ public partial class DayNightCycle : CanvasModulate
 	public bool IsNight => NightFactor >= 0.55f;
 
 	private float _time;
+	private bool _wasDaytime;
 
 	public override void _Ready()
 	{
 		AddToGroup("day_night_cycle");
 		_time = StartTimeSeconds;
 		UpdateCycle(0.0f);
+		_wasDaytime = DaylightFactor >= 0.45f;
 	}
 
 	public override void _Process(double delta)
@@ -32,6 +36,30 @@ public partial class DayNightCycle : CanvasModulate
 
 		Color = EvaluateColor(t, out float daylight);
 		DaylightFactor = daylight;
+
+		bool isDaytime = DaylightFactor >= 0.45f;
+		if (isDaytime && !_wasDaytime)
+		{
+			WorldProgress.RegisterWorldDay(WorldProgress.CurrentWorldDay + 1);
+			EmitSignal(SignalName.Sunrise);
+		}
+		_wasDaytime = isDaytime;
+	}
+
+	public int GetCurrentWorldDay() => WorldProgress.CurrentWorldDay;
+
+	public void SetToSunrise(bool emitSunriseEvent = false)
+	{
+		float duration = Mathf.Max(1.0f, CycleDurationSeconds);
+		_time = duration * 0.22f; // sunrise keyframe
+		UpdateCycle(0.0f);
+		bool isDaytime = DaylightFactor >= 0.45f;
+		if (emitSunriseEvent && isDaytime && !_wasDaytime)
+		{
+			WorldProgress.RegisterWorldDay(WorldProgress.CurrentWorldDay + 1);
+			EmitSignal(SignalName.Sunrise);
+		}
+		_wasDaytime = isDaytime;
 	}
 
 	public float GetEnemySpawnMultiplier()

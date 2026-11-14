@@ -1,5 +1,7 @@
 using Godot;
 using GridQuest.PlayerUpgrades;
+using System;
+using System.Collections.Generic;
 
 public partial class SkillsUi : Control
 {
@@ -7,6 +9,11 @@ public partial class SkillsUi : Control
 	private Label _coinsLabel;
 	private VBoxContainer _list;
 	private Label _statusLabel;
+	private Label _progressLabel;
+	private Button _resetWorldButton;
+
+	private readonly List<string> _currentOfferIds = new();
+	private readonly RandomNumberGenerator _rng = new();
 
 	public override void _Ready()
 	{
@@ -15,6 +22,7 @@ public partial class SkillsUi : Control
 		ProcessMode = ProcessModeEnum.Always;
 		MouseFilter = MouseFilterEnum.Stop;
 		SetAnchorsPreset(LayoutPreset.FullRect);
+		_rng.Randomize();
 		BuildUi();
 		CallDeferred(nameof(ResolvePlayer));
 	}
@@ -47,7 +55,7 @@ public partial class SkillsUi : Control
 
 		var title = new Label
 		{
-			Text = "Stone Monument Upgrades",
+			Text = "Stone Monument",
 			HorizontalAlignment = HorizontalAlignment.Center
 		};
 		title.AddThemeFontSizeOverride("font_size", 22);
@@ -56,7 +64,20 @@ public partial class SkillsUi : Control
 		_coinsLabel = new Label { Text = "Coins: 0" };
 		root.AddChild(_coinsLabel);
 
-		_statusLabel = new Label { Text = "Spend coins to upgrade your attributes. No level cap." };
+		_progressLabel = new Label { Text = "", AutowrapMode = TextServer.AutowrapMode.Word };
+		root.AddChild(_progressLabel);
+
+		var resetRow = new HBoxContainer();
+		resetRow.AddThemeConstantOverride("separation", 8);
+		root.AddChild(resetRow);
+		_resetWorldButton = new Button { Text = "Randomize Map Again", CustomMinimumSize = new Vector2(260, 36) };
+		_resetWorldButton.Pressed += OnRandomizeWorldPressed;
+		resetRow.AddChild(_resetWorldButton);
+		var resetHint = new Label { Text = "Always available. Rerandomizes the world map and advances your world reset progress.", AutowrapMode = TextServer.AutowrapMode.Word, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		resetHint.AddThemeFontSizeOverride("font_size", 12);
+		resetRow.AddChild(resetHint);
+
+		_statusLabel = new Label { Text = "Choose 1 of 3 upgrades. A new roll appears after your pick." };
 		_statusLabel.AutowrapMode = TextServer.AutowrapMode.Word;
 		root.AddChild(_statusLabel);
 
@@ -66,18 +87,75 @@ public partial class SkillsUi : Control
 		_list.AddThemeConstantOverride("separation", 6);
 		scroll.AddChild(_list);
 
-		var hint = new Label { Text = "Press F/X to close, Esc/B/Start to back out." };
+		var hint = new Label { Text = "Pick one upgrade to reveal the next 3. Press F/X to close, Esc/B/Start to back out." };
 		hint.AddThemeFontSizeOverride("font_size", 12);
 		root.AddChild(hint);
-
-		BuildUpgradeRows();
 	}
 
-	private void BuildUpgradeRows()
+	private void ResolvePlayer()
 	{
-		_list.ClearChildrenSafe();
-		foreach (var def in UpgradeCatalog.All)
+		if (_player == null || !GodotObject.IsInstanceValid(_player))
+			_player = GetTree().GetFirstNodeInGroup("player") as Player;
+	}
+
+	public void Open()
+	{
+		ResolvePlayer();
+		Visible = true;
+		if (_currentOfferIds.Count == 0)
+			RollNewOffers();
+		Refresh();
+		CallDeferred(nameof(GrabFirstUpgradeFocus));
+	}
+
+	public void Close()
+	{
+		Visible = false;
+	}
+
+	public override void _Input(InputEvent @event)
+	{
+		var villagerChat = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
+		if (villagerChat != null && villagerChat.Visible) return;
+		var traderUi = GetTree().GetFirstNodeInGroup("trader_ui") as Control;
+		if (traderUi != null && traderUi.Visible) return;
+		if (!Visible) return;
+		bool closePressed = @event.IsActionPressed("interact") || @event.IsActionPressed("ui_cancel") || @event.IsActionPressed("pause_menu");
+		if (!closePressed && @event is InputEventKey key && key.Pressed && !key.Echo && (key.Keycode == Key.F || key.Keycode == Key.Escape))
+			closePressed = true;
+		if (closePressed)
 		{
+			Close();
+			GetViewport().SetInputAsHandled();
+		}
+	}
+
+	private void RollNewOffers()
+	{
+		_currentOfferIds.Clear();
+		if (UpgradeCatalog.All == null || UpgradeCatalog.All.Count == 0)
+			return;
+
+		var pool = new List<UpgradeDef>(UpgradeCatalog.All);
+		int count = Math.Min(3, pool.Count);
+		for (int i = 0; i < count; i++)
+		{
+			int idx = _rng.RandiRange(0, pool.Count - 1);
+			_currentOfferIds.Add(pool[idx].Id);
+			pool.RemoveAt(idx);
+		}
+	}
+
+	private void RebuildOfferRows()
+	{
+		if (_list == null) return;
+		_list.ClearChildrenSafe();
+
+		foreach (string upgradeId in _currentOfferIds)
+		{
+			var def = UpgradeCatalog.Get(upgradeId);
+			if (def == null) continue;
+
 			var rowPanel = new PanelContainer();
 			var rowStyle = new StyleBoxFlat { BgColor = new Color(0.18f, 0.18f, 0.22f, 1.0f) };
 			rowStyle.SetCornerRadiusAll(4);
@@ -106,7 +184,7 @@ public partial class SkillsUi : Control
 			statsLabel.AddThemeFontSizeOverride("font_size", 12);
 			info.AddChild(statsLabel);
 
-			var buy = new Button { Name = "BuyButton", Text = "Buy", CustomMinimumSize = new Vector2(140, 40) };
+			var buy = new Button { Name = "BuyButton", Text = "Choose", CustomMinimumSize = new Vector2(140, 40) };
 			buy.SizeFlagsVertical = SizeFlags.ShrinkCenter;
 			string id = def.Id;
 			buy.Pressed += () => OnBuyPressed(id);
@@ -114,41 +192,6 @@ public partial class SkillsUi : Control
 
 			rowPanel.SetMeta("upgrade_id", def.Id);
 			_list.AddChild(rowPanel);
-		}
-	}
-
-	private void ResolvePlayer()
-	{
-                if (_player == null || !GodotObject.IsInstanceValid(_player))
-                        _player = GetTree().GetFirstNodeInGroup("player") as Player;
-
-	}
-
-	public void Open()
-	{
-		ResolvePlayer();
-		Visible = true;
-		Refresh();
-		CallDeferred(nameof(GrabFirstUpgradeFocus));
-	}
-
-	public void Close()
-	{
-		Visible = false;
-	}
-
-	public override void _Input(InputEvent @event)
-	{
-		var villagerChat = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
-		if (villagerChat != null && villagerChat.Visible) return;
-		if (!Visible) return;
-		bool closePressed = @event.IsActionPressed("interact") || @event.IsActionPressed("ui_cancel") || @event.IsActionPressed("pause_menu");
-		if (!closePressed && @event is InputEventKey key && key.Pressed && !key.Echo && (key.Keycode == Key.F || key.Keycode == Key.Escape))
-			closePressed = true;
-		if (closePressed)
-		{
-			Close();
-			GetViewport().SetInputAsHandled();
 		}
 	}
 
@@ -162,13 +205,16 @@ public partial class SkillsUi : Control
 		int cost = _player.GetUpgradeCost(upgradeId);
 		if (_player.TryPurchaseUpgrade(upgradeId))
 		{
-			_statusLabel.Text = $"Purchased {def.Name} for {cost} coin(s).";
+			_statusLabel.Text = $"Purchased {def.Name} for {cost} coin(s). New options rolled.";
+			RollNewOffers();
+			Refresh();
+			CallDeferred(nameof(GrabFirstUpgradeFocus));
 		}
 		else
 		{
-			_statusLabel.Text = $"Not enough coins for {def.Name} (need {cost}).";
+			_statusLabel.Text = $"Not enough coins for {def.Name} (need {cost}). Pick another option or come back later.";
+			Refresh();
 		}
-		Refresh();
 	}
 
 	private void GrabFirstUpgradeFocus()
@@ -177,11 +223,6 @@ public partial class SkillsUi : Control
 		foreach (Node child in _list.GetChildren())
 		{
 			Button buy = FindButton(child, "BuyButton");
-			if (buy != null && buy.IsVisibleInTree() && !buy.Disabled)
-			{
-				buy.GrabFocus();
-				return;
-			}
 			if (buy != null && buy.IsVisibleInTree())
 			{
 				buy.GrabFocus();
@@ -190,12 +231,57 @@ public partial class SkillsUi : Control
 		}
 	}
 
+	private void OnRandomizeWorldPressed()
+	{
+		ResolvePlayer();
+		int cost = WorldProgress.GetWorldResetCost();
+		if (_player == null)
+		{
+			_statusLabel.Text = "Player not found.";
+			return;
+		}
+		if (_player.Gold < cost)
+		{
+			_statusLabel.Text = $"Not enough coins to randomize the map (need {cost}).";
+			Refresh();
+			return;
+		}
+
+		var resetManager = GetTree().GetFirstNodeInGroup("world_reset_manager") as WorldResetManager
+			?? GetTree().CurrentScene?.GetNodeOrNull<WorldResetManager>("WorldResetManager");
+		if (resetManager == null || !resetManager.TryRandomizeWorld())
+		{
+			_statusLabel.Text = "Could not randomize the map right now.";
+			Refresh();
+			return;
+		}
+
+		Close();
+	}
+
 	public void Refresh()
 	{
-                if (_coinsLabel == null || _list == null) return;
-                ResolvePlayer();
+		if (_coinsLabel == null || _list == null) return;
+		ResolvePlayer();
 		int coins = _player?.Gold ?? 0;
 		_coinsLabel.Text = $"Coins: {coins}";
+		int resetCost = WorldProgress.GetWorldResetCost();
+		if (_progressLabel != null)
+		{
+			_progressLabel.Text =
+				$"World Progress: Resets completed {WorldProgress.WorldResets} | Current world day {WorldProgress.CurrentWorldDay} | " +
+				$"High score (world reached) {WorldProgress.WorldResetHighScore} | Next randomize cost {resetCost} coins (+50 each reset)";
+		}
+		if (_resetWorldButton != null)
+		{
+			_resetWorldButton.Text = $"Randomize Map Again ({resetCost}c)";
+			_resetWorldButton.Disabled = _player == null || _player.Gold < resetCost;
+		}
+
+		if (_currentOfferIds.Count == 0)
+			RollNewOffers();
+
+		RebuildOfferRows();
 
 		foreach (Node child in _list.GetChildren())
 		{
@@ -206,18 +292,15 @@ public partial class SkillsUi : Control
 			int level = _player?.GetUpgradeLevel(id) ?? 0;
 			int cost = def.GetCost(level);
 
-			var stats = row.GetNodeOrNull<Label>("HBoxContainer/VBoxContainer/StatsLabel")
-				?? row.GetNodeOrNull<Label>("HBoxContainer/Info/StatsLabel"); // fallback, won't match
-			// find by traversal
 			Label statsLabel = FindLabel(row, "StatsLabel");
 			Button buy = FindButton(row, "BuyButton");
 			if (statsLabel != null)
 			{
-				statsLabel.Text = $"Level: {level}    Cost: {cost} coin(s)    Next total power: scales with level (no cap)";
+				statsLabel.Text = $"Level: {level}    Cost: {cost} coin(s)    (No level cap)";
 			}
 			if (buy != null)
 			{
-				buy.Text = $"Buy ({cost})";
+				buy.Text = $"Choose ({cost})";
 				buy.Disabled = _player == null || _player.Gold < cost;
 			}
 		}

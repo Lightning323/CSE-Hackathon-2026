@@ -48,6 +48,13 @@ theme_override_font_sizes/font_size = 28
 text = "Paused"
 horizontal_alignment = 1
 
+[node name="RestartButton" type="Button" parent="CenterContainer/Panel/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 36)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Restart"
+
 [node name="ExitButton" type="Button" parent="CenterContainer/Panel/VBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 36)

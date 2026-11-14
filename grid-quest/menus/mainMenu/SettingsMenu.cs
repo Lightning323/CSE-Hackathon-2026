@@ -16,6 +16,7 @@ public partial class SettingsMenu : Control
 	private Button _backButton;
 	private Button _saveButton;
 	private Button _testButton;
+	private Button _clearDataButton;
 
 	public override void _Ready()
 	{
@@ -28,6 +29,7 @@ public partial class SettingsMenu : Control
 		_backButton = GetNode<Button>("%BackButton");
 		_saveButton = GetNode<Button>("%SaveButton");
 		_testButton = GetNode<Button>("%TestButton");
+		_clearDataButton = GetNode<Button>("%ClearDataButton");
 
 		_providerOption.AddItem("OpenAI");
 		_providerOption.AddItem("Anthropic");
@@ -39,6 +41,7 @@ public partial class SettingsMenu : Control
 		_backButton.Pressed += OnBackPressed;
 		_saveButton.Pressed += OnSavePressed;
 		_testButton.Pressed += OnTestPressed;
+		_clearDataButton.Pressed += OnClearDataPressed;
 
 		LoadIntoUi();
 		_providerOption.GrabFocus();
@@ -136,6 +139,12 @@ public partial class SettingsMenu : Control
 
 		_statusLabel.Text = result;
 		_testButton.Disabled = false;
+	}
+
+	private void OnClearDataPressed()
+	{
+		WorldProgress.ClearHighScore();
+		_statusLabel.Text = "Cleared saved data (world reset high score reset).";
 	}
 
 	private void OnBackPressed()

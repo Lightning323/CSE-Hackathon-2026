@@ -43,6 +43,7 @@ public partial class EnemyEntity : NpcEntity
 	private Vector2 _wanderTarget;
 	private float _wanderWaitTimer;
 	private float _wanderRepathTimer;
+	private bool _dying;
 
 	private enum State { Idle, Walk, Attack }
 
@@ -63,6 +64,7 @@ public partial class EnemyEntity : NpcEntity
 		_sprite.Play("idle_down");
 		AddToGroup("enemies");
 		PickNewWanderTarget();
+		ApplyHealthBarStyle();
 		UpdateHealthBar();
 	}
 
@@ -110,19 +112,48 @@ public partial class EnemyEntity : NpcEntity
 		MoveAndSlide();
 	}
 
-	public override void TakeDamage(int amount) => TakeDamageAmount(amount, null);
+	public override void TakeDamage(int amount)
+	{
+		TakeDamageAmount(amount, null);
+	}
 
 	public override int TakeDamageAmount(int amount, Node2D? source = null)
 	{
-		if (amount <= 0 || IsDead) return 0;
+		if (amount <= 0 || IsDead || _dying) return 0;
 		int applied = base.TakeDamageAmount(amount, source);
 		UpdateHealthBar();
-		if (Health == 0)
+		if (Health <= 0)
 		{
-			DropCoins();
-			QueueFree();
+			Die();
 		}
 		return applied;
+	}
+
+	private void Die()
+	{
+		if (_dying) return;
+		_dying = true;
+		Velocity = Vector2.Zero;
+		DropCoins();
+		PlayDeathSfx();
+		QueueFree();
+	}
+
+	private void PlayDeathSfx()
+	{
+		var stream = GD.Load<AudioStream>("res://assets/audio/sfx/forest_enemy-death.ogg");
+		if (stream == null) return;
+
+		var sfx = new AudioStreamPlayer2D
+		{
+			Stream = stream,
+			GlobalPosition = GlobalPosition,
+			VolumeDb = -4.0f
+		};
+		var parent = GetParent() ?? GetTree().CurrentScene;
+		parent?.AddChild(sfx);
+		sfx.Finished += sfx.QueueFree;
+		sfx.Play();
 	}
 
 	public void ApplyKnockback(Vector2 direction, float strength)
@@ -134,7 +165,8 @@ public partial class EnemyEntity : NpcEntity
 
 	private void DropCoins()
 	{
-		for (int i = 0; i < CoinDropCount; i++)
+		int dropCount = GetScaledGoldDropCount(CoinDropCount);
+		for (int i = 0; i < dropCount; i++)
 		{
 			Node coinNode = CoinScene.Instantiate();
 			if (coinNode is Node2D coin)
@@ -145,6 +177,19 @@ public partial class EnemyEntity : NpcEntity
 			}
 			else coinNode.QueueFree();
 		}
+	}
+
+	private int GetScaledGoldDropCount(int baseGoldAmount)
+	{
+		if (baseGoldAmount <= 0) return 0;
+		var player = GetTree()?.GetFirstNodeInGroup("player");
+		if (player != null && IsInstanceValid(player) && player.HasMethod("GetScaledMobGoldDrop"))
+		{
+			Variant result = player.Call("GetScaledMobGoldDrop", baseGoldAmount);
+			if (result.VariantType == Variant.Type.Int) return Mathf.Max(0, result.AsInt32());
+			if (result.VariantType == Variant.Type.Float) return Mathf.Max(0, Mathf.RoundToInt((float)result.AsDouble()));
+		}
+		return baseGoldAmount;
 	}
 
 	private void StartAttack()
@@ -224,6 +269,18 @@ public partial class EnemyEntity : NpcEntity
 		float angle = (float)GD.RandRange(0.0, Mathf.Tau);
 		float dist = (float)GD.RandRange(16.0, 64.0);
 		_wanderTarget = GlobalPosition + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * dist;
+	}
+
+	private void ApplyHealthBarStyle()
+	{
+		if (_healthBar == null) return;
+		var bg = new StyleBoxFlat { BgColor = new Color(0.08f, 0.05f, 0.05f, 0.95f) };
+		bg.SetCornerRadiusAll(2);
+		var fill = new StyleBoxFlat { BgColor = new Color(1.0f, 0.45f, 0.45f, 1.0f) };
+		fill.SetCornerRadiusAll(2);
+		_healthBar.AddThemeStyleboxOverride("background", bg);
+		_healthBar.AddThemeStyleboxOverride("fill", fill);
+		_healthBar.SelfModulate = Colors.White;
 	}
 
 	private void UpdateHealthBar() { if (_healthBar == null) return; _healthBar.MaxValue = MaxHealth; _healthBar.Value = Health; }

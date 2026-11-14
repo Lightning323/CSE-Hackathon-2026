@@ -17,6 +17,8 @@
 [ext_resource type="Script" path="res://menus/SurvivalTimerUi.cs" id="21_survival_timer"]
 [ext_resource type="PackedScene" path="res://menus/game_over_menu.tscn" id="22_game_over"]
 [ext_resource type="PackedScene" path="res://menus/villager_chat_ui.tscn" id="23_villager_chat"]
+[ext_resource type="PackedScene" path="res://menus/trader_ui.tscn" id="24_trader_ui"]
+[ext_resource type="Script" path="res://level/WorldResetManager.cs" id="25_world_reset"]
 
 [node name="Level" type="Node2D" unique_id=426259724]
 y_sort_enabled = true
@@ -43,15 +45,12 @@ script = ExtResource("18_enemy_spawn")
 [node name="SurvivalStats" type="Node" parent="."]
 script = ExtResource("20_survival_stats")
 
+[node name="WorldResetManager" type="Node" parent="."]
+script = ExtResource("25_world_reset")
+
 [node name="Map" parent="." unique_id=1437051292 instance=ExtResource("9_m5bjr")]
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1127083425]
-
-[node name="InventoryUi" parent="CanvasLayer" unique_id=1849161941 instance=ExtResource("10_inv")]
-
-[node name="SkillsUi" parent="CanvasLayer" instance=ExtResource("11_skills")]
-
-[node name="CheatMenu" parent="CanvasLayer" instance=ExtResource("17_cheat_menu")]
 
 [node name="MonumentIndicator" type="TextureRect" parent="CanvasLayer"]
 script = ExtResource("14_monument_indicator")
@@ -59,7 +58,15 @@ script = ExtResource("14_monument_indicator")
 [node name="SurvivalTimer" type="Label" parent="CanvasLayer"]
 script = ExtResource("21_survival_timer")
 
+[node name="InventoryUi" parent="CanvasLayer" unique_id=1849161941 instance=ExtResource("10_inv")]
+
+[node name="SkillsUi" parent="CanvasLayer" instance=ExtResource("11_skills")]
+
+[node name="CheatMenu" parent="CanvasLayer" instance=ExtResource("17_cheat_menu")]
+
 [node name="VillagerChatUi" parent="CanvasLayer" instance=ExtResource("23_villager_chat")]
+
+[node name="TraderUi" parent="CanvasLayer" instance=ExtResource("24_trader_ui")]
 
 [node name="GameOverMenu" parent="CanvasLayer" instance=ExtResource("22_game_over")]
 

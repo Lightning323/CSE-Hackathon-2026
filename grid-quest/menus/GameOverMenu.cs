@@ -3,6 +3,7 @@ using Godot;
 public partial class GameOverMenu : Control
 {
 	private Button _exitButton;
+	private Button _restartButton;
 	private Label _titleLabel;
 	private bool _isGameOver;
 
@@ -15,8 +16,10 @@ public partial class GameOverMenu : Control
 		SetAnchorsPreset(LayoutPreset.FullRect);
 
 		_exitButton = GetNode<Button>("%ExitButton");
+		_restartButton = GetNodeOrNull<Button>("%RestartButton");
 		_titleLabel = GetNode<Label>("%TitleLabel");
 		_exitButton.Pressed += OnExitPressed;
+		if (_restartButton != null) _restartButton.Pressed += OnRestartPressed;
 
 		CallDeferred(nameof(ConnectToPlayer));
 	}
@@ -30,6 +33,7 @@ public partial class GameOverMenu : Control
 
 	private void OnPlayerDied()
 	{
+		WorldProgress.RegisterResetHighScoreProgress();
 		_isGameOver = true;
 		ShowMenu("Game Over");
 	}
@@ -48,7 +52,8 @@ public partial class GameOverMenu : Control
 		var skills = GetTree().GetFirstNodeInGroup("skills_ui") as Control;
 		var cheat = GetTree().GetFirstNodeInGroup("cheat_ui") as Control;
 		var villagerChat = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
-		if ((inv != null && inv.Visible) || (skills != null && skills.Visible) || (cheat != null && cheat.Visible) || (villagerChat != null && villagerChat.Visible))
+		var trader = GetTree().GetFirstNodeInGroup("trader_ui") as Control;
+		if ((inv != null && inv.Visible) || (skills != null && skills.Visible) || (cheat != null && cheat.Visible) || (villagerChat != null && villagerChat.Visible) || (trader != null && trader.Visible))
 			return;
 
 		if (Visible)
@@ -62,15 +67,25 @@ public partial class GameOverMenu : Control
 	private void ShowMenu(string title)
 	{
 		_titleLabel.Text = title;
+		if (_restartButton != null)
+			_restartButton.Visible = true;
 		Visible = true;
 		GetTree().Paused = true;
-		_exitButton.GrabFocus();
+		(_isGameOver ? _restartButton : _exitButton ?? _restartButton)?.GrabFocus();
 	}
 
 	private void HideMenu()
 	{
 		Visible = false;
 		GetTree().Paused = false;
+	}
+
+	private void OnRestartPressed()
+	{
+		GetTree().Paused = false;
+		var err = GetTree().ReloadCurrentScene();
+		if (err != Error.Ok)
+			GD.PushError($"Failed to restart scene: {err}");
 	}
 
 	private void OnExitPressed()

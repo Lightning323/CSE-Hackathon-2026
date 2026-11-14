@@ -17,6 +17,7 @@ public partial class Coin : Area2D
 
 	public override void _Ready()
 	{
+		AddToGroup("coin_pickups");
 		_sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
 		var frames = new SpriteFrames();
 		frames.AddAnimation("spin");

@@ -26,11 +26,12 @@ public partial class VillagerEntity : NpcEntity
 	[Export] public float DialogueDisplayDuration { get; set; } = 4.0f;
 	[Export] public float GiftRange { get; set; } = 72.0f;
 	[Export] public float GiftCheckInterval { get; set; } = 4.0f;
+	[Export] public bool IsTrader { get; set; } = false;
 
 	public int Trust { get; private set; } = 0;
 	public bool HasPendingAdviceRequest => _hasPendingAdviceRequest;
 	public string PendingAdviceQuestion => _pendingAdviceQuestion ?? "";
-	public void DebugAdjustTrust(int delta) => Trust = Mathf.Clamp(Trust + delta, 0, 100);
+	public void DebugAdjustTrust(int delta) => Trust = Mathf.Clamp(Trust + delta, 0, 10);
 
 	private static readonly PackedScene CoinScene = GD.Load<PackedScene>("res://items/coin.tscn");
 	private static readonly string[] AdviceQuestions = {
@@ -58,6 +59,7 @@ public partial class VillagerEntity : NpcEntity
 	private Node2D _speechBubble;
 	private PanelContainer _bubblePanel;
 	private Label _dialogueLabel;
+	private Label _traderLabel;
 	private State _state = State.Idle;
 	private string _facing = "down";
 	private Vector2 _patrolTarget;
@@ -96,15 +98,29 @@ public partial class VillagerEntity : NpcEntity
 		_speechBubble = GetNodeOrNull<Node2D>("SpeechBubble");
 		_bubblePanel = GetNodeOrNull<PanelContainer>("SpeechBubble/BubblePanel");
 		_dialogueLabel = GetNodeOrNull<Label>("SpeechBubble/BubblePanel/MarginContainer/DialogueLabel");
+		_traderLabel = GetNodeOrNull<Label>("TraderLabel");
 		_sprite.SpriteFrames = BuildSpriteFrames();
 		_sprite.Play("idle_down");
 		AddToGroup("villagers");
 		AddToGroup("civilians");
 		AddToGroup("villager_npcs");
+		if (IsTrader)
+		{
+			AddToGroup("traders");
+			PatrolSpeed = Mathf.Min(PatrolSpeed, 14.0f);
+			base.Speed = Mathf.Min(base.Speed, 55.0f);
+		}
 		PickNewPatrolTarget();
+		ApplyHealthBarStyle();
 		UpdateHealthBar();
 		ConfigureSpeechBubble();
 		SetDialogueForEmotion(DialogueEmotion.Idle, false);
+		if (_traderLabel != null)
+		{
+			_traderLabel.Visible = IsTrader;
+			_traderLabel.Text = "Trader";
+			_traderLabel.Modulate = new Color(0.35f, 0.7f, 1.0f, 1.0f);
+		}
 		_adviceCooldownTimer = (float)GD.RandRange(5.0, 12.0);
 		_ambientTalkTimer = (float)GD.RandRange(18.0, 45.0);
 		_giftTimer = (float)GD.RandRange(12.0, 20.0);
@@ -114,17 +130,33 @@ public partial class VillagerEntity : NpcEntity
 	{
 		var chatUiControl = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
 		if (chatUiControl != null && chatUiControl.Visible) return;
+		var traderUiControl = GetTree().GetFirstNodeInGroup("trader_ui") as Control;
+		if (traderUiControl != null && traderUiControl.Visible) return;
 		if (!IsInteractionInput(@event)) return;
 		Node2D player = GetTree().GetFirstNodeInGroup("player") as Node2D;
 		if (player == null) return;
 		if (GlobalPosition.DistanceTo(player.GlobalPosition) > InteractRange) return;
 		if (!IsClosestInteractableVillager(player)) return;
 		if (IsPlayerNearChest(player)) return;
+
+		var wrapper = this as global::Villager;
+		if (IsTrader)
+		{
+			if (traderUiControl != null && traderUiControl.HasMethod("Open"))
+			{
+				if (wrapper != null)
+					traderUiControl.Call("Open", wrapper);
+				else
+					traderUiControl.Call("Open", this);
+			}
+			GetViewport().SetInputAsHandled();
+			return;
+		}
+
 		var chatUi = GetTree().GetFirstNodeInGroup("villager_chat_ui") as VillagerChatUi;
 		if (chatUi != null)
 		{
 			// Chat UI currently expects global Villager wrapper type; prefer wrapper instance in scene tree.
-			var wrapper = this as global::Villager;
 			if (wrapper != null) chatUi.Open(wrapper);
 			else ShowDialogueForCurrentState(forceRefresh: true, autoHide: true);
 		}
@@ -136,7 +168,12 @@ public partial class VillagerEntity : NpcEntity
 	}
 
 	/// <summary>Returns a human-readable villager name for UI/LLM context.</summary>
-	public string DisplayNameForChat() => _hasHome && _homeVillageIndex >= 0 ? $"Villager (Village {_homeVillageIndex + 1})" : "Villager";
+	public string DisplayNameForChat()
+	{
+		if (IsTrader)
+			return _hasHome && _homeVillageIndex >= 0 ? $"Trader (Village {_homeVillageIndex + 1})" : "Trader";
+		return _hasHome && _homeVillageIndex >= 0 ? $"Villager (Village {_homeVillageIndex + 1})" : "Villager";
+	}
 
 	/// <summary>Builds a system prompt for in-character LLM chat.</summary>
 	public string BuildChatSystemPrompt()
@@ -146,7 +183,7 @@ public partial class VillagerEntity : NpcEntity
 		string location = _hasHome ? $"home village #{_homeVillageIndex + 1}" : "the wilderness";
 		return $"You are a villager NPC in the game Grid Quest. Stay in character and answer the player's question directly. " +
 			$"Current mood/state: {mood}. Location/context: {location}. {threat} " +
-			$"Health: {Health}/{MaxHealth}. Trust toward player: {Trust}/100. Recent line: \"{_currentDialogueText}\". " +
+			$"Health: {Health}/{MaxHealth}. Trust toward player: {Trust}/10. Recent line: \"{_currentDialogueText}\". " +
 			"Be responsive to how kindly/helpfully the player speaks. Keep responses concise (1-3 short sentences), helpful, and grounded in what a villager might know.";
 	}
 
@@ -417,11 +454,28 @@ public partial class VillagerEntity : NpcEntity
 		if (ax > ay * 1.2f) _facing = direction.X < 0.0f ? "left" : "right"; else if (ay > ax * 1.2f) _facing = direction.Y < 0.0f ? "up" : "down";
 	}
 	private void PlayAnim(string anim) { if (_sprite.Animation != anim) _sprite.Play(anim); }
+	private void ApplyHealthBarStyle()
+	{
+		if (_healthBar == null) return;
+		var bg = new StyleBoxFlat { BgColor = new Color(0.08f, 0.05f, 0.05f, 0.95f) };
+		bg.SetCornerRadiusAll(2);
+		var fill = new StyleBoxFlat { BgColor = new Color(1.0f, 0.45f, 0.45f, 1.0f) };
+		fill.SetCornerRadiusAll(2);
+		_healthBar.AddThemeStyleboxOverride("background", bg);
+		_healthBar.AddThemeStyleboxOverride("fill", fill);
+		_healthBar.SelfModulate = Colors.White;
+	}
+
 	private void UpdateHealthBar() { if (_healthBar == null) return; _healthBar.MaxValue = MaxHealth; _healthBar.Value = Health; }
 
 	private void UpdateTrustAndGifts(float delta)
 	{
 		_adviceCooldownTimer = Mathf.Max(0.0f, _adviceCooldownTimer - delta); _giftTimer -= delta; _ambientTalkTimer -= delta;
+		if (IsTrader)
+		{
+			_hasPendingAdviceRequest = false;
+			return;
+		}
 		bool calm = !IsFleeing && !_wasRecentlyChased && _dialogueEmotion != DialogueEmotion.Chased;
 		if (!_hasPendingAdviceRequest && calm && _adviceCooldownTimer <= 0.0f)
 		{
@@ -436,18 +490,18 @@ public partial class VillagerEntity : NpcEntity
 		if (_speechBubble != null && _speechBubble.Visible) { _ambientTalkTimer = (float)GD.RandRange(12.0, 24.0); return; }
 		string line = IdleDialogueOptions[(int)(GD.Randi() % (uint)IdleDialogueOptions.Length)];
 		if (_hasPendingAdviceRequest && GD.Randf() < 0.45f) line = "Could I ask for your advice sometime?";
-		else if (Trust >= 50 && GD.Randf() < 0.35f) line = Trust >= 80 ? "I really trust your judgment." : "I appreciate our talks.";
+		else if (Trust >= 6 && GD.Randf() < 0.35f) line = Trust >= 9 ? "I really trust your judgment." : "I appreciate our talks.";
 		ShowTemporaryDialogue(line, (float)GD.RandRange(3.0, 4.5)); _ambientTalkTimer = (float)GD.RandRange(25.0, 55.0);
 	}
 	private void TryGiftCoins()
 	{
-		if (Trust < 25 || CoinScene == null || IsFleeing || _dialogueEmotion == DialogueEmotion.Chased) return;
+		if (Trust < 4 || CoinScene == null || IsFleeing || _dialogueEmotion == DialogueEmotion.Chased) return;
 		if (_giftTimer > 0.0f) return;
 		Node2D player = GetTree().GetFirstNodeInGroup("player") as Node2D;
 		if (player == null || !IsInstanceValid(player) || GlobalPosition.DistanceTo(player.GlobalPosition) > GiftRange) return;
-		float trust01 = Mathf.Clamp(Trust / 100.0f, 0.0f, 1.0f); float chance = Mathf.Lerp(0.20f, 0.55f, trust01);
+		float trust01 = Mathf.Clamp(Trust / 10.0f, 0.0f, 1.0f); float chance = Mathf.Lerp(0.20f, 0.55f, trust01);
 		if (GD.Randf() > chance) { _giftTimer = (float)GD.RandRange(10.0f, 18.0f); return; }
-		int minCoins = Trust >= 85 ? 3 : Trust >= 60 ? 2 : 1; int maxCoins = Trust >= 95 ? 10 : Trust >= 80 ? 7 : Trust >= 60 ? 4 : 2;
+		int minCoins = Trust >= 9 ? 3 : Trust >= 7 ? 2 : 1; int maxCoins = Trust >= 10 ? 10 : Trust >= 8 ? 7 : Trust >= 6 ? 4 : 2;
 		DropGiftCoins(GD.RandRange(minCoins, maxCoins), player.GlobalPosition); ShowGiftDialogue();
 		_giftTimer = Mathf.Lerp(30.0f, 14.0f, trust01) + (float)GD.RandRange(0.0f, 6.0f); _adviceCooldownTimer = Mathf.Max(_adviceCooldownTimer, 6.0f);
 	}
@@ -462,7 +516,7 @@ public partial class VillagerEntity : NpcEntity
 			GetParent()?.AddChild(coin);
 		}
 	}
-	private void ShowGiftDialogue() { string[] pool = Trust >= 70 ? HighTrustGiftDialogue : TrustGiftDialogue; ShowTemporaryDialogue(pool[(int)(GD.Randi() % (uint)pool.Length)], 3.5f); }
+	private void ShowGiftDialogue() { string[] pool = Trust >= 8 ? HighTrustGiftDialogue : TrustGiftDialogue; ShowTemporaryDialogue(pool[(int)(GD.Randi() % (uint)pool.Length)], 3.5f); }
 	private void ShowTemporaryDialogue(string text, float durationSeconds) { if (string.IsNullOrWhiteSpace(text)) return; _currentDialogueText = text; if (_dialogueLabel != null) _dialogueLabel.Text = _currentDialogueText; UpdateBubbleLayout(); SetBubbleVisible(true); _dialogueVisibleTimer = Mathf.Max(durationSeconds, 0.5f); _trustDialogueActive = true; }
 
 	public void EnsureAdviceRequestReady()
@@ -484,24 +538,31 @@ public partial class VillagerEntity : NpcEntity
 			if (TryParseAdviceEvaluation(llmJsonOrText, out int parsedScore, out string parsedReply)) { score = parsedScore; if (!string.IsNullOrWhiteSpace(parsedReply)) reply = parsedReply.Trim(); }
 			else { reply = llmJsonOrText.Trim(); if (reply.Length > 220) reply = reply.Substring(0, 220).TrimEnd() + "..."; }
 		}
-		score = Mathf.Clamp(score, 0, 5); int delta = score switch { 0 => -15, 1 => -8, 2 => 2, 3 => 10, 4 => 18, _ => 25 };
-		Trust = Mathf.Clamp(Trust + delta, 0, 100); if (score >= 4) _giftTimer = Mathf.Min(_giftTimer <= 0 ? 6.0f : _giftTimer, 6.0f);
+		score = Mathf.Clamp(score, 0, 5);
+		// Trust revamp (0-10): one good life-help response grants full high trust (10), others adjust by +/-2.
+		if (score >= 4)
+			Trust = 10;
+		else if (score >= 2)
+			Trust = Mathf.Clamp(Trust + 2, 0, 10);
+		else
+			Trust = Mathf.Clamp(Trust - 2, 0, 10);
+		if (Trust >= 8) _giftTimer = Mathf.Min(_giftTimer <= 0 ? 6.0f : _giftTimer, 6.0f);
 		ShowTemporaryDialogue(reply, 4.5f); return reply;
 	}
-	public void ApplyConversationTrust(string playerMessage, string villagerReply) { int delta = EstimateConversationTrustDelta(playerMessage, villagerReply); if (delta == 0) return; Trust = Mathf.Clamp(Trust + delta, 0, 100); }
+	public void ApplyConversationTrust(string playerMessage, string villagerReply) { int delta = EstimateConversationTrustDelta(playerMessage, villagerReply); if (delta == 0) return; Trust = Mathf.Clamp(Trust + delta, 0, 10); }
 	private static int EstimateConversationTrustDelta(string playerMessage, string villagerReply)
 	{
 		string p = (playerMessage ?? "").Trim().ToLowerInvariant(); string r = (villagerReply ?? "").Trim().ToLowerInvariant(); if (string.IsNullOrEmpty(p)) return 0;
-		int delta = 0; if (p.Length >= 8) delta += 2; if (p.Length >= 25) delta += 3; if (p.Length >= 60) delta += 3;
-		string[] positive = { "thank", "thanks", "please", "help", "sorry", "hope", "friend", "kind", "care", "appreciate", "good", "great", "love", "safe", "glad", "understand", "how are you", "are you ok", "you can", "we can", "together" };
-		int posHits = 0; foreach (string w in positive) if (p.Contains(w)) posHits++; delta += Mathf.Min(posHits, 3) * 2; if (p.Contains("?")) delta += 1;
 		string[] rude = { "shut up", "stupid", "idiot", "hate", "useless", "dumb", "kill you", "annoying", "worthless", "loser", "ugly" };
-		int rudeHits = 0; foreach (string w in rude) if (p.Contains(w)) rudeHits++; if (rudeHits > 0) delta -= 6 + (rudeHits - 1) * 3;
-		string[] dismissive = { "whatever", "idc", "don't care", "dont care", "boring", "go away", "leave me alone" }; foreach (string w in dismissive) if (p.Contains(w)) { delta -= 4; break; }
-		if (p == "ok" || p == "k" || p == "hi" || p == "hello" || p == "hey") delta = Mathf.Min(delta, 2);
-		if (p.Contains("sorry") && p.Length < 12) delta = Mathf.Max(delta, 3);
-		if (r.Contains("unable to respond") || r.Contains("can't think clearly")) delta = Mathf.Min(delta, 1);
-		return Mathf.Clamp(delta, -12, 15);
+		foreach (string w in rude) if (p.Contains(w)) return -2;
+		string[] dismissive = { "whatever", "idc", "don't care", "dont care", "boring", "go away", "leave me alone" };
+		foreach (string w in dismissive) if (p.Contains(w)) return -2;
+		string[] positive = { "thank", "thanks", "please", "help", "sorry", "hope", "friend", "kind", "care", "appreciate", "good", "great", "love", "safe", "glad", "understand", "how are you", "are you ok", "you can", "we can", "together" };
+		foreach (string w in positive) if (p.Contains(w)) return 2;
+		if (p.Contains("?")) return 2;
+		if (p.Length >= 12) return 2;
+		if (p.Length <= 3) return 0;
+		return 2; // normal interaction
 	}
 	private static bool TryParseAdviceEvaluation(string text, out int score, out string reply)
 	{
@@ -536,7 +597,8 @@ public partial class VillagerEntity : NpcEntity
 	public override Godot.Collections.Dictionary GetNpcControlState()
 	{
 		var state = base.GetNpcControlState();
-		state["entity_kind"] = "villager_npc";
+		state["entity_kind"] = IsTrader ? "trader_npc" : "villager_npc";
+		state["is_trader"] = IsTrader;
 		state["dialogue"] = GetDialogueContext();
 		state["chat_system_prompt_hint"] = BuildChatSystemPrompt();
 		state["home_village_index"] = _homeVillageIndex;

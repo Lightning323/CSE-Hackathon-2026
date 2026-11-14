@@ -91,6 +91,8 @@ public partial class VillagerChatUi : Control
 	public override void _Input(InputEvent @event)
 	{
 		if (!Visible) return;
+		var traderUi = GetTree().GetFirstNodeInGroup("trader_ui") as Control;
+		if (traderUi != null && traderUi.Visible) return;
 
 		// Close only via explicit cancel/pause actions (Esc / controller B/Start), not interact/F,
 		// so players can type freely in the text field. Other systems already ignore input while
@@ -166,7 +168,7 @@ public partial class VillagerChatUi : Control
 			_titleLabel.Text = "Villager";
 			return;
 		}
-		_titleLabel.Text = $"{_villager.DisplayNameForChat()}  [Trust {_villager.Trust}/100]";
+		_titleLabel.Text = $"{_villager.DisplayNameForChat()}  [Trust {_villager.Trust}/10]";
 	}
 
 	private void UpdateStatusPrompt()
@@ -180,14 +182,14 @@ public partial class VillagerChatUi : Control
 
 		if (_villager.IsFleeing || _villager.CurrentDialogueEmotion == Villager.DialogueEmotion.Chased)
 		{
-			_statusLabel.Text = $"Trust: {_villager.Trust}/100 — This villager is shaken right now. You can still chat.";
+			_statusLabel.Text = $"Trust: {_villager.Trust}/10 — This villager is shaken right now. You can still chat.";
 			return;
 		}
 
 		if (!string.IsNullOrWhiteSpace(_activeAdviceQuestion))
-			_statusLabel.Text = $"Trust: {_villager.Trust}/100 — Share your advice to help this villager (bigger trust gain).";
+			_statusLabel.Text = $"Trust: {_villager.Trust}/10 — Share helpful life advice to earn full trust.";
 		else
-			_statusLabel.Text = $"Trust: {_villager.Trust}/100 — Good conversations build trust. Press Esc/F to close.";
+			_statusLabel.Text = $"Trust: {_villager.Trust}/10 — Normal conversations change trust by ±2. Press Esc/F to close.";
 	}
 
 	private async Task<string> AskForAdviceEvaluationAsync(string adviceQuestion, string playerAdvice)

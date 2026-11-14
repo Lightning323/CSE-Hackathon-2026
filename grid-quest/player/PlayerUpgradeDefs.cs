@@ -38,7 +38,8 @@ public static class UpgradeCatalog
 		new UpgradeDef { Id = "melee_range", Name = "Melee Range", Description = "Increase melee attack range.", BaseCost = 1, CostPerLevel = 2 },
 		new UpgradeDef { Id = "movement_speed_after_taking_damage", Name = "Movement Speed After Taking Damage", Description = "Gain a temporary movement speed boost after taking damage.", BaseCost = 1, CostPerLevel = 2 },
 		new UpgradeDef { Id = "movement_speed_after_killing_an_enemy", Name = "Movement Speed After Killing an Enemy", Description = "Gain a temporary movement speed boost after killing an enemy.", BaseCost = 1, CostPerLevel = 2 },
-		new UpgradeDef { Id = "bonus_damage_to_bosses", Name = "Bonus Damage to Bosses", Description = "Deal bonus damage to bosses.", BaseCost = 2, CostPerLevel = 3 },
+		new UpgradeDef { Id = "aoe_aura", Name = "AOE Aura", Description = "Emit a damaging aura around you. Upgrades slowly increase range and damage.", BaseCost = 3, CostPerLevel = 4 },
+		new UpgradeDef { Id = "midas_touch", Name = "Midas Touch", Description = "Increase gold dropped by defeated mobs.", BaseCost = 2, CostPerLevel = 3 },
 	};
 
 	private static readonly Dictionary<string, UpgradeDef> ById = BuildMap();

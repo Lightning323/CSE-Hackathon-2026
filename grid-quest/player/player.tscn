@@ -80,6 +80,7 @@ animation = &"idle"
 shape = SubResource("CircleShape2D_tkfdd")
 
 [node name="HealthBar" type="ProgressBar" parent="." unique_id=1649285281]
+modulate = Color(1, 0.7, 0.7, 1)
 offset_left = -14.0
 offset_top = -24.0
 offset_right = 14.0

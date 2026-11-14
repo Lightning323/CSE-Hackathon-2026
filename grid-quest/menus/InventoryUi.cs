@@ -21,6 +21,8 @@ public partial class InventoryUi : Control
 	private readonly InventorySlotUi[] _chestSlots = new InventorySlotUi[12];
 
 	private InventorySlotUi _selected;
+	private VBoxContainer _upgradesBox;
+	private Label _upgradesHeader;
 
 	public override void _Ready()
 	{
@@ -86,6 +88,13 @@ public partial class InventoryUi : Control
 		_hintLabel.AddThemeFontSizeOverride("font_size", 12);
 		pvb.AddChild(_hintLabel);
 
+		_upgradesHeader = new Label { Text = "Upgrades:", Visible = false };
+		_upgradesHeader.AddThemeFontSizeOverride("font_size", 13);
+		pvb.AddChild(_upgradesHeader);
+		_upgradesBox = new VBoxContainer { Visible = false };
+		_upgradesBox.AddThemeConstantOverride("separation", 2);
+		pvb.AddChild(_upgradesBox);
+
 		_chestPanel = MakePanel(new Vector2(300, 360));
 		_chestPanel.Visible = false;
 		root.AddChild(_chestPanel);
@@ -137,6 +146,9 @@ public partial class InventoryUi : Control
 		if (@event.IsEcho()) return;
 		var villagerChat = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
 		if (villagerChat != null && villagerChat.Visible)
+			return;
+		var traderUi = GetTree().GetFirstNodeInGroup("trader_ui") as Control;
+		if (traderUi != null && traderUi.Visible)
 			return;
 
 		bool togglePressed = @event.IsActionPressed("toggle_inventory");
@@ -550,10 +562,38 @@ public partial class InventoryUi : Control
 			for (int i = 0; i < _chestSlots.Length; i++) _chestSlots[i].SetStack(_openChest.Contents.Get(i));
 		}
 
+		RefreshUpgrades();
 		HighlightSelected();
 		_hintLabel.Text = _openChest != null
 			? "Inventory/Cancel: Close | Interact: Close chest | D-pad/Stick + Accept to select/move, Take All for loot"
 			: "Inventory: Open/Close | Interact: Open chest | D-pad/Stick + Accept to select/move/swap";
+	}
+
+	private void RefreshUpgrades()
+	{
+		if (_upgradesBox == null || _upgradesHeader == null) return;
+		foreach (Node child in _upgradesBox.GetChildren())
+			child.QueueFree();
+
+		if (_player == null || !IsInstanceValid(_player))
+		{
+			_upgradesHeader.Visible = false;
+			_upgradesBox.Visible = false;
+			return;
+		}
+
+		bool any = false;
+		foreach (var def in GridQuest.PlayerUpgrades.UpgradeCatalog.All)
+		{
+			int lvl = _player.GetUpgradeLevel(def.Id);
+			if (lvl <= 0) continue;
+			any = true;
+			var lbl = new Label { Text = $"{def.Name}: Lv. {lvl}" };
+			lbl.AddThemeFontSizeOverride("font_size", 12);
+			_upgradesBox.AddChild(lbl);
+		}
+		_upgradesHeader.Visible = any;
+		_upgradesBox.Visible = any;
 	}
 
 	private void HighlightSelected()

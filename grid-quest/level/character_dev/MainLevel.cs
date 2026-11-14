@@ -8,6 +8,7 @@ public partial class MainLevel : Node2D
 	{
 		GD.Print("_Ready");
 		YSortEnabled = true;
+		WorldProgress.ResetCurrentRunForFreshStart();
 		SetupBackgroundMusic();
 		CallDeferred(nameof(PlacePlayerAtRandomSpawn));
 	}

@@ -9,15 +9,24 @@ public partial class MainMenu : Control
 
 	private Button _startGameButton;
 	private Button _settingsButton;
+	private Label _worldResetHighScoreLabel;
 
 	public override void _Ready()
 	{
 		_startGameButton = GetNode<Button>("%StartGameButton");
 		_settingsButton = GetNode<Button>("%SettingsButton");
+		_worldResetHighScoreLabel = GetNodeOrNull<Label>("%WorldResetHighScoreLabel");
 
 		_startGameButton.Pressed += OnStartGamePressed;
 		_settingsButton.Pressed += OnSettingsPressed;
+		RefreshWorldResetHighScore();
 		_startGameButton.GrabFocus();
+	}
+
+	private void RefreshWorldResetHighScore()
+	{
+		if (_worldResetHighScoreLabel != null)
+			_worldResetHighScoreLabel.Text = $"World Reset High Score: {WorldProgress.WorldResetHighScore}";
 	}
 
 	private void OnStartGamePressed()

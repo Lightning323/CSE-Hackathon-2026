@@ -36,6 +36,8 @@ public partial class Monument : Node2D
 	{
 		var villagerChat = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
 		if (villagerChat != null && villagerChat.Visible) return;
+		var traderUi = GetTree().GetFirstNodeInGroup("trader_ui") as Control;
+		if (traderUi != null && traderUi.Visible) return;
 		if (!_playerNear) return;
 		bool interactPressed = @event.IsActionPressed("interact");
 		if (!interactPressed && @event is InputEventKey key && key.Pressed && !key.Echo && key.Keycode == Key.F)

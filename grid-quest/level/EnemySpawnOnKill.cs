@@ -23,6 +23,14 @@ public partial class EnemySpawnOnKill : Node
 
 	public override void _Ready()
 	{
+		AddToGroup("enemy_spawn_manager");
+		_timer = 0.25f;
+		_hordeTimer = 8.0f;
+		CallDeferred(nameof(SpawnInitialEnemies));
+	}
+
+	public void ResetForNewMap()
+	{
 		_timer = 0.25f;
 		_hordeTimer = 8.0f;
 		CallDeferred(nameof(SpawnInitialEnemies));
