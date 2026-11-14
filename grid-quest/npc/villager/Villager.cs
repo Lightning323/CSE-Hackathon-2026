@@ -14,6 +14,7 @@ public partial class Villager : CharacterBody2D
 	private Vector2 _patrolTarget;
 	private float _patrolWaitTimer;
 	private float _patrolRepathTimer;
+	private float _fleeFacingTimer;
 
 	private enum State
 	{
@@ -98,6 +99,7 @@ public partial class Villager : CharacterBody2D
 	public override void _PhysicsProcess(double delta)
 	{
 		float dt = (float)delta;
+		_fleeFacingTimer -= dt;
 		if (Health <= 0)
 		{
 			Velocity = Vector2.Zero;
@@ -143,7 +145,11 @@ public partial class Villager : CharacterBody2D
 		}
 
 		Vector2 direction = away.Normalized();
-		UpdateFacing(direction);
+		if (_fleeFacingTimer <= 0.0f)
+		{
+			UpdateFacing(direction);
+			_fleeFacingTimer = 0.15f;
+		}
 		Velocity = direction * Speed;
 		PlayAnim($"walk_{_facing}");
 	}
@@ -239,14 +245,17 @@ public partial class Villager : CharacterBody2D
 
 	private void UpdateFacing(Vector2 direction)
 	{
-		if (Mathf.Abs(direction.X) >= Mathf.Abs(direction.Y))
+		float ax = Mathf.Abs(direction.X);
+		float ay = Mathf.Abs(direction.Y);
+		if (ax > ay * 1.2f)
 		{
 			_facing = direction.X < 0.0f ? "left" : "right";
 		}
-		else
+		else if (ay > ax * 1.2f)
 		{
 			_facing = direction.Y < 0.0f ? "up" : "down";
 		}
+		// else keep previous facing to reduce jitter
 	}
 
 	private void PlayAnim(string anim)
