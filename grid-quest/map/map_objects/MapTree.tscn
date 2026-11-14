@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://b0dod62faupa8"]
+
+[ext_resource type="Texture2D" uid="uid://bpm8hcch01q51" path="res://assets/images/map_tiles/trees/town_bush-1.png" id="1_2mmee"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_aeq48"]
+
+[node name="MapTree" type="Node2D" unique_id=1851669771]
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=698373045]
+texture_filter = 3
+position = Vector2(0, -13)
+texture = ExtResource("1_2mmee")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=695798355]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D" unique_id=896444664]
+shape = SubResource("CircleShape2D_aeq48")

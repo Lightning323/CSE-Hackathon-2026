@@ -6,28 +6,30 @@ using GridQuest.Utils;
 
 public partial class Map : Node2D
 {
-	// Called when the node enters the scene tree for the first time.
+	public const int Width = 200;
+	public const int Height = 200;
+
 	public override void _Ready()
 	{
+		YSortEnabled = true;
 		GD.Print("Map is ready");
-		generateMap();
+		GenerateMap();
 	}
 
-	public void generateMap()
+	public void GenerateMap()
 	{
 		GD.Print("Generating map...");
-		AddChild(FloorLayer(100, 100));
-		AddChild(ObjectLayer(100, 100));
+		AddChild(FloorLayer(Width, Height));
+		AddChild(ObjectLayer(Width, Height));
 	}
-
 
 	public static Node2D FloorLayer(int width, int height)
 	{
 		Node2D floorLayer = new() { Name = "Floor" };
 
-		for (int y = 0; y < height; y += 1)
+		for (int y = 0; y < height; y++)
 		{
-			for (int x = 0; x < width; x += 1)
+			for (int x = 0; x < width; x++)
 			{
 				if (MiscUtils.isCheckerboard(x, y))
 				{
@@ -45,35 +47,32 @@ public partial class Map : Node2D
 
 	private static Node2D ObjectLayer(int width, int height)
 	{
-		Node2D itemsLayer = new() { Name = "Objects" };
-
-
+		Node2D itemsLayer = new() { Name = "Objects", YSortEnabled = true };
 		var rng = new RandomNumberGenerator();
+
+		int cx = width / 2;
+		int cy = height / 2;
 
 		for (int y = 0; y < height; y++)
 		{
 			for (int x = 0; x < width; x++)
 			{
-
+				if (x == cx && y == cy)
+				{
+					itemsLayer.AddChild(TreeFactory.Create(x, y));
+					continue;
+				}
 
 				if (MiscUtils.isCheckerboard(x, y) && rng.RandiRange(0, 100) < 1)
 				{
-					Node2D tree = MapObjects.TreeFactory.Create(x, y);
-					itemsLayer.AddChild(tree);
+					itemsLayer.AddChild(TreeFactory.Create(x, y));
 				}
-				else if (!MiscUtils.isCheckerboard(x, y) && rng.RandiRange(0, 10) < 5)
+				else if (!MiscUtils.isCheckerboard(x, y) && rng.RandiRange(0, 10) < 3)
 				{
-					Node2D plant = MapObjects.PlantFactory.CreateVariant(x, y, rng.RandiRange(1, 3));
-					itemsLayer.AddChild(plant);
+					itemsLayer.AddChild(PlantFactory.CreateVariant(x, y, rng.RandiRange(1, 3)));
 				}
 			}
 		}
 		return itemsLayer;
-	}
-
-
-	// Called every frame. 'delta' is the elapsed time since the previous frame.
-	public override void _Process(double delta)
-	{
 	}
 }
