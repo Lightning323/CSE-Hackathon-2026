@@ -1,45 +1,54 @@
-# AGENTS.md
+# AGENTS.md — Grid Quest Engineering Guide
 
-Guidance for AI coding agents working on **Grid Quest**, a Godot 4.7 C# 2D game.
+Guidance and mandatory protocols for AI coding agents working on **Grid Quest**, a Godot 4.7 C# 2D game.
 
-## Project
+## 1. Project Overview
 
-- Engine: Godot 4.7, C# (.NET 8), Forward+ renderer, Jolt 3D physics.
-- Root namespace: `GridQuest`. Solution: `Grid Quest.sln`, project: `Grid Quest.csproj`.
-- Full layout: see [docs/project-structure.md](docs/project-structure.md).
+- **Engine:** Godot 4.7, C# (.NET 8 / .NET 10), Forward+ renderer, Jolt 3D physics.
+- **Root Namespace:** `GridQuest`
+- **Solution & Project:** `Grid Quest.sln`, `Grid Quest.csproj`
+- **Architecture & Layout:** Full specifications maintained in [docs/project-structure.md](docs/project-structure.md).
 
-## Layout (short)
+---
+
+## 2. Repository Layout
 
 | Path | Purpose |
 | --- | --- |
 | `project.godot` | Engine configuration (edit via the editor when possible) |
-| `level/` | Gameplay scenes (`map.tscn`) |
-| `menus/` | UI scenes (`main_menu.tscn`) |
+| `level/` | Gameplay scenes (`map.tscn`, level architecture) |
+| `menus/` | UI scenes (`main_menu.tscn`, HUD, screens) |
 | `player/` | `Player.cs` script and `player.tscn` scene |
 | `assets/` | Art assets (Cute Fantasy free pack) |
-| `docs/` | Project documentation |
+| `docs/` | Project documentation, design docs, and architectural specs |
 
-## Conventions
+---
 
-- Match existing scene/script style: Godot 4.7 `.tscn` format, one script per node where it makes sense.
-- C# files use tabs for indentation, `PascalCase` types/methods, `_camelCase` private fields, and `override` for engine callbacks (`_Ready`, `_Process`, `_PhysicsProcess`).
-- Keep `.import` / `.uid` files committed; never edit `.godot/` (generated, gitignored).
-- Do not add comments unless they clarify non-obvious logic.
-- Prefer Godot APIs over raw input/physics where an engine feature exists.
+## 3. Coding Conventions
 
-## Workflow
+- **Style:** Match existing scene (`.tscn`) and script formatting. One script per node where it makes sense.
+- **C# Standards:**
+  - Indentation: Tabs.
+  - Types & Methods: `PascalCase`.
+  - Private Fields: `_camelCase`.
+  - Overrides: Use `override` for engine callbacks (`_Ready`, `_Process`, `_PhysicsProcess`).
+- **Comments:** Keep comments sparse and purposeful. Do not add comments unless they clarify non-obvious logic or complex algorithms.
+- **APIs:** Always prefer built-in Godot engine APIs over custom boilerplate for input, math, and physics where an engine feature exists.
 
-- Build: `dotnet build` from the project root (or let the Godot editor build).
-- Run: open the project in Godot, or use the Godot MCP server registered by `setup_mcp.sh`.
-- There is no test suite yet; verify changes by running the project and checking the Godot output/debugger.
-- Only commit when explicitly asked. Do not modify `assets/` licensing or redistribute the asset pack.
+---
 
-## Player controls
+## 4. Mandatory Agent Operational Protocol
 
-- Arrow keys: move in eight directions.
-- Space / J: attack in the facing direction.
-- Input actions are defined in `project.godot`; the player sprite sheet is `assets/Cute_Fantasy_Free/Player/Player.png`.
+> **CRITICAL:** The entire purpose of this file is to enforce engineering discipline, system cohesion, and synchronized documentation. Agents must strictly adhere to the following three workflow laws on every task.
 
-## Assets
+### Rule 1: Read the Docs First (Pre-Flight)
+- **MANDATORY:** Before writing any code, modifying scenes, or introducing new systems, you **must** read the relevant documentation files under `docs/`. 
+- Understand how existing systems (movement, state machines, saving, UI routing) operate so your changes integrate seamlessly without breaking architectural patterns.
 
-- The Cute Fantasy free pack is **non-commercial only**; do not resell or redistribute. Details: `assets/Cute_Fantasy_Free/read_me.txt`.
+### Rule 2: Holistic Implementation & Human Readability
+- **Code Clarity:** Write clean, modular, and transparent C# code that human maintainers can easily read, audit, and extend.
+- **No Isolated Silos:** Never drop a new feature or property into a single script or scene in isolation. Ensure end-to-end integration: hook up inputs, wire signals, update configuration files, and ensure dependent systems are fully aware of the new feature.
+
+### Rule 3: Post-Change Documentation Sync
+- **Never Leave Docs Outdated:** If your changes modify system architecture, add new mechanics, alter data schemas, or change file paths, you **must** update or expand the corresponding markdown files in `docs/` within the exact same task execution.
+- Keeping documentation synchronized with the codebase is a core requirement, not an optional afterthought.
