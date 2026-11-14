@@ -1,12 +1,21 @@
-[gd_scene load_steps=3 format=3 uid="uid://b8wk2ss2srqk1"]
+[gd_scene load_steps=4 format=3 uid="uid://b8wk2ss2srqk1"]
 
-[ext_resource type="PackedScene" uid="uid://dasd1exc7g0m2" path="res://player/player.tscn" id="1_player"]
-[ext_resource type="PackedScene" path="res://enemy/enemy.tscn" id="2_enemy"]
+[ext_resource type="Script" path="res://level/MapGrid.cs" id="1_mapgrid"]
+[ext_resource type="PackedScene" uid="uid://dasd1exc7g0m2" path="res://player/player.tscn" id="2_player"]
+[ext_resource type="PackedScene" path="res://enemy/enemy.tscn" id="3_enemy"]
 
 [node name="Map" type="Node2D" unique_id=650055367]
 
-[node name="Player" parent="." groups=["player"] instance=ExtResource("1_player")]
-position = Vector2(576, 324)
+[node name="MapGrid" type="Node2D" parent="."]
+script = ExtResource("1_mapgrid")
+Width = 20
+Height = 20
+CellSize = 16
+PlantChance = 0.08
+RandomSeed = 1337
 
-[node name="Enemy" parent="." instance=ExtResource("2_enemy")]
-position = Vector2(300, 200)
+[node name="Player" parent="." groups=["player"] instance=ExtResource("2_player")]
+position = Vector2(80, 80)
+
+[node name="Enemy" parent="." instance=ExtResource("3_enemy")]
+position = Vector2(48, 48)

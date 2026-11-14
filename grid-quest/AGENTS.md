@@ -16,10 +16,11 @@ Guidance and mandatory protocols for AI coding agents working on **Grid Quest**,
 | Path | Purpose |
 | --- | --- |
 | `project.godot` | Engine configuration (edit via the editor when possible) |
-| `level/` | Gameplay scenes (`map.tscn`, level architecture) |
+| `level/` | Gameplay scenes (`map.tscn`, level architecture, `MapGrid`) |
+| `map/` | One C# file per map tile/item type (floor, objects, plants) |
 | `menus/` | UI scenes (`main_menu.tscn`, HUD, screens) |
 | `player/` | `Player.cs` script and `player.tscn` scene |
-| `assets/` | Art assets (Cute Fantasy free pack) |
+| `assets/` | Art assets and map tile textures |
 | `docs/` | Project documentation, design docs, and architectural specs |
 
 ---

@@ -66,22 +66,21 @@ public partial class Player : CharacterBody2D
 			return;
 		}
 
-		// WASD and arrow key movement
+		// WASD and arrow key movement (4-directional)
 		Vector2 input = Vector2.Zero;
 
 		if (Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left))
 			input.X -= 1;
-
-		if (Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right))
+		else if (Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right))
 			input.X += 1;
 
-		if (Input.IsKeyPressed(Key.W) || Input.IsKeyPressed(Key.Up))
-			input.Y -= 1;
-
-		if (Input.IsKeyPressed(Key.S) || Input.IsKeyPressed(Key.Down))
-			input.Y += 1;
-
-		input = input.Normalized();
+		if (input.X == 0)
+		{
+			if (Input.IsKeyPressed(Key.W) || Input.IsKeyPressed(Key.Up))
+				input.Y -= 1;
+			else if (Input.IsKeyPressed(Key.S) || Input.IsKeyPressed(Key.Down))
+				input.Y += 1;
+		}
 
 		if (input == Vector2.Zero)
 		{
