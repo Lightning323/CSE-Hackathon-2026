@@ -1,5 +1,8 @@
-[gd_scene format=3 uid="uid://dden3y7s5ru1x"]
+[gd_scene format=3 uid="uid://dden3y7s5ru1x" load_steps=2]
+
+[ext_resource type="Theme" path="res://assets/main_theme.tres" id="1_main_theme"]
 
 [node name="MainMenu" type="Node2D" unique_id=991868565]
+theme = ExtResource("1_main_theme")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=645340033]

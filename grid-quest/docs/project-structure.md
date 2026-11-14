@@ -173,3 +173,8 @@ sprites under `assets/images/characters/`. Knights are allied village protectors
 - **Test Model** pings the configured provider/model and reports connection/status in the settings UI.
 - `menus/mainMenu/LlmSettingsStore.cs` persists LLM settings to app data (`OS.GetUserDataDir()/llm_settings.json`).
 - `menus/mainMenu/LlmApi.cs` is registered as an autoload (`LlmApi`) and exposes async methods (`ChatAsync`, `TestConnectionAsync`) so game/UI code can call an LLM directly in Godot using saved or overridden settings (OpenAI-compatible chat completions and Anthropic messages APIs).
+
+## UI Theme
+
+- `assets/main_theme.tres` is the shared UI theme and uses `assets/fonts/pixel_operator/PixelOperator.ttf` as the default font.
+- Menu/UI scenes (including `menus/mainMenu/MainMenu.tscn`, `menus/mainMenu/SettingsMenu.tscn`, inventory/skills menus) apply `res://assets/main_theme.tres` on their root controls.

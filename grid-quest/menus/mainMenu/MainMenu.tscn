@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://c5nhbyh7dkbuv"]
 
 [ext_resource type="Script" uid="uid://wnqvx4w5j4rx" path="res://menus/mainMenu/MainMenu.cs" id="1_menu"]
+[ext_resource type="Theme" uid="uid://b2tdhwtjuqch5" path="res://assets/main_theme.tres" id="2_sfqqo"]
 
 [node name="MainMenu" type="Control" unique_id=1872774942]
 layout_mode = 3
@@ -9,6 +10,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("2_sfqqo")
 script = ExtResource("1_menu")
 
 [node name="Background" type="ColorRect" parent="." unique_id=1383921266]
@@ -16,10 +18,12 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = 3.0
+offset_right = 3.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.101961, 0.121569, 0.160784, 1)
+color = Color(0, 0, 0, 1)
 
 [node name="MarginContainer" type="MarginContainer" parent="." unique_id=537545444]
 layout_mode = 1
@@ -41,6 +45,8 @@ theme_override_constants/separation = 12
 
 [node name="Header" type="Label" parent="MarginContainer/Root" unique_id=949172319]
 layout_mode = 2
+theme = ExtResource("2_sfqqo")
+theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 36
 text = "Grid Quest"
 horizontal_alignment = 1

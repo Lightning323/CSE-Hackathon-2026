@@ -7,8 +7,8 @@ using System.Collections.Generic;
 
 public partial class Map : Node2D
 {
-	public const int Width = 600;
-	public const int Height = 600;
+	public const int Width = 300;
+	public const int Height = 300;
 
 	public readonly struct VillageArea
 	{
