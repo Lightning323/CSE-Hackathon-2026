@@ -16,7 +16,7 @@ public sealed class LlmSettings
 
 public static class LlmSettingsStore
 {
-	private static string SettingsPath => Path.Combine(OS.GetUserDataDir(), "llm_settings.json");
+	private static string SettingsPath => Path.Combine("llm_settings.json");
 
 	public static LlmSettings Load()
 	{
