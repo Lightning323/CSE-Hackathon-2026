@@ -48,10 +48,13 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_rgyib")
 }],
-"loop": true,
+"loop": 1,
 "name": &"idle",
 "speed": 5.0
 }]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_tkfdd"]
+radius = 13.0
 
 [node name="Player" type="CharacterBody2D" unique_id=2036068050]
 script = ExtResource("1_oul6g")
@@ -60,3 +63,6 @@ script = ExtResource("1_oul6g")
 texture_filter = 1
 sprite_frames = SubResource("SpriteFrames_oul6g")
 animation = &"idle"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=786319439]
+shape = SubResource("CircleShape2D_tkfdd")
