@@ -4,7 +4,7 @@ Grid Quest is a Godot 4.7 (C#, Forward+) 2D game built for CSE Hackathon 2026.
 
 ```
 grid-quest/
-├── project.godot              # Godot project config (name, features, physics, rendering)
+├── project.godot              # Engine configuration
 ├── Grid Quest.csproj          # .NET 8 project (Godot.NET.Sdk 4.7.2)
 ├── Grid Quest.sln             # Solution file
 ├── icon.svg                   # Project icon
@@ -15,29 +15,36 @@ grid-quest/
 │   └── map-architecture.md    # Map tile/item architecture decisions
 ├── assets/
 │   ├── Cute_Fantasy_Free/     # "Cute Fantasy" free asset pack (see read_me.txt)
+│   ├── audio/                 # Music and sound effects
 │   └── images/
-│       └── map_tiles/
-│           ├── grass/         # Grass floor texture(s), e.g. grass.png
-│           ├── plants/        # Plant decor textures (town_plant-1..3.png)
-│           └── trees/         # Tree textures (e.g. town_tree-2.png)
+│       ├── map_tiles/         # Grass, plants, and trees used by the map
+│       └── characters/        # Allied knight character sprites
 ├── enemy/
-│   ├── Enemy.cs
-│   └── enemy.tscn
+│   ├── Enemy.cs               # Configurable enemy AI, combat, and animation
+│   ├── enemy.tscn             # Base skeleton enemy
+│   ├── skeleton_enemy.tscn    # Medium skeleton variant
+│   └── elite_skeleton_enemy.tscn # Hard skeleton variant
 ├── level/
-│   ├── MapGrid.cs             # Grid/occupancy and layer composition using map/* tiles
-│   └── map.tscn               # Main gameplay map (Map -> MapGrid, Player, Enemy)
-├── map/                       # One C# file per map tile/item type (factories/definitions)
+│   ├── MapGrid.cs             # Grid/occupancy and map layer composition
+│   ├── EnemyTestSpawner.cs    # Temporary number-key enemy spawner
+│   ├── KnightSpawnInput.cs    # Spawns an allied knight helper on G
+│   └── map.tscn               # Gameplay map, player, enemies, and test helpers
+├── map/                       # Map tile/item definitions and factories
 │   ├── GrassFloor.cs
 │   ├── TownTree2.cs
 │   ├── TownPlant1.cs
 │   ├── TownPlant2.cs
 │   └── TownPlant3.cs
 ├── menus/
-│   └── main_menu.tscn         # Main menu (root: Node2D "MainMenu" + CanvasLayer)
+│   └── main_menu.tscn         # Main menu
+├── npc/
+│   └── knight/
+│       ├── KnightNpc.cs       # Allied knight AI, combat, and regeneration
+│       └── knight_npc.tscn    # Knight character scene
 └── player/
-	├── Player.cs              # 4-direction movement, idle/walk/attack/death animations
-	├── Player.cs.uid          # Godot-generated script UID
-	└── player.tscn            # Player scene (CharacterBody2D + AnimatedSprite2D + CollisionShape2D)
+    ├── Player.cs              # Player movement, combat, health, and animations
+    ├── Player.cs.uid          # Godot-generated script UID
+    └── player.tscn            # Player character scene
 ```
 
 ## Player
@@ -51,22 +58,54 @@ grid-quest/
 | 6-8 | attack down / side / up | 4 |
 | 9 | death | 4 |
 
-Movement uses `move_left`, `move_right`, `move_up`, `move_down` (WASD/arrow keys) and the attack
-action is bound to Space and J. Movement is 4-directional (no diagonal movement). Left is drawn by flipping the side animation.
+Movement is 4-directional with WASD or arrow keys and is allowed during attacks. Space attacks;
+the player can damage enemies and knights. Health is shown in the player health bar. `H` toggles
+temporary debug invulnerability (remove when no longer needed).
 
-## Map / Tiles
+## Map and Tiles
 
-- `level/MapGrid.cs` (`MapGrid` node in `level/map.tscn`) owns a logical 2D grid (`Width`×`Height`, `CellSize` default 16px) and an occupancy map. `map.tscn` configures a 20×20 map.
-- **Floor:** `map/GrassFloor.cs` builds the `Floor` layer from `assets/images/map_tiles/grass/grass.png` (48×48), tiled across the map.
-- **Objects:** `map/TownTree2.cs` fences/ walls or a collidable tree (Anything static that can lay on top of the floor) (`StaticBody2D` + `Sprite2D` + `CollisionShape2D`) at the center cell in an `Objects` layer using `assets/images/map_tiles/trees/town_tree-2.png`, marking the cell occupied.
-- **Items:** `map/TownPlant1..3.cs` create plant sprites from `assets/images/map_tiles/plants/` placed in an `Items` layer on empty cells by chance (`PlantChance`), tracked as occupants.
-- Helper APIs: `CellToWorldCenter`, `WorldToCell`, `IsInBounds`, `GetOccupant`, `TryPlaceOccupant`.
-- See `docs/map-architecture.md` for tile-vs-node architecture decisions (including large tiles/collision and when trees/bridges are tiles vs nodes).
+- `level/MapGrid.cs` (`MapGrid` in `level/map.tscn`) owns a logical 2D grid (`Width`×`Height`,
+  `CellSize` default 16px) and an occupancy map. The scene configures a 20×20 map.
+- **Floor:** `map/GrassFloor.cs` builds the floor layer from
+  `assets/images/map_tiles/grass/grass.png` (48×48), tiled across the map.
+- **Objects:** `map/TownTree2.cs` creates a collidable tree in the objects layer using
+  `assets/images/map_tiles/trees/town_tree-2.png`, marking its cell occupied.
+- **Items:** `map/TownPlant1..3.cs` place plant sprites from `assets/images/map_tiles/plants/`
+  on empty cells by chance (`PlantChance`), tracking them as occupants.
+- Grid helpers include `CellToWorldCenter`, `WorldToCell`, `IsInBounds`, `GetOccupant`, and
+  `TryPlaceOccupant`.
+- See [map-architecture.md](./map-architecture.md) for tile-versus-node decisions.
+
+## Enemies
+
+`Enemy.cs` builds `SpriteFrames` at runtime from a configurable 32×32 sprite sheet. It exposes
+movement, health, combat, texture, and animation settings. Enemies target the closest player or
+allied knight, move toward it, and attack with a timed windup that applies damage at the end of the
+attack animation if the target is still in range.
+
+| Scene | Variant | Speed | Health | Attack | Appearance/notes |
+| --- | --- | --- | --- | --- | --- |
+| `enemy.tscn` | Base | 50 | 3 | 1 dmg, 24 range, 0.8s cooldown | Skeleton |
+| `skeleton_enemy.tscn` | Medium | 50 | 3 | 1 dmg, 24 range, 0.8s cooldown | Standard skeleton |
+| `elite_skeleton_enemy.tscn` | Hard | 70 | 6 | 2 dmg, 26 range, 0.7s cooldown | Larger red-tinted skeleton |
+
+The temporary slime enemy variant was removed because of broken sprite-sheet animation mapping.
+`map.tscn` includes a temporary `EnemyTestSpawner`: press `1` for a skeleton or `2` for an elite
+skeleton to spawn additional test enemies at its position. Remove the spawner when no longer
+needed.
+
+## Allied Knight NPC
+
+`npc/knight/KnightNpc.cs` builds `SpriteFrames` at runtime from the `forest_hero` character
+sprites under `assets/images/characters/`. Knights are allied helpers: they target and attack
+enemies, can take damage, and regenerate slowly after a delay out of combat. No knights spawn by
+default; press `G` to spawn one near the player. The player can also damage knights.
 
 ## Notes
 
-- `.godot/` is generated by the editor and ignored by git — do not edit it by hand.
+- `.godot/` is generated by the editor and ignored by git; do not edit it by hand.
 - `.import` files are generated by Godot on asset import and should be committed.
-- Asset packs are licensed for **non-commercial** use; see `assets/Cute_Fantasy_Free/read_me.txt`.
+- Asset packs are licensed for **non-commercial** use; see
+  `assets/Cute_Fantasy_Free/read_me.txt`.
 - Scenes use Godot 4.7 scene format (`uid=` attributes are managed by the editor).
-- Custom C# code targets .NET 8 and lives under the `GridQuest` root namespace (`GridQuest.Map` for `map/` types).
+- Custom C# scripts target .NET 8.

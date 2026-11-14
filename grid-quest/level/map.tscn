@@ -1,8 +1,12 @@
-[gd_scene load_steps=4 format=3 uid="uid://b8wk2ss2srqk1"]
+[gd_scene load_steps=8 format=3 uid="uid://b8wk2ss2srqk1"]
 
 [ext_resource type="Script" path="res://level/MapGrid.cs" id="1_mapgrid"]
 [ext_resource type="PackedScene" uid="uid://dasd1exc7g0m2" path="res://player/player.tscn" id="2_player"]
 [ext_resource type="PackedScene" path="res://enemy/enemy.tscn" id="3_enemy"]
+[ext_resource type="PackedScene" path="res://enemy/skeleton_enemy.tscn" id="4_skeleton"]
+[ext_resource type="PackedScene" path="res://enemy/elite_skeleton_enemy.tscn" id="5_elite"]
+[ext_resource type="Script" path="res://level/EnemyTestSpawner.cs" id="6_spawner"]
+[ext_resource type="Script" path="res://level/KnightSpawnInput.cs" id="7_knight_spawn"]
 
 [node name="Map" type="Node2D" unique_id=650055367]
 
@@ -19,3 +23,16 @@ position = Vector2(80, 80)
 
 [node name="Enemy" parent="." instance=ExtResource("3_enemy")]
 position = Vector2(48, 48)
+[node name="SkeletonEnemy" parent="." instance=ExtResource("4_skeleton")]
+position = Vector2(300, 220)
+
+[node name="EliteSkeletonEnemy" parent="." instance=ExtResource("5_elite")]
+position = Vector2(840, 220)
+
+; --- ENEMY TEST SPAWNER (temporary, remove when no longer needed) ---
+[node name="EnemyTestSpawner" type="Node2D" parent="."]
+position = Vector2(576, 420)
+script = ExtResource("6_spawner")
+
+[node name="KnightSpawnInput" type="Node" parent="."]
+script = ExtResource("7_knight_spawn")
