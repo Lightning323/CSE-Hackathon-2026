@@ -8,18 +8,22 @@ public partial class Player : CharacterBody2D
 
 	[Export] public float Speed { get; set; } = 90.0f;
 	[Export] public float AttackCooldown { get; set; } = 0.45f;
-	[Export] public int MaxHealth { get; set; } = 3;
+	[Export] public int MaxHealth { get; set; } = 5;
 	[Export] public int AttackDamage { get; set; } = 1;
-	[Export] public float AttackRange { get; set; } = 24.0f;
+	[Export] public float AttackRange { get; set; } = 32.0f;
 
 	private const int FrameSize = 32;
 	private const string PlayerTexturePath = "res://assets/Cute_Fantasy_Free/Player/Player.png";
 
 	private AnimatedSprite2D _sprite;
+	private ProgressBar _healthBar;
 	private State _state = State.Idle;
 	private string _facing = "down";
 	private bool _faceLeft;
 	private float _attackTimer;
+
+	// --- TEMPORARY DEBUG (remove when no longer needed): press H to toggle invulnerability ---
+	private bool _debugInvulnerable;
 
 	private enum State
 	{
@@ -34,11 +38,25 @@ public partial class Player : CharacterBody2D
 
 	public override void _Ready()
 	{
+		MotionMode = MotionModeEnum.Floating;
 		Health = MaxHealth;
 		_sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
+		_healthBar = GetNodeOrNull<ProgressBar>("HealthBar");
 		_sprite.SpriteFrames = BuildSpriteFrames();
 		_sprite.AnimationFinished += OnAnimationFinished;
 		_sprite.Play("idle_down");
+		UpdateHealthBar();
+	}
+
+	public override void _UnhandledInput(InputEvent @event)
+	{
+		// --- TEMPORARY DEBUG (remove when no longer needed): press H to toggle invulnerability ---
+		if (@event is InputEventKey keyEvent && keyEvent.Pressed && !keyEvent.Echo && keyEvent.Keycode == Key.H)
+		{
+			_debugInvulnerable = !_debugInvulnerable;
+			GD.Print($"[TEMP DEBUG] Player invulnerability: {_debugInvulnerable}");
+			GetViewport().SetInputAsHandled();
+		}
 	}
 
 	public override void _PhysicsProcess(double delta)
@@ -52,21 +70,12 @@ public partial class Player : CharacterBody2D
 
 		_attackTimer = Mathf.Max(0.0f, _attackTimer - (float)delta);
 
-		if (_state == State.Attack)
-		{
-			Velocity = Vector2.Zero;
-			MoveAndSlide();
-			return;
-		}
-
-		// Spacebar attacks
-		if (Input.IsKeyPressed(Key.Space) && _attackTimer <= 0.0f)
+		if (_state != State.Attack && Input.IsKeyPressed(Key.Space) && _attackTimer <= 0.0f)
 		{
 			StartAttack();
-			return;
 		}
 
-		// WASD and arrow key movement
+		// WASD and arrow key movement (allowed during attack)
 		Vector2 input = Vector2.Zero;
 
 		if (Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left))
@@ -82,6 +91,13 @@ public partial class Player : CharacterBody2D
 			input.Y += 1;
 
 		input = input.Normalized();
+
+		if (_state == State.Attack)
+		{
+			Velocity = input * Speed;
+			MoveAndSlide();
+			return;
+		}
 
 		if (input == Vector2.Zero)
 		{
@@ -107,7 +123,14 @@ public partial class Player : CharacterBody2D
 			return;
 		}
 
+		// --- TEMPORARY DEBUG (remove when no longer needed): ignore damage while invulnerable ---
+		if (_debugInvulnerable)
+		{
+			return;
+		}
+
 		Health = Mathf.Max(0, Health - amount);
+		UpdateHealthBar();
 		if (Health == 0)
 		{
 			Die();
@@ -132,7 +155,6 @@ public partial class Player : CharacterBody2D
 	{
 		_state = State.Attack;
 		_attackTimer = AttackCooldown;
-		Velocity = Vector2.Zero;
 		_sprite.FlipH = _facing == "side" && _faceLeft;
 		PlayAnimation($"attack_{_facing}");
 		DamageEnemiesInRange();
@@ -187,6 +209,17 @@ public partial class Player : CharacterBody2D
 			_state = State.Idle;
 			PlayAnimation($"idle_{_facing}");
 		}
+	}
+
+	private void UpdateHealthBar()
+	{
+		if (_healthBar == null)
+		{
+			return;
+		}
+
+		_healthBar.MaxValue = MaxHealth;
+		_healthBar.Value = Health;
 	}
 
 	private static SpriteFrames BuildSpriteFrames()

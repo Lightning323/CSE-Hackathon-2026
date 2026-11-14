@@ -20,13 +20,16 @@ grid-quest/
 │       ├── Player/            # Player.png, Player_Actions.png (sprite sheets)
 │       └── Tiles/             # Beach, cliff, farmland, grass, path, water tiles
 ├── level/
+│   ├── EnemyTestSpawner.cs    # Temporary test spawner (number keys 1-2), remove when done
 │   └── map.tscn               # Main gameplay map (root: Node2D "Map" with Player instance)
 ├── menus/
 │   └── main_menu.tscn         # Main menu (root: Node2D "MainMenu" + CanvasLayer)
 ├── enemy/
-│   ├── Enemy.cs               # Chases player, health bar, idle/walk animations
+│   ├── Enemy.cs               # Chases player, attacks, health bar, configurable idle/walk/attack animations
 │   ├── Enemy.cs.uid           # Godot-generated script UID
-│   └── enemy.tscn             # Enemy scene (CharacterBody2D + AnimatedSprite2D + HealthBar)
+│   ├── enemy.tscn             # Base/medium enemy scene (skeleton)
+│   ├── skeleton_enemy.tscn    # Medium enemy variant (skeleton)
+│   └── elite_skeleton_enemy.tscn # Hard enemy variant (elite skeleton)
 └── player/
     ├── Player.cs              # 8-direction movement, idle/walk/attack/death animations
     ├── Player.cs.uid          # Godot-generated script UID
@@ -46,13 +49,29 @@ grid-quest/
 
 Movement uses `move_left`, `move_right`, `move_up`, `move_down` (arrow keys) and the attack
 action is bound to Space and J. Left is drawn by flipping the side animation. Diagonal input
-moves at the same speed as cardinal input because `Input.GetVector` normalizes it.
+moves at the same speed as cardinal input because `Input.GetVector` normalizes it. The player can
+continue moving while the attack animation plays, has a health bar, and takes damage from enemy
+attacks. `H` toggles temporary debug invulnerability (clearly marked in `Player.cs`, remove when
+no longer needed).
 
 ## Enemy
 
-`Enemy.cs` builds its `SpriteFrames` at runtime from `Enemies/Skeleton.png` (same 32x32 / 6x10
-layout as the player). It chases the player, updates facing based on movement direction, and plays
-`idle_*` / `walk_*` animations with the side animation flipped for left-facing movement.
+`Enemy.cs` builds `SpriteFrames` at runtime from a configurable sprite sheet (32x32 frames) and
+exposes movement/combat/animation settings via exports (`Speed`, `MaxHealth`, `AttackDamage`,
+`AttackRange`, `AttackCooldown`, `TexturePath`, idle/walk/attack frame counts and FPS). It chases
+the player, updates facing based on movement direction, plays `idle_*` / `walk_*` animations, and
+starts an `attack_*` animation when in range. Enemy attacks are a timed windup: damage is applied
+when the attack animation finishes if the player is still in range, allowing the player to strike
+and back out with timing.
+
+| Scene | Variant | Speed | Health | Attack | Appearance/notes |
+| --- | --- | --- | --- | --- | --- |
+| `skeleton_enemy.tscn` | Medium | 50 | 3 | 1 dmg, 24 range, 0.8s cooldown | Standard skeleton (`Skeleton.png`) |
+| `elite_skeleton_enemy.tscn` | Hard | 70 | 6 | 2 dmg, 26 range, 0.7s cooldown | Larger red-tinted skeleton with faster movement/animation |
+
+The temporary slime enemy variant was removed due to broken sprite-sheet animation mapping. The
+map includes a temporary `EnemyTestSpawner` (keys `1` = skeleton, `2` = elite) for spawning a
+single test enemy at a marked position; remove it when no longer needed.
 
 ## Notes
 

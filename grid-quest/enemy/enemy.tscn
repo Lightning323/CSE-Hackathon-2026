@@ -23,6 +23,18 @@ radius = 10.0
 
 [node name="Enemy" type="CharacterBody2D" groups=["enemies"]]
 script = ExtResource("1_script")
+Speed = 50.0
+MaxHealth = 3
+AttackDamage = 1
+AttackRange = 24.0
+AttackCooldown = 0.8
+TexturePath = "res://assets/Cute_Fantasy_Free/Enemies/Skeleton.png"
+IdleFrameCount = 6
+WalkFrameCount = 6
+AttackFrameCount = 4
+IdleFps = 6.0
+WalkFps = 10.0
+AttackFps = 10.0
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 texture_filter = 1
