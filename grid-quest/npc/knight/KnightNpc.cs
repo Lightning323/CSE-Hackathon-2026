@@ -21,6 +21,9 @@ public partial class KnightNpc : CharacterBody2D
 	private float _attackTimer;
 	private float _regenAccumulator;
 	private float _timeSinceAttack = 999.0f;
+	private Vector2 _patrolTarget;
+	private float _patrolWaitTimer;
+	private float _patrolRepathTimer;
 
 	private enum State
 	{
@@ -69,9 +72,7 @@ public partial class KnightNpc : CharacterBody2D
 		_targetEnemy = FindClosestEnemy();
 		if (_targetEnemy == null)
 		{
-			Velocity = Vector2.Zero;
-			_state = State.Idle;
-			PlayAnimation($"idle_{_facing}");
+			UpdatePatrol(dt);
 			MoveAndSlide();
 			return;
 		}
@@ -250,6 +251,76 @@ public partial class KnightNpc : CharacterBody2D
 
 		_healthBar.MaxValue = MaxHealth;
 		_healthBar.Value = Health;
+	}
+
+	private void UpdatePatrol(float delta)
+	{
+		_patrolRepathTimer -= delta;
+
+		if (_patrolWaitTimer > 0.0f)
+		{
+			_patrolWaitTimer -= delta;
+			_state = State.Idle;
+			Velocity = Vector2.Zero;
+			PlayAnimation($"idle_{_facing}");
+			if (_patrolWaitTimer <= 0.0f)
+			{
+				PickNewPatrolTarget();
+			}
+			return;
+		}
+
+		if (_patrolTarget == Vector2.Zero || _patrolRepathTimer <= 0.0f)
+		{
+			PickNewPatrolTarget();
+		}
+
+		Vector2 toTarget = _patrolTarget - GlobalPosition;
+		if (toTarget.Length() <= 6.0f)
+		{
+			_patrolWaitTimer = (float)GD.RandRange(0.8, 2.5);
+			_state = State.Idle;
+			Velocity = Vector2.Zero;
+			PlayAnimation($"idle_{_facing}");
+			return;
+		}
+
+		Vector2 direction = toTarget.Normalized();
+		UpdateFacing(direction);
+		_state = State.Walk;
+		Velocity = direction * (Speed * 0.45f);
+		PlayAnimation($"walk_{_facing}");
+	}
+
+	private void PickNewPatrolTarget()
+	{
+		_patrolRepathTimer = (float)GD.RandRange(2.5, 5.0);
+		Vector2 origin = GlobalPosition;
+		Node2D map = GetTree().CurrentScene as Node2D;
+		Node grid = map?.GetNodeOrNull("MapGrid");
+		if (grid != null && grid.HasMethod("CellToWorldCenter"))
+		{
+			int width = grid.Get("Width").AsInt32();
+			int height = grid.Get("Height").AsInt32();
+			if (width > 0 && height > 0)
+			{
+				for (int i = 0; i < 8; i++)
+				{
+					int x = GD.RandRange(0, width - 1);
+					int y = GD.RandRange(0, height - 1);
+					Vector2 candidate = (Vector2)grid.Call("CellToWorldCenter", x, y);
+					if (candidate.DistanceTo(origin) >= 24.0f)
+					{
+						_patrolTarget = candidate;
+						return;
+					}
+				}
+			}
+		}
+
+		float angle = (float)GD.RandRange(0.0, Mathf.Tau);
+		float dist = (float)GD.RandRange(24.0, 80.0);
+		_patrolTarget = origin + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * dist;
 	}
 
 	private static SpriteFrames BuildSpriteFrames()

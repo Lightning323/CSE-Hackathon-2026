@@ -216,6 +216,11 @@ public partial class Enemy : CharacterBody2D
 			ConsiderTarget(node, origin, ref closest, ref closestDistSq);
 		}
 
+		foreach (Node node in GetTree().GetNodesInGroup("villagers"))
+		{
+			ConsiderTarget(node, origin, ref closest, ref closestDistSq);
+		}
+
 		return closest;
 	}
 
