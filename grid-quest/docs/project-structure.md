@@ -29,15 +29,28 @@ grid-quest/
 │   ├── EnemyTestSpawner.cs    # Temporary number-key enemy spawner
 │   ├── KnightSpawnInput.cs    # Spawns an allied knight helper on G
 │   └── main_level.tscn        # Main gameplay level (map, player, enemies, helpers)
-├── map/                       # Map tile definitions, grid scene/script, and object classes
-│   ├── map_grid.cs            # Grid/occupancy and map composition (attached script)
-│   ├── map_grid.tscn          # Reusable MapGrid scene
-│   ├── GrassFloor.cs
+├── items/                     # Item/inventory data model
+│   ├── Coin.cs                # World coin pickup
+│   ├── Fireball.cs            # Projectile item logic
+│   ├── ItemDefs.cs            # Item definitions, stacks, and catalog
+│   └── InventoryContainer.cs  # Slot container with add/swap/stack helpers
+├── map/                       # Map tile definitions, generation, and object factories
+│   ├── Map.cs                 # Runtime map composition and building placement
+│   ├── MapConstants.cs        # Shared map constants (e.g. cell size)
+│   ├── RoomGenerator.cs       # Builds rectangular rooms (configurable wall edges, chest spawn)
+│   ├── map.tscn               # Reusable map scene
+│   ├── map_floors/            # Floor tile factories (grass/stone)
 │   └── map_objects/
-│       ├── MapObject.cs       # Base class for walls/trees/bushes/fences/etc.
-│       ├── TownTree2.cs
-│       └── TownPlant.cs
+│       ├── MapObjectFactory.cs # Base class for placeable map objects
+│       ├── chest/             # Chest object/scene (open state, stored loot)
+│       ├── gate/              # Gate/door object and scene
+│       ├── plant/             # Plant factory
+│       ├── tree/              # Tree factory/scene
+│       └── walls/             # Wall factory/scene
 ├── menus/
+│   ├── InventoryUi.cs         # Inventory + chest UI (drag/drop, move, take-all)
+│   ├── InventorySlotUi.cs     # Reusable inventory slot UI control
+│   ├── inventory_ui.tscn      # Inventory/chest UI scene root
 │   └── main_menu.tscn         # Main menu
 ├── npc/
 │   └── knight/
@@ -60,18 +73,31 @@ grid-quest/
 | 6-8 | attack down / side / up | 4 |
 | 9 | death | 4 |
 
-Movement is 4-directional with WASD or arrow keys and is allowed during attacks. Space attacks;
+Movement is 4-directional with WASD/arrow keys and is allowed during attacks. Space attacks;
 the player can damage enemies and knights. Health is shown in the player health bar. `H` toggles
 temporary debug invulnerability (remove when no longer needed).
 
+The player has a slot-based backpack inventory and weapon slot (`items/ItemDefs.cs`, `InventoryContainer.cs`).
+Coins collected in-world are tracked as gold and added to inventory as stackable coin items.
+
+## Inventory, Chests, and Items
+
+- `menus/inventory_ui.tscn` + `InventoryUi.cs`/`InventorySlotUi.cs` provide the inventory UI and chest UI.
+  - Toggle inventory: `E`/`Tab`/`I` (controller `Y`); close: `Esc` or toggle key.
+  - Interact/open nearby chest: `F` (opens chest and shows chest panel alongside inventory).
+  - Supports click-to-select move/swap and drag-and-drop between backpack, weapon slot, and chest; stacks merge where applicable, and chest loot can be moved with **Take All**.
+- `map/map_objects/chest/` defines a stateful chest object (`Chest.cs`, `chest.tscn`) that opens on first interaction, generates a random dynamic loot pool once, and stores items in a 12-slot container for transfer in/out.
+- `RoomGenerator` spawns one chest inside each generated room; `Map.GenerateBuildings()` places multiple rooms/buildings so chests appear in those rooms.
+
 ## Map and Tiles
 
-- `map/Map.cs` (attached to `map/map.tscn`) procedurally generates the 200×200 map at runtime (`MapConstants.CELL_SIZE` = 16px) and composes it into a `Floor` layer and an `Objects` layer (`Walls`, `Plants`, `Decor`, `Houses`, `Trees`).
+- `map/Map.cs` (attached to `map/map.tscn`) procedurally generates the 200×200 map at runtime (`MapConstants.CELL_SIZE` = 16px) and composes it into a `Floor` layer and an `Objects` layer (`Walls`, `Plants`, `Decor`, `Houses`, `Trees`), and can place generated buildings/rooms.
 - **Ground:** the base terrain is grass everywhere (`assets/images/map_tiles/floor/grass.png`). Procedural villages and monument approach routes carve stone path tiles (`assets/images/map_tiles/floor/stone.png`).
 - **Villages:** generation places several spaced village clumps and exposes their bounds/centers as `Map.Villages` (`VillageArea`). Each village includes a small path network, 3–4 houses, reserved/clear areas, and local decorations (plants and town-bush props). Houses are scene-backed map objects (`map/map_objects/house/house.tscn`, `HouseFactory.cs`) using `assets/images/map_tiles/cute_House_1_Wood_Base_Blue.png` with collision at the base.
 - **Monument:** the stone monument (`map/map_objects/monument/`) spawns at a random location within the camera-reachable map bounds, biased toward the center and kept away from edges, with reserved clearance from villages/objects and cardinal (N/S/E/W) path lines carved for discoverability. `Map` exposes `MonumentWorldPosition`.
 - **Forest/wilderness decorations:** outside village/reserved areas the generator scatters natural props including colliding, y-sorted forest trees (orange/pink/dried variants), rocks, and trunks, plus non-blocking forest bushes and ground plants for denser, more natural terrain. Blocking decor/trees use base-aligned sprites and collision shapes for correct depth and movement.
-- **Map objects/layering:** `map/map_objects/MapObjectFactory.cs` is the base for walls/trees/bushes/houses/props. `TreeFactory`, `WallFactory`, and `HouseFactory` are scene-backed factories; `PlantFactory` creates lightweight non-blocking plant nodes; `map/map_objects/props/PropFactory.cs` creates configurable decorative props (sprite offset, optional collision, y-sort). Border walls are placed in a non-y-sorted `Walls` layer behind y-sorted actors/objects so players, plants, and other objects render over the walls.
+- **Buildings/rooms, gates, and chests:** `RoomGenerator.cs` builds rectangular rooms with configurable wall edges (`Solid`/`Opening`/`Gate`), optional floors, and a chest. `Map.GenerateBuilding(...)`/`GenerateBuildings()` place rooms while avoiding overlap with reserved procedural areas (villages/monument/paths). Gates (`map/map_objects/gate/`) and chests (`map/map_objects/chest/`) are interactive/stateful map objects integrated with the inventory system.
+- **Map objects/layering:** `map/map_objects/MapObjectFactory.cs` is the base for walls/trees/bushes/houses/props/gates/chests. `TreeFactory`, `WallFactory`, and `HouseFactory` are scene-backed factories; `PlantFactory` creates lightweight non-blocking plant nodes; `map/map_objects/props/PropFactory.cs` creates configurable decorative props (sprite offset, optional collision, y-sort). Border walls are placed in a non-y-sorted `Walls` layer behind y-sorted actors/objects so players, plants, and other objects render over the walls.
 - **Map helpers/data:** `Map` provides `CellToWorldCenter`, `CellToWorldBase`, village metadata (`Villages`, `GetRandomPointInVillage`), monument position, and size helpers for other systems.
 - `FloorTiles` / `FloorTileFactory` (`map/map_floors/`) build floor sprites.
 - See [map-architecture.md](./map-architecture.md) for tile-versus-node decisions.

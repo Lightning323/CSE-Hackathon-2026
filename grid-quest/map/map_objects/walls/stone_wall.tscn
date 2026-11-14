@@ -1,10 +1,13 @@
 [gd_scene format=3 uid="uid://cnoeiig4tyexv"]
 
-[ext_resource type="Script" path="res://map/map_objects/walls/WallFactory.cs" id="1_script"]
+[ext_resource type="Script" uid="uid://cckleg335dqeg" path="res://map/map_objects/walls/WallFactory.cs" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://bmh4c87crqj2n" path="res://assets/images/map_tiles/walls/stone_wall.png" id="2_d85uq"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_tkfdd"]
 size = Vector2(16, 17)
+
+[sub_resource type="OccluderPolygon2D" id="OccluderPolygon2D_tkfdd"]
+polygon = PackedVector2Array(0, 0, 16, 0, 16, 16, 0, 16)
 
 [node name="StoneWall" type="Node2D" unique_id=632157261]
 y_sort_enabled = true
@@ -19,3 +22,8 @@ texture = ExtResource("2_d85uq")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D" unique_id=1034241893]
 shape = SubResource("RectangleShape2D_tkfdd")
+
+[node name="LightOccluder2D" type="LightOccluder2D" parent="." unique_id=1233978164]
+show_behind_parent = true
+position = Vector2(-8, -8)
+occluder = SubResource("OccluderPolygon2D_tkfdd")

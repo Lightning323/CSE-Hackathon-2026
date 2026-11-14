@@ -60,6 +60,89 @@ public partial class Map : Node2D
 
 		AddChild(FloorLayer(Width, Height));
 		AddChild(ObjectLayer(Width, Height, rng, houses));
+		GenerateBuildings();
+	}
+
+	public Node2D GenerateBuilding(
+		int originX,
+		int originY,
+		int width,
+		int height,
+		GridQuest.Map.WallFeature north = GridQuest.Map.WallFeature.Solid,
+		GridQuest.Map.WallFeature south = GridQuest.Map.WallFeature.Solid,
+		GridQuest.Map.WallFeature east = GridQuest.Map.WallFeature.Solid,
+		GridQuest.Map.WallFeature west = GridQuest.Map.WallFeature.Solid,
+		bool gatesOpen = false,
+		bool includeFloor = true)
+	{
+		if (!CanPlaceBuilding(originX, originY, width, height))
+			return null;
+
+		var building = GridQuest.Map.RoomGenerator.Create(originX, originY, width, height, north, south, east, west, gatesOpen, includeFloor);
+		building.Name = $"Building_{originX}_{originY}";
+		ReserveRect(originX, originY, width, height);
+		MarkOccupiedRect(originX, originY, width, height);
+		AddChild(building);
+		return building;
+	}
+
+	private void GenerateBuildings()
+	{
+		// Try to place a few generated rooms in clear areas so pulled room/chest/gate features
+		// coexist with procedural villages/monument without overlap.
+		TryPlaceBuildingNear(24, 24, 8, 6, GridQuest.Map.WallFeature.Solid, GridQuest.Map.WallFeature.Gate, GridQuest.Map.WallFeature.Solid, GridQuest.Map.WallFeature.Solid);
+		TryPlaceBuildingNear(70, 18, 10, 8, GridQuest.Map.WallFeature.Opening, GridQuest.Map.WallFeature.Solid, GridQuest.Map.WallFeature.Gate, GridQuest.Map.WallFeature.Solid);
+		TryPlaceBuildingNear(24, 70, 12, 7, GridQuest.Map.WallFeature.Solid, GridQuest.Map.WallFeature.Gate, GridQuest.Map.WallFeature.Solid, GridQuest.Map.WallFeature.Opening, gatesOpen: true);
+	}
+
+	private void TryPlaceBuildingNear(
+		int preferredX,
+		int preferredY,
+		int width,
+		int height,
+		GridQuest.Map.WallFeature north,
+		GridQuest.Map.WallFeature south,
+		GridQuest.Map.WallFeature east,
+		GridQuest.Map.WallFeature west,
+		bool gatesOpen = false,
+		bool includeFloor = true)
+	{
+		int[] offsets = { 0, 6, -6, 12, -12, 18, -18, 24, -24, 30, -30 };
+		foreach (int oy in offsets)
+		{
+			foreach (int ox in offsets)
+			{
+				int x = preferredX + ox;
+				int y = preferredY + oy;
+				if (GenerateBuilding(x, y, width, height, north, south, east, west, gatesOpen, includeFloor) != null)
+					return;
+			}
+		}
+	}
+
+	private bool CanPlaceBuilding(int originX, int originY, int width, int height)
+	{
+		if (originX < 2 || originY < 2 || originX + width >= Width - 1 || originY + height >= Height - 1)
+			return false;
+
+		for (int y = originY - 1; y <= originY + height; y++)
+		{
+			for (int x = originX - 1; x <= originX + width; x++)
+			{
+				if (!IsInBounds(x, y))
+					return false;
+				if (_pathCells[x, y] || _reservedCells[x, y] || _occupiedCells[x, y])
+					return false;
+				if (IsInAnyVillage(x, y))
+					return false;
+			}
+		}
+
+		Vector2I center = new(originX + width / 2, originY + height / 2);
+		if (center.DistanceTo(_monumentCell) < 18)
+			return false;
+
+		return true;
 	}
 
 	public Vector2 CellToWorldCenter(int x, int y)
@@ -117,6 +200,15 @@ public partial class Map : Node2D
 			Node existing = GetNodeOrNull<Node>(name);
 			existing?.QueueFree();
 		}
+
+		var toRemove = new List<Node>();
+		foreach (Node child in GetChildren())
+		{
+			if (child.Name.ToString().StartsWith("Building_", StringComparison.Ordinal))
+				toRemove.Add(child);
+		}
+		foreach (Node node in toRemove)
+			node.QueueFree();
 	}
 
 	private Node2D FloorLayer(int width, int height)

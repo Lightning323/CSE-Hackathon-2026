@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://deaisu1esqgmv"
-path="res://.godot/imported/meta_chest-closed.png-f65e8cdb22438375a2911fe2dd18e689.ctex"
+uid="uid://dihkj5jvc772m"
+path="res://.godot/imported/gate_closed_X.png-a1ace8805b188ac2d811657e922e0197.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/items/meta_chest-closed.png"
-dest_files=["res://.godot/imported/meta_chest-closed.png-f65e8cdb22438375a2911fe2dd18e689.ctex"]
+source_file="res://assets/images/map_tiles/gate/gate_closed_X.png"
+dest_files=["res://.godot/imported/gate_closed_X.png-a1ace8805b188ac2d811657e922e0197.ctex"]
 
 [params]
 
