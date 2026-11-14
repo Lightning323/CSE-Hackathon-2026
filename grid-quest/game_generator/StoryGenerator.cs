@@ -1,11 +1,12 @@
 using Godot;
-using GridQuest.Menus.MainMenu;
+using GridQuest.GameGenerator.Llm;
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using static GridQuest.GameGenerator.JsonUtils;
 
 namespace GridQuest.GameGenerator;
 
@@ -45,13 +46,8 @@ public sealed class StoryModifiers
 
 public static class StoryGenerator
 {
-	private static readonly JsonSerializerOptions JsonOptions = new()
-	{
-		WriteIndented = true,
-		PropertyNameCaseInsensitive = true,
-	};
 
-	public static async Task<StoryCampaign> GenerateCampaignAsync(string title, string description, LlmApi llmApi = null)
+	public static async Task<StoryCampaign> GenerateCampaignAsync(string title, string description, LlmApi llmApi = null, Action<string> onChunk = null)
 	{
 		title = string.IsNullOrWhiteSpace(title) ? "New Adventure" : title.Trim();
 		description = string.IsNullOrWhiteSpace(description) ? "A new Grid Quest campaign." : description.Trim();
@@ -65,11 +61,14 @@ public static class StoryGenerator
 					"Generate a game campaign story JSON for a grid-based adventure game. " +
 					"Return ONLY valid JSON with this exact schema and keys: " +
 					"{\"campaign_id\":string,\"title\":string,\"description\":string,\"setup_story\":string,\"goal\":string,\"progression\":[{\"stage_id\":string,\"title\":string,\"description\":string,\"difficulty\":string,\"map\":string,\"objectives\":[string],\"rewards\":{\"unlocks\":[string],\"items\":[string]},\"modifiers\":{\"time_limit_seconds\":number,\"stealth_enabled\":boolean}}]}. " +
-					"Include at least 1 progression stage. " +
-					$"Use this save title: {title}. Use this save description/context: {description}.";
+					"Include at LEAST 3 progression stages! " +
+					$"Use this save title: \"{title}\". Use this save description/context: \"{description}\".";
 				var system = "You generate structured game narrative data. Output JSON only, no markdown fences, no commentary.";
-				var response = await llmApi.ChatAsync(prompt, system);
-				var parsed = TryParseCampaign(response);
+				GD.Print($"StoryGenerator: Requesting campaign story from LLM API with title '{title}' and description '{description}'.");
+				var response = await llmApi.ChatAsync(prompt, system, null, onChunk);
+				GD.Print("\nStoryGenerator: Received complete response from LLM API.");
+
+				var parsed = JsonUtils.TryParseJson<StoryCampaign>(response);
 				if (parsed != null)
 				{
 					NormalizeCampaign(parsed, title, description);
@@ -86,36 +85,8 @@ public static class StoryGenerator
 		NormalizeCampaign(fallback, title, description);
 		return fallback;
 	}
+	
 
-	public static string SerializeCampaign(StoryCampaign campaign)
-	{
-		return JsonSerializer.Serialize(campaign, JsonOptions);
-	}
-
-	private static StoryCampaign TryParseCampaign(string text)
-	{
-		if (string.IsNullOrWhiteSpace(text)) return null;
-		text = text.Trim();
-
-		var fence = Regex.Match(text, "```(?:json)?\\s*(\\{.*\\})\\s*```", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-		if (fence.Success) text = fence.Groups[1].Value.Trim();
-
-		if (!text.StartsWith("{"))
-		{
-			int start = text.IndexOf('{');
-			int end = text.LastIndexOf('}');
-			if (start >= 0 && end > start) text = text.Substring(start, end - start + 1);
-		}
-
-		try
-		{
-			return JsonSerializer.Deserialize<StoryCampaign>(text, JsonOptions);
-		}
-		catch
-		{
-			return null;
-		}
-	}
 
 	private static StoryCampaign CreateFallbackCampaign(string title, string description)
 	{

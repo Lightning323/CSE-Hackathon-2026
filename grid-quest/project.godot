@@ -11,14 +11,14 @@ config_version=5
 [application]
 
 config/name="Grid Quest"
-run/main_scene="res://game_generator/GameGenerator.tscn"
+run/main_scene="res://tests/llm_hello_test.tscn"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
 
 GameSession="*res://menus/mainMenu/GameSession.cs"
-LlmApi="*res://menus/mainMenu/LlmApi.cs"
+LlmApi="*res://game_generator/llm/LlmApi.cs"
 
 [dotnet]
 

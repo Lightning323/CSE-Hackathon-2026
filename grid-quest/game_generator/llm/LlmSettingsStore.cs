@@ -3,7 +3,7 @@ using System;
 using System.IO;
 using System.Text.Json;
 
-namespace GridQuest.Menus.MainMenu;
+namespace GridQuest.GameGenerator.Llm;
 
 public sealed class LlmSettings
 {
