@@ -15,6 +15,7 @@
 [ext_resource type="Script" path="res://level/DayNightCycle.cs" id="19_daynight"]
 [ext_resource type="Script" path="res://level/SurvivalStats.cs" id="20_survival_stats"]
 [ext_resource type="Script" path="res://menus/SurvivalTimerUi.cs" id="21_survival_timer"]
+[ext_resource type="PackedScene" path="res://menus/game_over_menu.tscn" id="22_game_over"]
 
 [node name="Level" type="Node2D" unique_id=426259724]
 y_sort_enabled = true
@@ -56,6 +57,8 @@ script = ExtResource("14_monument_indicator")
 
 [node name="SurvivalTimer" type="Label" parent="CanvasLayer"]
 script = ExtResource("21_survival_timer")
+
+[node name="GameOverMenu" parent="CanvasLayer" instance=ExtResource("22_game_over")]
 
 [node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=394873551]
 script = ExtResource("19_daynight")

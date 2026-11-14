@@ -1,198 +1,75 @@
 [gd_scene format=3 uid="uid://c5nhbyh7dkbuv"]
 
 [ext_resource type="Script" uid="uid://wnqvx4w5j4rx" path="res://menus/mainMenu/MainMenu.cs" id="1_menu"]
-[ext_resource type="Theme" uid="uid://b2tdhwtjuqch5" path="res://assets/main_theme.tres" id="2_sfqqo"]
-[ext_resource type="FontFile" uid="uid://cthcwmogafee1" path="res://assets/fonts/pixel_operator/PixelOperatorMono8-Bold.ttf" id="3_r3luh"]
+[ext_resource type="Theme" uid="uid://b2tdhwtjuqch5" path="res://assets/main_theme.tres" id="2_theme"]
+[ext_resource type="FontFile" uid="uid://cthcwmogafee1" path="res://assets/fonts/pixel_operator/PixelOperatorMono8-Bold.ttf" id="3_font"]
 
-[node name="MainMenu" type="Control" unique_id=1872774942]
+[node name="MainMenu" type="Control" unique_id=534288895]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme = ExtResource("2_sfqqo")
+theme = ExtResource("2_theme")
 script = ExtResource("1_menu")
 
-[node name="Background" type="ColorRect" parent="." unique_id=1383921266]
+[node name="Background" type="ColorRect" parent="." unique_id=505650440]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 3.0
-offset_right = 3.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0, 0, 1)
 
-[node name="MarginContainer" type="MarginContainer" parent="." unique_id=537545444]
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=882593546]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 24
-theme_override_constants/margin_top = 24
-theme_override_constants/margin_right = 24
-theme_override_constants/margin_bottom = 24
 
-[node name="Root" type="VBoxContainer" parent="MarginContainer" unique_id=36425051]
+[node name="Panel" type="PanelContainer" parent="CenterContainer" unique_id=692010140]
+custom_minimum_size = Vector2(420, 260)
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 12
 
-[node name="Header" type="Label" parent="MarginContainer/Root" unique_id=949172319]
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/Panel" unique_id=1350088897]
 layout_mode = 2
-theme = ExtResource("2_sfqqo")
+theme_override_constants/separation = 16
+
+[node name="MarginContainer" type="MarginContainer" parent="CenterContainer/Panel/VBox" unique_id=2136990426]
+layout_mode = 2
+theme_override_constants/margin_top = 19
+
+[node name="Header" type="Label" parent="CenterContainer/Panel/VBox/MarginContainer" unique_id=879380539]
+layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_fonts/font = ExtResource("3_r3luh")
+theme_override_fonts/font = ExtResource("3_font")
 theme_override_font_sizes/font_size = 36
 text = "GRID-QUEST"
 horizontal_alignment = 1
 
-[node name="Content" type="HBoxContainer" parent="MarginContainer/Root" unique_id=719091055]
+[node name="Subtitle" type="Label" parent="CenterContainer/Panel/VBox" unique_id=318463951]
 layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/separation = 16
+text = "Temporary session (saves disabled)"
+horizontal_alignment = 1
+autowrap_mode = 2
 
-[node name="LeftPanel" type="VBoxContainer" parent="MarginContainer/Root/Content" unique_id=410942444]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-size_flags_stretch_ratio = 1.2
-theme_override_constants/separation = 8
-
-[node name="SavesLabel" type="Label" parent="MarginContainer/Root/Content/LeftPanel" unique_id=717317368]
-layout_mode = 2
-text = "Saves"
-
-[node name="SaveList" type="ItemList" parent="MarginContainer/Root/Content/LeftPanel" unique_id=269315407]
+[node name="StartGameButton" type="Button" parent="CenterContainer/Panel/VBox" unique_id=974139034]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 40)
 layout_mode = 2
-size_flags_vertical = 3
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 22
+text = "Start Game"
 
-[node name="LeftButtons" type="HBoxContainer" parent="MarginContainer/Root/Content/LeftPanel" unique_id=429039459]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="NewSaveButton" type="Button" parent="MarginContainer/Root/Content/LeftPanel/LeftButtons" unique_id=232602335]
+[node name="SettingsButton" type="Button" parent="CenterContainer/Panel/VBox" unique_id=216563993]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 40)
 layout_mode = 2
-text = "New Save"
-
-[node name="DeleteButton" type="Button" parent="MarginContainer/Root/Content/LeftPanel/LeftButtons" unique_id=1580228070]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Delete"
-
-[node name="PlayButton" type="Button" parent="MarginContainer/Root/Content/LeftPanel/LeftButtons" unique_id=1352838628]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Play"
-
-[node name="SettingsButton" type="Button" parent="MarginContainer/Root/Content/LeftPanel/LeftButtons" unique_id=1153948769]
-unique_name_in_owner = true
-layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 22
 text = "Settings"
-
-[node name="StatusLabel" type="Label" parent="MarginContainer/Root/Content/LeftPanel" unique_id=1600000001]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 12
-text = ""
-autowrap_mode = 2
-
-[node name="RightPanel" type="PanelContainer" parent="MarginContainer/Root/Content" unique_id=576854792]
-custom_minimum_size = Vector2(320, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="RightContent" type="VBoxContainer" parent="MarginContainer/Root/Content/RightPanel" unique_id=357929474]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 8
-
-[node name="DetailsHeader" type="Label" parent="MarginContainer/Root/Content/RightPanel/RightContent" unique_id=269791244]
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "Save Details"
-
-[node name="TitleLabel" type="Label" parent="MarginContainer/Root/Content/RightPanel/RightContent" unique_id=142590777]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 18
-text = "No save selected"
-autowrap_mode = 2
-
-[node name="DescriptionLabel" type="Label" parent="MarginContainer/Root/Content/RightPanel/RightContent" unique_id=256876902]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_vertical = 3
-autowrap_mode = 2
-
-[node name="PathLabel" type="Label" parent="MarginContainer/Root/Content/RightPanel/RightContent" unique_id=1352987739]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 12
-autowrap_mode = 2
-
-[node name="DebugRow" type="HBoxContainer" parent="MarginContainer/Root/Content/RightPanel/RightContent" unique_id=1218601520]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="OpenFolderButton" type="Button" parent="MarginContainer/Root/Content/RightPanel/RightContent/DebugRow" unique_id=638936445]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Open Saves Folder (Debug)"
-
-[node name="AppDataLabel" type="Label" parent="MarginContainer/Root/Content/RightPanel/RightContent" unique_id=1356299528]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-autowrap_mode = 2
-
-[node name="CreateDialog" type="ConfirmationDialog" parent="." unique_id=1325937861]
-unique_name_in_owner = true
-title = "Create New Save"
-initial_position = 2
-size = Vector2i(460, 320)
-min_size = Vector2i(360, 260)
-ok_button_text = "Create"
-
-[node name="DialogContent" type="VBoxContainer" parent="CreateDialog" unique_id=2088623339]
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 8.0
-offset_top = 8.0
-offset_right = -8.0
-offset_bottom = -49.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_constants/separation = 8
-
-[node name="TitleFieldLabel" type="Label" parent="CreateDialog/DialogContent" unique_id=1160969935]
-layout_mode = 2
-text = "Title"
-
-[node name="NewTitleEdit" type="LineEdit" parent="CreateDialog/DialogContent" unique_id=1467123709]
-unique_name_in_owner = true
-layout_mode = 2
-placeholder_text = "My Adventure"
-
-[node name="DescriptionFieldLabel" type="Label" parent="CreateDialog/DialogContent" unique_id=1244255473]
-layout_mode = 2
-text = "Description"
-
-[node name="NewDescriptionEdit" type="TextEdit" parent="CreateDialog/DialogContent" unique_id=1157528373]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 120)
-layout_mode = 2
-size_flags_vertical = 3
-placeholder_text = "Optional description..."
-wrap_mode = 1

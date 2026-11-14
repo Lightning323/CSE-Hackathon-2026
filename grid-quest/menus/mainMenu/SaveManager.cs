@@ -143,4 +143,23 @@ public static class SaveManager
 		EnsureSavesRoot();
 		OS.ShellOpen(GetSavesRootPath());
 	}
+
+	public static SaveInfo GetOrCreateTemporarySave()
+	{
+		EnsureSavesRoot();
+		var folderPath = Path.Combine(GetSavesRootPath(), "temp_session");
+		Directory.CreateDirectory(folderPath);
+
+		var info = new SaveInfo
+		{
+			Id = "temp_session",
+			Title = "Temporary Save",
+			Description = "Temporary session save.",
+			CreatedUtc = DateTime.UtcNow.ToString("o"),
+			FolderPath = folderPath
+		};
+
+		WriteSaveInfo(info);
+		return info;
+	}
 }

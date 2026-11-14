@@ -65,6 +65,7 @@ public static class LlmSettingsStore
 			{
 				"Anthropic" => "https://api.anthropic.com/v1",
 				"LM Studio" => "http://localhost:1234/v1",
+				"Ollama" => "http://localhost:11434",
 				_ => "https://api.openai.com/v1",
 			};
 		}
@@ -75,6 +76,7 @@ public static class LlmSettingsStore
 			{
 				"Anthropic" => "claude-3-5-haiku-latest",
 				"LM Studio" => "local-model",
+				"Ollama" => "qwen3:8b",
 				_ => "gpt-4o-mini",
 			};
 		}
