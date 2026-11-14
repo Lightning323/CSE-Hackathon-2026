@@ -106,7 +106,7 @@ Movement is 4-directional with WASD/arrow keys and is allowed during attacks. Sp
 the player can damage enemies and knights. Health is shown in the player health bar. Debug cheats (including invincibility toggle) are available via the in-game cheat menu (`menus/CheatMenu.cs`, `` ` `` key) instead of direct gameplay keybinds.
 
 The player has a slot-based backpack inventory and weapon slot (`items/ItemDefs.cs`, `InventoryContainer.cs`).
-Coins collected in-world are tracked as gold and added to inventory as stackable coin items.
+Coins collected in-world are tracked as gold in the player's wallet (used for monument upgrades). Coins are not stored as backpack items; coin transfers from chests are converted to wallet immediately, and any legacy coin stacks in the backpack are normalized into the wallet.
 `player/PlayerUpgradeDefs.cs` defines monument upgrade definitions/cost scaling, and `Player.cs` stores upgrade levels and applies derived combat/movement stats (including acceleration, regen/delay, armor, lifesteal, thorns, knockback, projectile/melee upgrades, temporary speed buffs, and boss bonus damage hooks). Coin purchases spend gold and remove coin items from inventory to stay in sync.
 
 ## Inventory, Chests, and Items
@@ -115,13 +115,14 @@ Coins collected in-world are tracked as gold and added to inventory as stackable
   - Toggle inventory: `E`/`Tab`/`I` (controller `Y`); close: `Esc` or toggle key.
   - Interact/open nearby chest: `F` (opens chest and shows chest panel alongside inventory).
   - Supports click-to-select move/swap and drag-and-drop between backpack, weapon slot, and chest; stacks merge where applicable, and chest loot can be moved with **Take All**.
+  - Coins taken from a chest into the player's inventory (including **Take All**) are consumed from the chest and added directly to the player's coin wallet instead of occupying backpack slots.
 - `menus/skills_ui.tscn` + `menus/SkillsUi.cs` provide the monument upgrade UI (`skills_ui` group), listing all player attribute upgrades with current level, coin cost, and purchase actions. It opens from the monument and closes with `F`/`Esc`.
 - `map/map_objects/chest/` defines a stateful chest object (`Chest.cs`, `chest.tscn`) that opens on first interaction, generates a random dynamic loot pool once, and stores items in a 12-slot container for transfer in/out.
 - `RoomGenerator` spawns one chest in rooms at least 5×5; smaller rooms omit it to keep paths clear. `Map.GenerateBuildings()` places a procedural dungeon and single rooms before wilderness decoration.
 
 ## Map and Tiles
 
-- `map/Map.cs` (attached to `map/map.tscn`) procedurally generates the 200×200 map at runtime (`MapConstants.CELL_SIZE` = 16px) and composes it into a `Floor` layer and an `Objects` layer (`Walls`, `Plants`, `Decor`, `Houses`, `Trees`), and can place generated buildings/rooms.
+- `map/Map.cs` (attached to `map/map.tscn`) procedurally generates the 200×200 map at runtime (`MapConstants.CELL_SIZE` = 16px) and composes it into a `Floor` layer and an `Objects` layer (`Walls`, `Plants`, `Decor`, `Houses`, `Trees`), and can place generated buildings/rooms. It also provides a random player spawn point on an unoccupied grass tile within the playable/camera-reachable area.
 - **Ground:** the base terrain is a `Floor` `TileMapLayer` generated via `map/map_floors/FloorTileMapFactory.cs`/`FloorTiles.cs` (shared `TileSet` with grass/stone atlas sources, 16x16). Grass is placed everywhere by default; procedural villages and monument approach routes carve stone path tiles (`assets/images/map_tiles/floor/stone.png`).
 - **Villages:** generation places multiple spaced village clumps (without overlap with each other, the monument, paths/reserved areas, or map borders) and exposes their bounds/centers as `Map.Villages` (`VillageArea`). Each village includes a small path network, 3–4 houses, and naturally decorated interiors with plants and town bushes placed on non-path, non-occupied ground. Houses are scene-backed map objects (`map/map_objects/house/house.tscn`, `HouseFactory.cs`) using `assets/images/map_tiles/cute_House_1_Wood_Base_Blue.png` with collision at the base.
 - **Village-only town trees:** colliding, y-sorted town trees (`assets/images/map_tiles/trees/town_tree-1.png`, `town_tree-2.png`) are placed only in a ring around village bounds as village-edge decoration (separate from forest trees), avoiding paths/objects/reserved areas and overlap.
@@ -158,7 +159,7 @@ movement, health, combat, texture, and animation settings. When not aggroed, ene
 
 `level/EnemySpawnOnKill.cs` performs off-camera monster spawning with an initial population seed, a maintained minimum population, and a higher cap to keep many monsters roaming the map. Spawns favor normal skeletons over elite skeletons and run in gameplay levels (including the main character dev level). `level/character_dev/EnemyTestSpawner.cs` remains a temporary manual test spawner if attached/scripted for dev use. Remove temporary spawners when no longer needed.
 
-Enemy combat integrates with player upgrade effects: `Enemy.cs` supports knockback (`ApplyKnockback`) and passes attacker context on player damage so thorns can trigger. `items/Fireball.cs` uses upgraded projectile speed/damage/knockback and notifies the player on hits for on-hit effects (e.g. lifesteal / kill-speed hooks); boss bonus damage applies to targets in `boss`/`bosses` groups or with an `IsBoss` property.
+Enemy combat integrates with player upgrade effects: `Enemy.cs` supports knockback (`ApplyKnockback`) and passes attacker context on player damage so thorns can trigger. `items/Fireball.cs` uses upgraded projectile speed/damage/knockback and notifies the player on hits for on-hit effects (e.g. lifesteal / kill-speed hooks); boss bonus damage applies to targets in `boss`/`bosses` groups or with an `IsBoss` property. Player projectiles are stopped by wall objects (`walls` group, e.g. border/building stone walls) but pass through trees/other non-wall obstacles.
 
 ## Allied Knight NPC
 

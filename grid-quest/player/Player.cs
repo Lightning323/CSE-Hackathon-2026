@@ -121,33 +121,58 @@ public partial class Player : CharacterBody2D
 		_sprite.Play("idle_down");
 		SyncEquippedFromId();
 		UpdateHealthBar();
+		CallDeferred(nameof(ApplyRandomSpawnIfNeeded));
+	}
+
+	private void ApplyRandomSpawnIfNeeded()
+	{
+		// Place the player on a random grass tile when spawned at the default/placeholder position.
+		if (GlobalPosition.LengthSquared() > 1.0f)
+			return;
+
+		var map = GetTree().Root.FindChild("Map", true, false) as Map;
+		if (map == null)
+			return;
+
+		GlobalPosition = map.GetRandomPlayerSpawnPosition();
 	}
 
 	public void AddGold(int amount)
 	{
 		if (amount <= 0) return;
 		Gold += amount;
-		Inventory.AddItem("coin", amount);
-		GD.Print($"Gold: {Gold}");
 	}
-
+ 
 	public bool AddItem(string itemId, int count = 1)
 	{
+		if (string.IsNullOrEmpty(itemId) || count <= 0) return false;
 		if (itemId == "coin")
 		{
-			Gold += count;
-			Inventory.AddItem("coin", count);
+			AddGold(count);
 			return true;
 		}
 		return Inventory.AddItem(itemId, count);
 	}
-
+ 
+	public void ConvertInventoryCoinsToGold()
+	{
+		if (Inventory?.Slots == null) return;
+		int total = 0;
+		foreach (var s in Inventory.Slots)
+		{
+			if (s == null || s.IsEmpty || s.ItemId != "coin") continue;
+			total += s.Count;
+			s.ItemId = null;
+			s.Count = 0;
+		}
+		if (total > 0) Gold += total;
+	}
+ 
 	public bool TrySpendCoins(int amount)
 	{
 		if (amount <= 0) return true;
-		int have = Inventory.CountItem("coin");
-		if (have < amount || Gold < amount) return false;
-		if (!Inventory.RemoveItem("coin", amount)) return false;
+		ConvertInventoryCoinsToGold();
+		if (Gold < amount) return false;
 		Gold -= amount;
 		if (Gold < 0) Gold = 0;
 		return true;

@@ -7,7 +7,18 @@ public partial class MainLevel : Node2D
 	public override void _Ready()
 	{
 		GD.Print("_Ready");
-		 YSortEnabled = true;
+		YSortEnabled = true;
+		CallDeferred(nameof(PlacePlayerAtRandomSpawn));
+	}
+
+	private void PlacePlayerAtRandomSpawn()
+	{
+		var player = GetNodeOrNull<Node2D>("Player");
+		var map = GetNodeOrNull<Map>("Map");
+		if (player == null || map == null)
+			return;
+
+		player.GlobalPosition = map.GetRandomPlayerSpawnPosition();
 	}
 
 	// Called every frame. 'delta' is the elapsed time since the previous frame.
