@@ -50,8 +50,16 @@ grid-quest/
 ├── menus/
 │   ├── InventoryUi.cs         # Inventory + chest UI (drag/drop, move, take-all)
 │   ├── InventorySlotUi.cs     # Reusable inventory slot UI control
+│   ├── MonumentIndicator.cs   # Directional monument indicator UI
+│   ├── SkillsUi.cs            # Skills UI overlay
 │   ├── inventory_ui.tscn      # Inventory/chest UI scene root
-│   └── main_menu.tscn         # Main menu
+│   ├── skills_ui.tscn         # Skills UI scene
+│   ├── main_menu.tscn         # Legacy main menu scene
+│   └── mainMenu/
+│       ├── MainMenu.cs        # Save selection/creation UI and game boot flow
+│       ├── MainMenu.tscn      # Main menu scene (startup scene)
+│       ├── SaveManager.cs     # Save discovery/creation/deletion in app data
+│       └── GameSession.cs     # Autoload holding currently selected save
 ├── npc/
 │   └── knight/
 │       ├── KnightNpc.cs       # Allied knight AI, combat, and regeneration
@@ -141,3 +149,12 @@ default; press `G` to spawn one near the player. The player can also damage knig
   `assets/docs/Cute_Fantasy_Free_read_me.txt`.
 - Scenes use Godot 4.7 scene format (`uid=` attributes are managed by the editor).
 - Custom C# scripts target .NET 8.
+
+
+## Main Menu and Saves
+
+- `menus/mainMenu/MainMenu.tscn` is the startup scene (`project.godot` `run/main_scene`) containing the menu UI layout; `menus/mainMenu/MainMenu.cs` handles behavior/wiring.
+- The main menu lists save folders from the app data saves directory (`OS.GetUserDataDir()/saves`), and supports **Play**, **Delete**, and **New Save**.
+- **New Save** opens a dialog for title and description, creates a new per-save folder under the saves directory with a `save.json` metadata file, sets it as the active session save, and boots into `res://level/character_dev/main_level.tscn`.
+- `menus/mainMenu/GameSession.cs` is registered as an autoload (`GameSession`) to store the currently selected/created save for the running session.
+- A debug button in the main menu opens the saves/app-data folder via `OS.ShellOpen`.

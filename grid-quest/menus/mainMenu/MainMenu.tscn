@@ -1,0 +1,181 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://menus/mainMenu/MainMenu.cs" id="1_menu"]
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_menu")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.101961, 0.121569, 0.160784, 1)
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="Root" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="Header" type="Label" parent="MarginContainer/Root"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "Grid Quest"
+horizontal_alignment = 1
+
+[node name="Content" type="HBoxContainer" parent="MarginContainer/Root"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="LeftPanel" type="VBoxContainer" parent="MarginContainer/Root/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.2
+theme_override_constants/separation = 8
+
+[node name="SavesLabel" type="Label" parent="MarginContainer/Root/Content/LeftPanel"]
+layout_mode = 2
+text = "Saves"
+
+[node name="SaveList" type="ItemList" parent="MarginContainer/Root/Content/LeftPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+select_mode = 0
+allow_reselect = false
+allow_rmb_select = false
+
+[node name="LeftButtons" type="HBoxContainer" parent="MarginContainer/Root/Content/LeftPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="NewSaveButton" type="Button" parent="MarginContainer/Root/Content/LeftPanel/LeftButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "New Save"
+
+[node name="DeleteButton" type="Button" parent="MarginContainer/Root/Content/LeftPanel/LeftButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Delete"
+
+[node name="PlayButton" type="Button" parent="MarginContainer/Root/Content/LeftPanel/LeftButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Play"
+
+[node name="RightPanel" type="PanelContainer" parent="MarginContainer/Root/Content"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RightContent" type="VBoxContainer" parent="MarginContainer/Root/Content/RightPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="DetailsHeader" type="Label" parent="MarginContainer/Root/Content/RightPanel/RightContent"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Save Details"
+
+[node name="TitleLabel" type="Label" parent="MarginContainer/Root/Content/RightPanel/RightContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "No save selected"
+autowrap_mode = 2
+
+[node name="DescriptionLabel" type="Label" parent="MarginContainer/Root/Content/RightPanel/RightContent"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+autowrap_mode = 2
+
+[node name="PathLabel" type="Label" parent="MarginContainer/Root/Content/RightPanel/RightContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 2
+
+[node name="DebugRow" type="HBoxContainer" parent="MarginContainer/Root/Content/RightPanel/RightContent"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="OpenFolderButton" type="Button" parent="MarginContainer/Root/Content/RightPanel/RightContent/DebugRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open Saves Folder (Debug)"
+
+[node name="AppDataLabel" type="Label" parent="MarginContainer/Root/Content/RightPanel/RightContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+autowrap_mode = 2
+
+[node name="CreateDialog" type="ConfirmationDialog" parent="."]
+unique_name_in_owner = true
+title = "Create New Save"
+initial_position = 2
+size = Vector2i(460, 320)
+min_size = Vector2i(360, 260)
+ok_button_text = "Create"
+
+[node name="DialogContent" type="VBoxContainer" parent="CreateDialog"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -49.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="TitleFieldLabel" type="Label" parent="CreateDialog/DialogContent"]
+layout_mode = 2
+text = "Title"
+
+[node name="NewTitleEdit" type="LineEdit" parent="CreateDialog/DialogContent"]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "My Adventure"
+
+[node name="DescriptionFieldLabel" type="Label" parent="CreateDialog/DialogContent"]
+layout_mode = 2
+text = "Description"
+
+[node name="NewDescriptionEdit" type="TextEdit" parent="CreateDialog/DialogContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+size_flags_vertical = 3
+placeholder_text = "Optional description..."
+wrap_mode = 1
