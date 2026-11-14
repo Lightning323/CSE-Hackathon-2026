@@ -12,6 +12,7 @@
 [ext_resource type="Script" path="res://npc/knight/VillageKnightPopulationManager.cs" id="14_knight_mgr"]
 [ext_resource type="PackedScene" path="res://menus/skills_ui.tscn" id="15_skills_ui"]
 [ext_resource type="PackedScene" path="res://menus/cheat_menu.tscn" id="16_cheat_menu"]
+[ext_resource type="Script" path="res://level/DayNightCycle.cs" id="17_daynight"]
 
 [node name="Level" type="Node2D" unique_id=426259724]
 y_sort_enabled = true
@@ -47,3 +48,6 @@ script = ExtResource("14_knight_mgr")
 
 [node name="MonumentIndicator" type="TextureRect" parent="CanvasLayer"]
 script = ExtResource("13_monument_indicator")
+
+[node name="CanvasModulate" type="CanvasModulate" parent="."]
+script = ExtResource("17_daynight")

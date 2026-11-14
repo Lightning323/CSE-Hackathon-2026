@@ -50,7 +50,13 @@ public static class RoomGenerator
 			Edge(width - 1, y, y == height / 2 ? east : WallFeature.Solid, GateFactory.GateAxis.Vertical);
 		}
 
-		var room = new Node2D { Name = "Room", YSortEnabled = true };
+		var room = new Node2D
+		{
+			Name = "Room",
+			YSortEnabled = true,
+			// Keep building interiors visually dark, but still readable when lit by the player.
+			Modulate = new Color(0.38f, 0.38f, 0.42f, 1.0f),
+		};
 		var walls = new Node2D { Name = "Walls", YSortEnabled = true };
 		room.AddChild(walls);
 		try
@@ -84,6 +90,7 @@ public static class RoomGenerator
 				room.AddChild(chest);
 			}
 		}
+
 		return room;
 	}
 }

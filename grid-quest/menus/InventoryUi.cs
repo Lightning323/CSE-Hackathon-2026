@@ -142,7 +142,7 @@ public partial class InventoryUi : Control
 			if (key.Keycode == Key.F) interact = true;
 			if (key.Keycode == Key.Escape && Visible)
 			{
-				if (_openChest != null) CloseChest(); else CloseInventory();
+				CloseInventory();
 				GetViewport().SetInputAsHandled();
 				return;
 			}
@@ -193,11 +193,8 @@ public partial class InventoryUi : Control
 
 	public void CloseChest()
 	{
-		_openChest = null;
-		_chestPanel.Visible = false;
-		_selected = null;
-		if (!IsInstanceValid(_player)) CloseInventory();
-		Refresh();
+		// When in chest menu, close the whole inventory/chest view (not just the chest panel).
+		CloseInventory();
 	}
 
 	private bool TryInteractChest()
@@ -218,7 +215,7 @@ public partial class InventoryUi : Control
 		{
 			if (Visible && _openChest == nearest)
 			{
-				CloseChest();
+				CloseInventory();
 				return true;
 			}
 			nearest.Interact(_player);

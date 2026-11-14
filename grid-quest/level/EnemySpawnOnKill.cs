@@ -23,8 +23,10 @@ public partial class EnemySpawnOnKill : Node
 
 	private void SpawnInitialEnemies()
 	{
+		DayNightCycle cycle = GetDayNightCycle();
+		int targetInitial = cycle != null ? cycle.GetAdjustedEnemyCount(InitialSpawnCount) : InitialSpawnCount;
 		int enemyCount = GetTree().GetNodesInGroup("enemies").Count;
-		int toSpawn = Mathf.Max(0, InitialSpawnCount - enemyCount);
+		int toSpawn = Mathf.Max(0, targetInitial - enemyCount);
 		for (int i = 0; i < toSpawn; i++)
 		{
 			SpawnEnemyOutsideCamera(force: false);
@@ -37,25 +39,60 @@ public partial class EnemySpawnOnKill : Node
 		if (_timer > 0.0f) return;
 		_timer = SpawnCheckInterval;
 
+		DayNightCycle cycle = GetDayNightCycle();
+		int maxEnemies = GetEffectiveMaxEnemies(cycle);
+		int minEnemies = GetEffectiveMinEnemies(cycle);
+		float spawnChance = GetEffectiveSpawnChance(cycle);
+		int maxSpawnsPerTick = GetEffectiveMaxSpawnsPerTick(cycle);
+
 		int enemyCount = GetTree().GetNodesInGroup("enemies").Count;
-		if (enemyCount >= MaxEnemies)
+		if (enemyCount >= maxEnemies)
 			return;
 
 		int desiredSpawns = 1;
-		if (enemyCount < MinEnemies)
-			desiredSpawns = Mathf.Clamp(MinEnemies - enemyCount, 1, MaxSpawnsPerTick);
+		if (enemyCount < minEnemies)
+			desiredSpawns = Mathf.Clamp(minEnemies - enemyCount, 1, maxSpawnsPerTick);
 
 		for (int i = 0; i < desiredSpawns; i++)
 		{
 			enemyCount = GetTree().GetNodesInGroup("enemies").Count;
-			if (enemyCount >= MaxEnemies)
+			if (enemyCount >= maxEnemies)
 				break;
 
-			if (enemyCount < MinEnemies || GD.Randf() <= SpawnChance)
+			if (enemyCount < minEnemies || GD.Randf() <= spawnChance)
 			{
-				SpawnEnemyOutsideCamera(force: enemyCount < MinEnemies);
+				SpawnEnemyOutsideCamera(force: enemyCount < minEnemies);
 			}
 		}
+	}
+
+	private DayNightCycle GetDayNightCycle()
+	{
+		return GetTree().GetFirstNodeInGroup("day_night_cycle") as DayNightCycle;
+	}
+
+	private int GetEffectiveMaxEnemies(DayNightCycle cycle)
+	{
+		if (cycle == null) return MaxEnemies;
+		return Mathf.Max(MaxEnemies, cycle.GetAdjustedEnemyCount(MaxEnemies));
+	}
+
+	private int GetEffectiveMinEnemies(DayNightCycle cycle)
+	{
+		if (cycle == null) return MinEnemies;
+		return Mathf.Max(MinEnemies, cycle.GetAdjustedEnemyCount(MinEnemies, minimum: true));
+	}
+
+	private int GetEffectiveMaxSpawnsPerTick(DayNightCycle cycle)
+	{
+		if (cycle == null) return MaxSpawnsPerTick;
+		return Mathf.Max(MaxSpawnsPerTick, Mathf.CeilToInt(MaxSpawnsPerTick * Mathf.Lerp(1.0f, 1.2f, cycle.NightFactor)));
+	}
+
+	private float GetEffectiveSpawnChance(DayNightCycle cycle)
+	{
+		if (cycle == null) return SpawnChance;
+		return Mathf.Clamp(SpawnChance + 0.05f * cycle.NightFactor, 0.0f, 0.99f);
 	}
 
 	private void SpawnEnemyOutsideCamera(bool force)
