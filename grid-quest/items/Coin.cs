@@ -136,6 +136,24 @@ public partial class Coin : Area2D
 		{
 			player.Call("AddGold", 1);
 		}
+		PlayPickupSfx();
 		QueueFree();
+	}
+
+	private void PlayPickupSfx()
+	{
+		var stream = GD.Load<AudioStream>("res://assets/audio/sfx/forest_item.ogg");
+		if (stream == null) return;
+
+		var sfx = new AudioStreamPlayer2D
+		{
+			Stream = stream,
+			GlobalPosition = GlobalPosition,
+			VolumeDb = -10.0f
+		};
+		var parent = GetTree().CurrentScene ?? GetParent();
+		parent?.AddChild(sfx);
+		sfx.Finished += sfx.QueueFree;
+		sfx.Play();
 	}
 }

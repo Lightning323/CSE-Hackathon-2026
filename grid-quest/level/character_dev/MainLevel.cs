@@ -8,7 +8,24 @@ public partial class MainLevel : Node2D
 	{
 		GD.Print("_Ready");
 		YSortEnabled = true;
+		SetupBackgroundMusic();
 		CallDeferred(nameof(PlacePlayerAtRandomSpawn));
+	}
+
+	private void SetupBackgroundMusic()
+	{
+		var bgm = GetNodeOrNull<AudioStreamPlayer>("BgmPlayer") ?? new AudioStreamPlayer { Name = "BgmPlayer" };
+		if (bgm.GetParent() == null)
+			AddChild(bgm);
+
+		var stream = GD.Load<AudioStream>("res://assets/audio/sfx/forest_ancient_path.ogg");
+		if (stream is AudioStreamOggVorbis ogg)
+			ogg.Loop = true;
+		bgm.Stream = stream;
+		bgm.Autoplay = false;
+		bgm.VolumeDb = -8.0f;
+		bgm.ProcessMode = ProcessModeEnum.Always;
+		bgm.Play();
 	}
 
 	private void PlacePlayerAtRandomSpawn()

@@ -139,9 +139,37 @@ public partial class Enemy : CharacterBody2D
 		UpdateHealthBar();
 		if (Health == 0)
 		{
-			DropCoins();
-			QueueFree();
+			Die();
 		}
+	}
+
+	private bool _dying;
+
+	private void Die()
+	{
+		if (_dying) return;
+		_dying = true;
+		Velocity = Vector2.Zero;
+		DropCoins();
+		PlayDeathSfx();
+		QueueFree();
+	}
+
+	private void PlayDeathSfx()
+	{
+		var stream = GD.Load<AudioStream>("res://assets/audio/sfx/forest_enemy-death.ogg");
+		if (stream == null) return;
+
+		var sfx = new AudioStreamPlayer2D
+		{
+			Stream = stream,
+			GlobalPosition = GlobalPosition,
+			VolumeDb = -4.0f
+		};
+		var parent = GetParent() ?? GetTree().CurrentScene;
+		parent?.AddChild(sfx);
+		sfx.Finished += sfx.QueueFree;
+		sfx.Play();
 	}
 
 	public void ApplyKnockback(Vector2 direction, float strength)

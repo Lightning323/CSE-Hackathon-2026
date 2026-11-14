@@ -37,6 +37,8 @@ public partial class Player : CharacterBody2D
 	private float _killSpeedBuffTimer;
 	private float _lifestealAccumulator;
 	private float _thornsAccumulator;
+	private AudioStreamPlayer _hurtSfx;
+	private AudioStreamPlayer _slashSfx;
 
 	public bool DebugInvulnerable { get; set; }
 
@@ -122,6 +124,7 @@ public partial class Player : CharacterBody2D
 		_sprite.AnimationFinished += OnAnimationFinished;
 		_sprite.Play("idle_down");
 		SyncEquippedFromId();
+		SetupAudio();
 		UpdateHealthBar();
 		UpdatePlayerLight();
 		CallDeferred(nameof(ApplyRandomSpawnIfNeeded));
@@ -381,6 +384,7 @@ public partial class Player : CharacterBody2D
 			_damageSpeedBuffTimer = Mathf.Max(_damageSpeedBuffTimer, 2.5f);
 		}
 
+		PlayHurtSfx();
 		ApplyThorns(attacker);
 		UpdateHealthBar();
 		if (Health == 0)
@@ -464,8 +468,38 @@ public partial class Player : CharacterBody2D
 		{
 			_state = State.Attack;
 			PlayAnimation($"attack_{_facing}");
+			PlaySlashSfx();
 			DamageEnemiesInRange();
 		}
+	}
+
+	private void SetupAudio()
+	{
+		_hurtSfx = GetNodeOrNull<AudioStreamPlayer>("HurtSfx") ?? new AudioStreamPlayer { Name = "HurtSfx" };
+		if (_hurtSfx.GetParent() == null)
+			AddChild(_hurtSfx);
+		_hurtSfx.Stream = GD.Load<AudioStream>("res://assets/audio/sfx/forest_hurt.ogg");
+		_hurtSfx.VolumeDb = -6.0f;
+
+		_slashSfx = GetNodeOrNull<AudioStreamPlayer>("SlashSfx") ?? new AudioStreamPlayer { Name = "SlashSfx" };
+		if (_slashSfx.GetParent() == null)
+			AddChild(_slashSfx);
+		_slashSfx.Stream = GD.Load<AudioStream>("res://assets/audio/sfx/forest_slash.ogg");
+		_slashSfx.VolumeDb = -8.0f;
+	}
+
+	private void PlayHurtSfx()
+	{
+		if (_hurtSfx == null || _hurtSfx.Stream == null) return;
+		// Do not overlap hurt sound if it's already playing.
+		if (_hurtSfx.Playing) return;
+		_hurtSfx.Play();
+	}
+
+	private void PlaySlashSfx()
+	{
+		if (_slashSfx == null || _slashSfx.Stream == null) return;
+		_slashSfx.Play();
 	}
 
 	private void DamageEnemiesInRange()
