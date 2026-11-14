@@ -1,15 +1,13 @@
 using Godot;
 
 // --- ENEMY TEST SPAWNER (temporary) ---
-// Spawns a single test enemy by difficulty using number keys:
+// Spawns enemies by difficulty using number keys (each press spawns another):
 // 1 = Medium (Skeleton), 2 = Hard (Elite Skeleton).
 // Remove this script/node when no longer needed for testing.
 public partial class EnemyTestSpawner : Node2D
 {
 	private static readonly PackedScene SkeletonScene = GD.Load<PackedScene>("res://enemy/skeleton_enemy.tscn");
 	private static readonly PackedScene EliteScene = GD.Load<PackedScene>("res://enemy/elite_skeleton_enemy.tscn");
-
-	private Node2D _spawnedEnemy;
 
 	public override void _UnhandledInput(InputEvent @event)
 	{
@@ -36,17 +34,12 @@ public partial class EnemyTestSpawner : Node2D
 
 	private void SpawnEnemy(PackedScene scene)
 	{
-		if (IsInstanceValid(_spawnedEnemy))
-		{
-			_spawnedEnemy.QueueFree();
-		}
-
 		Node instance = scene.Instantiate();
 		if (instance is Node2D enemy)
 		{
-			enemy.GlobalPosition = GlobalPosition;
+			Vector2 offset = new(GD.Randf() * 30.0f - 15.0f, GD.Randf() * 30.0f - 15.0f);
+			enemy.GlobalPosition = GlobalPosition + offset;
 			GetParent().AddChild(enemy);
-			_spawnedEnemy = enemy;
 		}
 		else
 		{

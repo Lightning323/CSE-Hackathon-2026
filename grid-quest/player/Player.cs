@@ -162,13 +162,19 @@ public partial class Player : CharacterBody2D
 
 	private void DamageEnemiesInRange()
 	{
-		foreach (Node node in GetTree().GetNodesInGroup("enemies"))
+		DamageGroupInRange("enemies");
+		DamageGroupInRange("knights");
+	}
+
+	private void DamageGroupInRange(string group)
+	{
+		foreach (Node node in GetTree().GetNodesInGroup(group))
 		{
-			if (node is Node2D enemy
-				&& enemy.GlobalPosition.DistanceTo(GlobalPosition) <= AttackRange
-				&& enemy.HasMethod("TakeDamage"))
+			if (node is Node2D target
+				&& target.GlobalPosition.DistanceTo(GlobalPosition) <= AttackRange
+				&& target.HasMethod("TakeDamage"))
 			{
-				enemy.Call("TakeDamage", AttackDamage);
+				target.Call("TakeDamage", AttackDamage);
 			}
 		}
 	}

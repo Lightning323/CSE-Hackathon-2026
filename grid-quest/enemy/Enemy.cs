@@ -66,10 +66,7 @@ public partial class Enemy : CharacterBody2D
 			return;
 		}
 
-		if (_player == null || !IsInstanceValid(_player))
-		{
-			_player = GetTree().GetFirstNodeInGroup("player") as Node2D;
-		}
+		_player = FindClosestTarget();
 
 		if (_player == null)
 		{
@@ -201,6 +198,40 @@ public partial class Enemy : CharacterBody2D
 
 		_healthBar.MaxValue = MaxHealth;
 		_healthBar.Value = Health;
+	}
+
+	private Node2D FindClosestTarget()
+	{
+		Node2D closest = null;
+		float closestDistSq = float.MaxValue;
+		Vector2 origin = GlobalPosition;
+
+		foreach (Node node in GetTree().GetNodesInGroup("player"))
+		{
+			ConsiderTarget(node, origin, ref closest, ref closestDistSq);
+		}
+
+		foreach (Node node in GetTree().GetNodesInGroup("knights"))
+		{
+			ConsiderTarget(node, origin, ref closest, ref closestDistSq);
+		}
+
+		return closest;
+	}
+
+	private static void ConsiderTarget(Node node, Vector2 origin, ref Node2D closest, ref float closestDistSq)
+	{
+		if (node is not Node2D target || !IsInstanceValid(target))
+		{
+			return;
+		}
+
+		float distSq = origin.DistanceSquaredTo(target.GlobalPosition);
+		if (distSq < closestDistSq)
+		{
+			closestDistSq = distSq;
+			closest = target;
+		}
 	}
 
 	private SpriteFrames BuildSpriteFrames()

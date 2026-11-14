@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3 uid="uid://b8wk2ss2srqk1"]
+[gd_scene load_steps=6 format=3 uid="uid://b8wk2ss2srqk1"]
 
 [ext_resource type="PackedScene" uid="uid://dasd1exc7g0m2" path="res://player/player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://enemy/skeleton_enemy.tscn" id="2_skeleton"]
 [ext_resource type="PackedScene" path="res://enemy/elite_skeleton_enemy.tscn" id="3_elite"]
 [ext_resource type="Script" path="res://level/EnemyTestSpawner.cs" id="4_spawner"]
+[ext_resource type="Script" path="res://level/KnightSpawnInput.cs" id="5_knight_spawn"]
 
 [node name="Map" type="Node2D" unique_id=650055367]
 
@@ -20,3 +21,6 @@ position = Vector2(840, 220)
 [node name="EnemyTestSpawner" type="Node2D" parent="."]
 position = Vector2(576, 420)
 script = ExtResource("4_spawner")
+
+[node name="KnightSpawnInput" type="Node" parent="."]
+script = ExtResource("5_knight_spawn")

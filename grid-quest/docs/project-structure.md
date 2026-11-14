@@ -20,8 +20,13 @@ grid-quest/
 │       ├── Player/            # Player.png, Player_Actions.png (sprite sheets)
 │       └── Tiles/             # Beach, cliff, farmland, grass, path, water tiles
 ├── level/
-│   ├── EnemyTestSpawner.cs    # Temporary test spawner (number keys 1-2), remove when done
+│   ├── EnemyTestSpawner.cs    # Temporary enemy spawner (1/2 spawns skeleton/elite, stacks), remove when done
+│   ├── KnightSpawnInput.cs    # Spawns a knight NPC helper on G
 │   └── map.tscn               # Main gameplay map (root: Node2D "Map" with Player instance)
+├── npc/
+│   └── knight/
+│       ├── KnightNpc.cs       # Allied knight NPC: targets enemies, attacks, slow regen
+│       └── knight_npc.tscn    # Knight NPC scene (CharacterBody2D + AnimatedSprite2D + HealthBar)
 ├── menus/
 │   └── main_menu.tscn         # Main menu (root: Node2D "MainMenu" + CanvasLayer)
 ├── enemy/
@@ -52,17 +57,19 @@ action is bound to Space and J. Left is drawn by flipping the side animation. Di
 moves at the same speed as cardinal input because `Input.GetVector` normalizes it. The player can
 continue moving while the attack animation plays, has a health bar, and takes damage from enemy
 attacks. `H` toggles temporary debug invulnerability (clearly marked in `Player.cs`, remove when
-no longer needed).
+no longer needed). Press `G` to spawn an allied knight NPC near the player. The player can damage
+knights.
 
 ## Enemy
 
 `Enemy.cs` builds `SpriteFrames` at runtime from a configurable sprite sheet (32x32 frames) and
 exposes movement/combat/animation settings via exports (`Speed`, `MaxHealth`, `AttackDamage`,
-`AttackRange`, `AttackCooldown`, `TexturePath`, idle/walk/attack frame counts and FPS). It chases
-the player, updates facing based on movement direction, plays `idle_*` / `walk_*` animations, and
-starts an `attack_*` animation when in range. Enemy attacks are a timed windup: damage is applied
-when the attack animation finishes if the player is still in range, allowing the player to strike
-and back out with timing.
+`AttackRange`, `AttackCooldown`, `TexturePath`, idle/walk/attack frame counts and FPS). It targets
+the closest of the player (`player` group) or allied knights (`knights` group), updates facing
+based on movement direction, plays `idle_*` / `walk_*` animations, and starts an `attack_*`
+animation when in range. Enemy attacks are a timed windup: damage is applied when the attack
+animation finishes if the target is still in range, allowing the player to strike and back out
+with timing.
 
 | Scene | Variant | Speed | Health | Attack | Appearance/notes |
 | --- | --- | --- | --- | --- | --- |
@@ -70,8 +77,18 @@ and back out with timing.
 | `elite_skeleton_enemy.tscn` | Hard | 70 | 6 | 2 dmg, 26 range, 0.7s cooldown | Larger red-tinted skeleton with faster movement/animation |
 
 The temporary slime enemy variant was removed due to broken sprite-sheet animation mapping. The
-map includes a temporary `EnemyTestSpawner` (keys `1` = skeleton, `2` = elite) for spawning a
-single test enemy at a marked position; remove it when no longer needed.
+map includes a temporary `EnemyTestSpawner` (keys `1` = skeleton, `2` = elite) for spawning
+additional test enemies at a marked position; remove it when no longer needed.
+
+## Allied Knight NPC
+
+`npc/knight/KnightNpc.cs` builds `SpriteFrames` at runtime from the `forest_hero` character
+sprites under `assets/images/characters/`. Knights are allied helpers (`allies`/`knights` groups):
+they chase and attack the nearest enemy with a timed attack windup, deal low damage, and can take
+damage from enemies. Health regeneration is slow and only begins after a short delay out of combat
+(after attacking), so knights can handle a normal skeleton 1v1, get overrun by multiple normal
+skeletons, and cannot defeat an elite skeleton alone. No knights spawn by default; press `G` to
+spawn one near the player (`level/KnightSpawnInput.cs`). The player can also damage knights.
 
 ## Notes
 
