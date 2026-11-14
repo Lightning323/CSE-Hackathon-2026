@@ -13,7 +13,7 @@ public partial class Player : CharacterBody2D
 	[Export] public float AttackRange { get; set; } = 32.0f;
 
 	private const int FrameSize = 32;
-	private const string PlayerTexturePath = "res://assets/Cute_Fantasy_Free/Player/Player.png";
+	private const string PlayerTexturePath = "res://assets/images/characters/cute_Player.png";
 
 	private AnimatedSprite2D _sprite;
 	private ProgressBar _healthBar;

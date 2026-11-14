@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://c3enemy_elite01"]
 
 [ext_resource type="Script" path="res://enemy/Enemy.cs" id="1_script"]
-[ext_resource type="Texture2D" path="res://assets/Cute_Fantasy_Free/Enemies/Skeleton.png" id="2_tex"]
+[ext_resource type="Texture2D" uid="uid://ctn76om0ojpba" path="res://assets/images/enemies/skeleton/cute_Skeleton.png" id="2_tex"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_idle0"]
 atlas = ExtResource("2_tex")
@@ -28,7 +28,7 @@ MaxHealth = 6
 AttackDamage = 2
 AttackRange = 26.0
 AttackCooldown = 0.7
-TexturePath = "res://assets/Cute_Fantasy_Free/Enemies/Skeleton.png"
+TexturePath = "res://assets/images/enemies/skeleton/cute_Skeleton.png"
 IdleFrameCount = 6
 WalkFrameCount = 6
 AttackFrameCount = 4

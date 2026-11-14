@@ -7,7 +7,7 @@ public partial class Enemy : CharacterBody2D
 	[Export] public int AttackDamage { get; set; } = 1;
 	[Export] public float AttackRange { get; set; } = 24.0f;
 	[Export] public float AttackCooldown { get; set; } = 0.8f;
-	[Export(PropertyHint.File, "*.png")] public string TexturePath { get; set; } = "res://assets/Cute_Fantasy_Free/Enemies/Skeleton.png";
+	[Export(PropertyHint.File, "*.png")] public string TexturePath { get; set; } = "res://assets/images/enemies/skeleton/cute_Skeleton.png";
 	[Export] public int IdleFrameCount { get; set; } = 6;
 	[Export] public int WalkFrameCount { get; set; } = 6;
 	[Export] public int AttackFrameCount { get; set; } = 4;
