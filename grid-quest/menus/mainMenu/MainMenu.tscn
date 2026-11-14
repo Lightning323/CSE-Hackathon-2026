@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://wnqvx4w5j4rx" path="res://menus/mainMenu/MainMenu.cs" id="1_menu"]
 [ext_resource type="Theme" uid="uid://b2tdhwtjuqch5" path="res://assets/main_theme.tres" id="2_sfqqo"]
+[ext_resource type="FontFile" uid="uid://cthcwmogafee1" path="res://assets/fonts/pixel_operator/PixelOperatorMono8-Bold.ttf" id="3_r3luh"]
 
 [node name="MainMenu" type="Control" unique_id=1872774942]
 layout_mode = 3
@@ -47,8 +48,9 @@ theme_override_constants/separation = 12
 layout_mode = 2
 theme = ExtResource("2_sfqqo")
 theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("3_r3luh")
 theme_override_font_sizes/font_size = 36
-text = "Grid Quest"
+text = "GRID-QUEST"
 horizontal_alignment = 1
 
 [node name="Content" type="HBoxContainer" parent="MarginContainer/Root" unique_id=719091055]
