@@ -1,10 +1,10 @@
 # AGENTS.md
 
-Guidance for AI coding agents working on **Grid Quest**, a Godot 4.6 C# 2D game.
+Guidance for AI coding agents working on **Grid Quest**, a Godot 4.7 C# 2D game.
 
 ## Project
 
-- Engine: Godot 4.6, C# (.NET 8), Forward+ renderer, Jolt 3D physics.
+- Engine: Godot 4.7, C# (.NET 8), Forward+ renderer, Jolt 3D physics.
 - Root namespace: `GridQuest`. Solution: `Grid Quest.sln`, project: `Grid Quest.csproj`.
 - Full layout: see [docs/project-structure.md](docs/project-structure.md).
 
@@ -21,7 +21,7 @@ Guidance for AI coding agents working on **Grid Quest**, a Godot 4.6 C# 2D game.
 
 ## Conventions
 
-- Match existing scene/script style: Godot 4.6 `.tscn` format, one script per node where it makes sense.
+- Match existing scene/script style: Godot 4.7 `.tscn` format, one script per node where it makes sense.
 - C# files use tabs for indentation, `PascalCase` types/methods, `_camelCase` private fields, and `override` for engine callbacks (`_Ready`, `_Process`, `_PhysicsProcess`).
 - Keep `.import` / `.uid` files committed; never edit `.godot/` (generated, gitignored).
 - Do not add comments unless they clarify non-obvious logic.

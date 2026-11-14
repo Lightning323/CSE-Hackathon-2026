@@ -1,6 +1,6 @@
 #!/bin/bash
 
-GODOT_BIN="${GODOT_PATH:-$(command -v godot || echo "$HOME/.Programs/Godot_v4.6.1-stable_mono_linux_x86_64/Godot_v4.6.1-stable_mono_linux.x86_64")}"
+GODOT_BIN="${GODOT_PATH:-$(command -v godot || echo "$HOME/.Programs/Godot/Godot.x86_64")}"
 
 opencode mcp add godot --env "GODOT_PATH=$GODOT_BIN" -- npx -y @coding-solo/godot-mcp
 opencode mcp list

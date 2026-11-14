@@ -203,7 +203,7 @@ public partial class Player : CharacterBody2D
 	{
 		frames.AddAnimation(name);
 		frames.SetAnimationSpeed(name, fps);
-		frames.SetAnimationLoop(name, loop);
+		frames.SetAnimationLoopMode(name, loop ? SpriteFrames.LoopMode.Linear : SpriteFrames.LoopMode.None);
 
 		for (int frame = 0; frame < frameCount; frame++)
 		{
