@@ -2,6 +2,8 @@ using Godot;
 
 public partial class KnightNpc : CharacterBody2D
 {
+	[Signal] public delegate void DiedEventHandler(KnightNpc knight, int villageIndex);
+
 	[Export] public float Speed { get; set; } = 55.0f;
 	[Export] public int MaxHealth { get; set; } = 8;
 	[Export] public int AttackDamage { get; set; } = 1;
@@ -9,6 +11,7 @@ public partial class KnightNpc : CharacterBody2D
 	[Export] public float AttackCooldown { get; set; } = 1.75f;
 	[Export] public float RegenPerSecond { get; set; } = 0.3f;
 	[Export] public float RegenDelayAfterAttack { get; set; } = 3.0f;
+	[Export] public float ProtectRange { get; set; } = 220.0f;
 
 	private const string HeroBasePath = "res://assets/images/characters/";
 
@@ -24,6 +27,11 @@ public partial class KnightNpc : CharacterBody2D
 	private Vector2 _patrolTarget;
 	private float _patrolWaitTimer;
 	private float _patrolRepathTimer;
+
+	private bool _hasHome;
+	private Rect2 _homeWorldRect;
+	private Vector2 _homeCenterWorld;
+	private int _homeVillageIndex = -1;
 
 	private enum State
 	{
@@ -45,7 +53,23 @@ public partial class KnightNpc : CharacterBody2D
 		_sprite.Play("idle_down");
 		AddToGroup("allies");
 		AddToGroup("knights");
+		AddToGroup("village_knights");
+		PickNewPatrolTarget();
 		UpdateHealthBar();
+	}
+
+	public void SetHome(Rect2I cellBounds, Vector2I centerCell, int villageIndex)
+	{
+		const int cellSize = 16;
+		_homeWorldRect = new Rect2(
+			cellBounds.Position.X * cellSize,
+			cellBounds.Position.Y * cellSize,
+			cellBounds.Size.X * cellSize,
+			cellBounds.Size.Y * cellSize);
+		_homeCenterWorld = new Vector2(centerCell.X * cellSize + cellSize / 2.0f, centerCell.Y * cellSize + cellSize / 2.0f);
+		_homeVillageIndex = villageIndex;
+		_hasHome = true;
+		_patrolTarget = _homeCenterWorld;
 	}
 
 	public override void _PhysicsProcess(double delta)
@@ -107,6 +131,14 @@ public partial class KnightNpc : CharacterBody2D
 			return;
 		}
 
+		if (_hasHome && _homeCenterWorld.DistanceTo(_targetEnemy.GlobalPosition) > ProtectRange * 1.05f)
+		{
+			_targetEnemy = null;
+			UpdatePatrol(dt);
+			MoveAndSlide();
+			return;
+		}
+
 		Velocity = direction * Speed;
 		_state = State.Walk;
 		PlayAnimation($"walk_{_facing}");
@@ -124,6 +156,7 @@ public partial class KnightNpc : CharacterBody2D
 		UpdateHealthBar();
 		if (Health == 0)
 		{
+			EmitSignal(SignalName.Died, this, _homeVillageIndex);
 			QueueFree();
 		}
 	}
@@ -164,11 +197,38 @@ public partial class KnightNpc : CharacterBody2D
 				continue;
 			}
 
+			if (_hasHome)
+			{
+				// Prioritize protecting the village area and avoid chasing across the map.
+				if (_homeCenterWorld.DistanceTo(enemy.GlobalPosition) > ProtectRange)
+					continue;
+				if (!_homeWorldRect.Grow(ProtectRange * 0.35f).HasPoint(GlobalPosition) &&
+					_homeCenterWorld.DistanceTo(enemy.GlobalPosition) > ProtectRange * 0.8f)
+					continue;
+			}
+
 			float distSq = origin.DistanceSquaredTo(enemy.GlobalPosition);
 			if (distSq < closestDistSq)
 			{
 				closestDistSq = distSq;
 				closest = enemy;
+			}
+		}
+
+		// Fallback: if home knight is displaced with no nearby threats, still defend against very close enemies.
+		if (closest == null && _hasHome)
+		{
+			float nearDistSq = 96.0f * 96.0f;
+			foreach (Node node in GetTree().GetNodesInGroup("enemies"))
+			{
+				if (node is not Node2D enemy || !IsInstanceValid(enemy))
+					continue;
+				float distSq = origin.DistanceSquaredTo(enemy.GlobalPosition);
+				if (distSq < nearDistSq)
+				{
+					nearDistSq = distSq;
+					closest = enemy;
+				}
 			}
 		}
 
@@ -253,9 +313,23 @@ public partial class KnightNpc : CharacterBody2D
 		_healthBar.Value = Health;
 	}
 
+	private bool IsFarOutsideHome()
+	{
+		if (!_hasHome)
+			return false;
+		Rect2 expanded = _homeWorldRect.Grow(28.0f);
+		return !expanded.HasPoint(GlobalPosition);
+	}
+
 	private void UpdatePatrol(float delta)
 	{
 		_patrolRepathTimer -= delta;
+
+		if (_hasHome && IsFarOutsideHome())
+		{
+			MoveTowardPoint(_homeCenterWorld, Speed * 0.7f);
+			return;
+		}
 
 		if (_patrolWaitTimer > 0.0f)
 		{
@@ -285,10 +359,24 @@ public partial class KnightNpc : CharacterBody2D
 			return;
 		}
 
+		MoveTowardPoint(_patrolTarget, Speed * 0.5f);
+	}
+
+	private void MoveTowardPoint(Vector2 target, float speed)
+	{
+		Vector2 toTarget = target - GlobalPosition;
+		if (toTarget.LengthSquared() < 0.001f)
+		{
+			Velocity = Vector2.Zero;
+			_state = State.Idle;
+			PlayAnimation($"idle_{_facing}");
+			return;
+		}
+
 		Vector2 direction = toTarget.Normalized();
 		UpdateFacing(direction);
 		_state = State.Walk;
-		Velocity = direction * (Speed * 0.45f);
+		Velocity = direction * speed;
 		PlayAnimation($"walk_{_facing}");
 	}
 
@@ -296,12 +384,39 @@ public partial class KnightNpc : CharacterBody2D
 	{
 		_patrolRepathTimer = (float)GD.RandRange(2.5, 5.0);
 		Vector2 origin = GlobalPosition;
+
+		if (_hasHome)
+		{
+			Rect2 area = _homeWorldRect.Grow(-8.0f);
+			if (area.Size.X < 16.0f || area.Size.Y < 16.0f)
+				area = _homeWorldRect;
+
+			for (int i = 0; i < 10; i++)
+			{
+				float x = (float)GD.RandRange(area.Position.X, area.End.X);
+				float y = (float)GD.RandRange(area.Position.Y, area.End.Y);
+				Vector2 candidate = new(x, y);
+				if (candidate.DistanceTo(origin) >= 16.0f)
+				{
+					_patrolTarget = candidate;
+					return;
+				}
+			}
+
+			_patrolTarget = _homeCenterWorld;
+			return;
+		}
+
 		Node2D map = GetTree().CurrentScene as Node2D;
-		Node grid = map?.GetNodeOrNull("MapGrid");
+		Node grid = map?.GetNodeOrNull<Node>("MapGrid") ?? map?.GetNodeOrNull<Node>("Map");
 		if (grid != null && grid.HasMethod("CellToWorldCenter"))
 		{
 			int width = grid.Get("Width").AsInt32();
+			if (width <= 0 && grid.Get("MapWidth").VariantType != Variant.Type.Nil)
+				width = grid.Get("MapWidth").AsInt32();
 			int height = grid.Get("Height").AsInt32();
+			if (height <= 0 && grid.Get("MapHeight").VariantType != Variant.Type.Nil)
+				height = grid.Get("MapHeight").AsInt32();
 			if (width > 0 && height > 0)
 			{
 				for (int i = 0; i < 8; i++)

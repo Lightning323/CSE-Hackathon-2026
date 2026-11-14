@@ -11,6 +11,8 @@
 [ext_resource type="Script" path="res://level/character_dev/VillagerSpawnInput.cs" id="12_villager_spawn"]
 [ext_resource type="Script" path="res://npc/villager/VillagePopulationManager.cs" id="13_village_mgr"]
 [ext_resource type="Script" path="res://menus/MonumentIndicator.cs" id="14_monument_indicator"]
+[ext_resource type="Script" path="res://level/character_dev/KnightSpawnInput.cs" id="15_knight_spawn"]
+[ext_resource type="Script" path="res://npc/knight/VillageKnightPopulationManager.cs" id="16_knight_mgr"]
 
 [node name="Level" type="Node2D" unique_id=426259724]
 y_sort_enabled = true
@@ -38,12 +40,16 @@ AttackFps = 10.0
 position = Vector2(576, 420)
 
 [node name="KnightSpawnInput" type="Node" parent="." unique_id=327385053]
+script = ExtResource("15_knight_spawn")
 
 [node name="VillagerSpawnInput" type="Node" parent="." unique_id=1122821778]
 script = ExtResource("12_villager_spawn")
 
 [node name="VillagePopulationManager" type="Node" parent="."]
 script = ExtResource("13_village_mgr")
+
+[node name="VillageKnightPopulationManager" type="Node" parent="."]
+script = ExtResource("16_knight_mgr")
 
 [node name="Map" parent="." unique_id=1437051292 instance=ExtResource("9_m5bjr")]
 

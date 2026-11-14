@@ -257,22 +257,27 @@ public partial class Map : Node2D
 				bool inVillage = IsInAnyVillage(x, y);
 				if (inVillage)
 				{
-					if (_reservedCells[x, y])
+					if (_reservedCells[x, y] || _pathCells[x, y] || _occupiedCells[x, y])
 						continue;
 
-					if (rng.Randf() < 0.12f)
-					{
-						plantsLayer.AddChild(PlantFactory.Create(x, y, rng.RandiRange(1, 3)));
-					}
-					else if (rng.Randf() < 0.04f)
+					float villageRoll = rng.Randf();
+					if (villageRoll < 0.055f)
 					{
 						decorLayer.AddChild(CreateTownBush(x, y, rng));
 						MarkOccupied(x, y);
+					}
+					else if (villageRoll < 0.16f)
+					{
+						plantsLayer.AddChild(PlantFactory.Create(x, y, rng.RandiRange(1, 3)));
 					}
 					continue;
 				}
 
 				if (_reservedCells[x, y])
+					continue;
+
+				// Leave a small ring around villages clear for village-specific town trees/decor.
+				if (IsNearAnyVillageBounds(x, y, 3))
 					continue;
 
 				float roll = rng.Randf();
@@ -307,6 +312,8 @@ public partial class Map : Node2D
 			housesLayer.AddChild(HouseFactory.Create(houseCell.X, houseCell.Y));
 			MarkHouseFootprint(houseCell.X, houseCell.Y);
 		}
+
+		PlaceTownTreesAroundVillages(treesLayer, rng);
 
 		var monumentScene = GD.Load<PackedScene>("res://map/map_objects/monument/monument.tscn");
 		var monument = monumentScene.Instantiate<Node2D>();
@@ -352,13 +359,13 @@ public partial class Map : Node2D
 	{
 		var houses = new List<Vector2I>();
 		var centers = new List<Vector2I>();
-		int targetVillages = 8;
+		int targetVillages = 12;
 		int attempts = 0;
 
-		while (centers.Count < targetVillages && attempts < 300)
+		while (centers.Count < targetVillages && attempts < 600)
 		{
 			attempts++;
-			var center = new Vector2I(rng.RandiRange(22, Width - 23), rng.RandiRange(22, Height - 23));
+			var center = new Vector2I(rng.RandiRange(20, Width - 21), rng.RandiRange(20, Height - 21));
 			if (!IsVillageCenterValid(center, centers))
 				continue;
 
@@ -372,14 +379,14 @@ public partial class Map : Node2D
 
 	private bool IsVillageCenterValid(Vector2I center, List<Vector2I> centers)
 	{
-		if (center.X < 22 || center.Y < 22 || center.X >= Width - 22 || center.Y >= Height - 22)
+		if (center.X < 20 || center.Y < 20 || center.X >= Width - 20 || center.Y >= Height - 20)
 			return false;
-		if (center.DistanceTo(_monumentCell) < 36)
+		if (center.DistanceTo(_monumentCell) < 34)
 			return false;
 
 		foreach (Vector2I other in centers)
 		{
-			if (center.DistanceTo(other) < 36)
+			if (center.DistanceTo(other) < 32)
 				return false;
 		}
 
@@ -421,8 +428,26 @@ public partial class Map : Node2D
 
 		CarvePathLine(center.X - 10, center.Y, center.X + 10, center.Y);
 		CarvePathLine(center.X, center.Y - 9, center.X, center.Y + 9);
-		ReserveRect(bounds.Position.X, bounds.Position.Y, bounds.Size.X, bounds.Size.Y);
+		PrepareVillageForDecoration(bounds);
 		return new VillageArea(bounds, center, villageIndex);
+	}
+
+	private void PrepareVillageForDecoration(Rect2I bounds)
+	{
+		// Keep paths and occupied cells blocked, but allow non-path village ground to receive decor.
+		for (int y = bounds.Position.Y; y < bounds.End.Y; y++)
+		{
+			for (int x = bounds.Position.X; x < bounds.End.X; x++)
+			{
+				if (!IsInBounds(x, y))
+					continue;
+				if (x == 0 || y == 0 || x == Width - 1 || y == Height - 1)
+					continue;
+				if (_occupiedCells[x, y] || _pathCells[x, y])
+					continue;
+				_reservedCells[x, y] = false;
+			}
+		}
 	}
 
 	private bool IsInAnyVillage(int x, int y)
@@ -431,6 +456,18 @@ public partial class Map : Node2D
 		foreach (VillageArea village in _villages)
 		{
 			if (village.Bounds.HasPoint(p))
+				return true;
+		}
+		return false;
+	}
+
+	private bool IsNearAnyVillageBounds(int x, int y, int margin)
+	{
+		Vector2I p = new(x, y);
+		foreach (VillageArea village in _villages)
+		{
+			Rect2I expanded = new(village.Bounds.Position.X - margin, village.Bounds.Position.Y - margin, village.Bounds.Size.X + margin * 2, village.Bounds.Size.Y + margin * 2);
+			if (expanded.HasPoint(p))
 				return true;
 		}
 		return false;
@@ -458,6 +495,8 @@ public partial class Map : Node2D
 	private void PlaceHouse(Vector2I houseCell, List<Vector2I> houses)
 	{
 		houses.Add(houseCell);
+		// Reserve a tight area around the house during placement to avoid overlaps, then release
+		// non-critical ground later for village decoration.
 		ReserveRect(houseCell.X - 3, houseCell.Y - 4, 7, 6);
 		CarveRect(houseCell.X - 1, houseCell.Y + 1, 3, 2, true, true);
 	}
@@ -473,7 +512,8 @@ public partial class Map : Node2D
 
 	private void DecorateAroundHouse(Vector2I houseCell, RandomNumberGenerator rng)
 	{
-		for (int i = 0; i < 6; i++)
+		// Leave a few clear spots near houses so village decor can fill in naturally elsewhere.
+		for (int i = 0; i < 4; i++)
 		{
 			int dx = rng.RandiRange(-4, 4);
 			int dy = rng.RandiRange(-5, 2);
@@ -483,7 +523,7 @@ public partial class Map : Node2D
 				continue;
 			if (Math.Abs(dx) <= 2 && dy >= -3 && dy <= 0)
 				continue;
-			if (rng.Randf() < 0.55f)
+			if (rng.Randf() < 0.25f)
 				_reservedCells[x, y] = true;
 		}
 	}
@@ -531,6 +571,85 @@ public partial class Map : Node2D
 			? "res://assets/images/map_tiles/plants/forest_bush.png"
 			: "res://assets/images/map_tiles/plants/forest_bush-tall.png";
 		return PropFactory.Create(x, y, tex, "ForestBush", false, Vector2.Zero, null, null, false);
+	}
+
+	private static Node2D CreateTownTree(int x, int y, RandomNumberGenerator rng)
+	{
+		int variant = rng.RandiRange(1, 2);
+		return variant switch
+		{
+			1 => PropFactory.Create(x, y, "res://assets/images/map_tiles/trees/town_tree-1.png", "TownTree", true, new Vector2(0, -46), new Vector2(14, 10), new Vector2(0, -2)),
+			_ => PropFactory.Create(x, y, "res://assets/images/map_tiles/trees/town_tree-2.png", "TownTree", true, new Vector2(0, -54), new Vector2(14, 10), new Vector2(0, -2)),
+		};
+	}
+
+	private void PlaceTownTreesAroundVillages(Node2D treesLayer, RandomNumberGenerator rng)
+	{
+		foreach (VillageArea village in _villages)
+		{
+			int target = rng.RandiRange(4, 7);
+			int placed = 0;
+			for (int attempt = 0; attempt < 80 && placed < target; attempt++)
+			{
+				int side = rng.RandiRange(0, 3);
+				int x = 0;
+				int y = 0;
+				switch (side)
+				{
+					case 0: // top band
+						x = rng.RandiRange(village.Bounds.Position.X - 2, village.Bounds.End.X + 1);
+						y = rng.RandiRange(village.Bounds.Position.Y - 3, village.Bounds.Position.Y - 1);
+						break;
+					case 1: // bottom band
+						x = rng.RandiRange(village.Bounds.Position.X - 2, village.Bounds.End.X + 1);
+						y = rng.RandiRange(village.Bounds.End.Y, village.Bounds.End.Y + 2);
+						break;
+					case 2: // left band
+						x = rng.RandiRange(village.Bounds.Position.X - 3, village.Bounds.Position.X - 1);
+						y = rng.RandiRange(village.Bounds.Position.Y - 1, village.Bounds.End.Y);
+						break;
+					default: // right band
+						x = rng.RandiRange(village.Bounds.End.X, village.Bounds.End.X + 2);
+						y = rng.RandiRange(village.Bounds.Position.Y - 1, village.Bounds.End.Y);
+						break;
+				}
+
+				if (!CanPlaceTownTree(x, y, village.Index))
+					continue;
+
+				treesLayer.AddChild(CreateTownTree(x, y, rng));
+				MarkOccupied(x, y);
+				placed++;
+			}
+		}
+	}
+
+	private bool CanPlaceTownTree(int x, int y, int villageIndex)
+	{
+		if (x <= 1 || y <= 1 || x >= Width - 2 || y >= Height - 2)
+			return false;
+		if (_pathCells[x, y] || _occupiedCells[x, y] || _reservedCells[x, y])
+			return false;
+
+		// Must be around this village, not inside other villages, and clear of monument.
+		bool nearOwn = false;
+		for (int i = 0; i < _villages.Count; i++)
+		{
+			VillageArea v = _villages[i];
+			Rect2I expanded = new(v.Bounds.Position.X - 3, v.Bounds.Position.Y - 3, v.Bounds.Size.X + 6, v.Bounds.Size.Y + 6);
+			if (!expanded.HasPoint(new Vector2I(x, y)))
+				continue;
+			if (i != villageIndex)
+				return false;
+			nearOwn = true;
+		}
+
+		if (!nearOwn)
+			return false;
+		if (new Vector2I(x, y).DistanceTo(_monumentCell) < 12)
+			return false;
+
+		return true;
 	}
 
 	private static Node2D CreateTownBush(int x, int y, RandomNumberGenerator rng)
