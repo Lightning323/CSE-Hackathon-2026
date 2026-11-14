@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cbukw4cwcfnqw"
-path="res://.godot/imported/meta_chest-opened.png-3b424501629f4e94a2e72274cb22cdd4.ctex"
+uid="uid://b3mojl11fr2o7"
+path="res://.godot/imported/gate_open_Y.png-0098aa230bb200cbe9c55d5888cf4788.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/items/meta_chest-opened.png"
-dest_files=["res://.godot/imported/meta_chest-opened.png-3b424501629f4e94a2e72274cb22cdd4.ctex"]
+source_file="res://assets/images/map_tiles/gate/gate_open_Y.png"
+dest_files=["res://.godot/imported/gate_open_Y.png-0098aa230bb200cbe9c55d5888cf4788.ctex"]
 
 [params]
 

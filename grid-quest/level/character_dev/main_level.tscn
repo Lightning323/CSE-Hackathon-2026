@@ -39,6 +39,9 @@ position = Vector2(576, 420)
 
 [node name="Map" parent="." unique_id=1437051292 instance=ExtResource("9_m5bjr")]
 
-[node name="CanvasLayer" type="CanvasLayer" parent="."]
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1127083425]
 
-[node name="InventoryUi" parent="CanvasLayer" instance=ExtResource("10_inv")]
+[node name="InventoryUi" parent="CanvasLayer" unique_id=1849161941 instance=ExtResource("10_inv")]
+
+[node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=394873551]
+color = Color(0.23753911, 0.23753914, 0.23753911, 1)

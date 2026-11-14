@@ -10,7 +10,7 @@ public partial class WallFactory : MapObjectFactory
 	public static WallFactory Instantiate(Vector2 worldPosition)
 	{
 		var wall = Scene.Instantiate<WallFactory>();
-		wall.ZIndex=1;
+		//wall.ZIndex=1;
 		wall.Position = worldPosition;
 		return wall;
 	}

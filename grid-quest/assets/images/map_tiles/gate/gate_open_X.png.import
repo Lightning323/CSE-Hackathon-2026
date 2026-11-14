@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bs7wodhqg8r7"
-path="res://.godot/imported/meta_box-water2.png-b3a3f0e0a241eeb68da41f03e2f4e394.ctex"
+uid="uid://c8jak6ep1cyrs"
+path="res://.godot/imported/gate_open_X.png-662c69e5006fe519d3b14b303e2ec9c1.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/items/meta_box-water2.png"
-dest_files=["res://.godot/imported/meta_box-water2.png-b3a3f0e0a241eeb68da41f03e2f4e394.ctex"]
+source_file="res://assets/images/map_tiles/gate/gate_open_X.png"
+dest_files=["res://.godot/imported/gate_open_X.png-662c69e5006fe519d3b14b303e2ec9c1.ctex"]
 
 [params]
 

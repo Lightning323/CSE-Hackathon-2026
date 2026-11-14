@@ -33,8 +33,11 @@ Decisions for how Grid Quest represents floor tiles, walls/fences, large props (
 
 ## Current Implementation
 
-- `map/` contains floor/tile definitions plus the grid script/scene, and `map/map_objects/` contains one C# class per map object type extending `MapObject` (base for walls/trees/bushes/fences/etc.), e.g. `TownTree2`, `TownPlant`.
-- `map/map_grid.cs` (`[Tool]`, attached to `map/map_grid.tscn`, instanced in `level/main_level.tscn`) owns a 200×200 logical grid (`CellSize` 16px), an occupancy map of `MapObject`s, and composes the map: `Floor` (grass, z-behind) and Y-sorted map-object children (collidable tree at center, random plants on empty cells) placed at cell base positions for correct depth ordering with entities. To keep the editor responsive it generates a 30×30 preview in-editor and the full 200×200 at runtime.
-- The grid exposes helpers for future systems: `CellToWorldCenter`, `CellToWorldBase`, `WorldToCell`, `IsInBounds`, `GetOccupant`, `TryPlaceOccupant`.
+- `map/` contains floor tile factories (`map_floors/`), map object factories (`map_objects/`), the reusable `map.tscn`, and map composition/generation scripts.
+- `Map.cs` composes runtime maps by generating floor and object layers (walls, trees, plants) on a grid using `MapConstants.CELL_SIZE`, and can place generated buildings/rooms via `GenerateBuilding`/`RoomGenerator`.
+- `RoomGenerator.cs` builds rectangular rooms of a defined size at a grid origin. Each wall edge can be `Solid`, `Opening`, or `Gate`; corners remain solid, gates can start open/closed, an optional floor layer can be included, and a chest is spawned inside each generated room.
+- `map/map_objects/gate/` provides `GateFactory`/`gate.tscn`, a placeable gate (door) object that can act as a wall segment, using axis-specific open/closed textures and disabling collision when open.
+- `map/map_objects/chest/` provides `Chest`/`chest.tscn`, a stateful interactive container object (closed/open visuals, blocked movement, 12-slot contents). On first open it generates a dynamic random loot pool; players can move items between chest and inventory via the UI.
+- The grid-occupancy approach described previously is partially outdated relative to the current runtime `Map.cs` composition, but static/dense layers can still migrate to `TileMapLayer`+`TileSet` while interactive/stateful objects remain grid-placed nodes.
 
-This is a pragmatic, node-based/grid-occupancy approach. As content grows, static/dense layers (floor, walls/fences, bridges, static trees) can migrate to `TileMapLayer`+`TileSet` for batching while interactive/stateful objects remain grid-placed `MapObject` nodes tracked in occupancy.
+This is a pragmatic, node-based generation approach. As content grows, static/dense layers (floor, walls/fences, bridges, static trees) can migrate to `TileMapLayer`+`TileSet` for batching while interactive/stateful objects remain grid-placed `MapObject` nodes.

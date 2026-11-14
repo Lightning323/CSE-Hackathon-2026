@@ -22,6 +22,32 @@ public partial class Map : Node2D
 		GD.Print("Generating map...");
 		AddChild(FloorLayer(Width, Height));
 		AddChild(ObjectLayer(Width, Height));
+		GenerateBuildings();
+	}
+
+	public Node2D GenerateBuilding(
+		int originX,
+		int originY,
+		int width,
+		int height,
+		GridQuest.Map.WallFeature north = GridQuest.Map.WallFeature.Solid,
+		GridQuest.Map.WallFeature south = GridQuest.Map.WallFeature.Solid,
+		GridQuest.Map.WallFeature east = GridQuest.Map.WallFeature.Solid,
+		GridQuest.Map.WallFeature west = GridQuest.Map.WallFeature.Solid,
+		bool gatesOpen = false,
+		bool includeFloor = true)
+	{
+		var building = GridQuest.Map.RoomGenerator.Create(originX, originY, width, height, north, south, east, west, gatesOpen, includeFloor);
+		building.Name = $"Building_{originX}_{originY}";
+		AddChild(building);
+		return building;
+	}
+
+	private void GenerateBuildings()
+	{
+		GenerateBuilding(20, 20, 8, 6, north: GridQuest.Map.WallFeature.Solid, south: GridQuest.Map.WallFeature.Gate, east: GridQuest.Map.WallFeature.Solid, west: GridQuest.Map.WallFeature.Solid);
+		GenerateBuilding(40, 18, 10, 8, north: GridQuest.Map.WallFeature.Opening, south: GridQuest.Map.WallFeature.Solid, east: GridQuest.Map.WallFeature.Gate, west: GridQuest.Map.WallFeature.Solid);
+		GenerateBuilding(25, 40, 12, 7, north: GridQuest.Map.WallFeature.Solid, south: GridQuest.Map.WallFeature.Gate, east: GridQuest.Map.WallFeature.Solid, west: GridQuest.Map.WallFeature.Opening, gatesOpen: true);
 	}
 
 	public static Node2D FloorLayer(int width, int height)

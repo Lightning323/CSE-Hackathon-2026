@@ -1,5 +1,6 @@
 
 using Godot;
+using GridQuest.Items;
 
 public partial class Player : CharacterBody2D
 {
@@ -37,6 +38,8 @@ public partial class Player : CharacterBody2D
 	public int Health { get; private set; }
 	public int Gold { get; private set; }
 	public string EquippedWeapon { get; set; } = "sword";
+	public InventoryContainer Inventory { get; } = new InventoryContainer(16);
+	public string EquippedWeaponId { get; set; } = "base_sword";
 	public bool IsDead => _state == State.Dead;
 
 	public override void _Ready()
@@ -48,6 +51,8 @@ public partial class Player : CharacterBody2D
 		_sprite.SpriteFrames = BuildSpriteFrames();
 		_sprite.AnimationFinished += OnAnimationFinished;
 		_sprite.Play("idle_down");
+		//ZIndex=2;
+		SyncEquippedFromId();
 		UpdateHealthBar();
 	}
 
@@ -55,7 +60,29 @@ public partial class Player : CharacterBody2D
 	{
 		if (amount <= 0) return;
 		Gold += amount;
+		Inventory.AddItem("coin", amount);
 		GD.Print($"Gold: {Gold}");
+	}
+
+	public bool AddItem(string itemId, int count = 1)
+	{
+		if (itemId == "coin")
+		{
+			Gold += count;
+			Inventory.AddItem("coin", count);
+			return true;
+		}
+		return Inventory.AddItem(itemId, count);
+	}
+
+	public void SyncEquippedFromId()
+	{
+		EquippedWeapon = EquippedWeaponId switch
+		{
+			"base_sword" => "sword",
+			"fire_staff" => "fire_staff",
+			_ => "none",
+		};
 	}
 
 	public override void _UnhandledInput(InputEvent @event)

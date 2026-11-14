@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bd3rmxljf7hox"
-path="res://.godot/imported/meta_box-water3.png-1e5f4bc26b1a86eb596f393fe14ec652.ctex"
+uid="uid://dc3a8ai8vw86t"
+path="res://.godot/imported/Chest_open.png-3069e1c6a95dfe9454a3b4636c41daf3.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/items/meta_box-water3.png"
-dest_files=["res://.godot/imported/meta_box-water3.png-1e5f4bc26b1a86eb596f393fe14ec652.ctex"]
+source_file="res://assets/images/items/chest/Chest_open.png"
+dest_files=["res://.godot/imported/Chest_open.png-3069e1c6a95dfe9454a3b4636c41daf3.ctex"]
 
 [params]
 
