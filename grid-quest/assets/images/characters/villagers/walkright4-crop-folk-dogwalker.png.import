@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://vqcm5k13xq2c"
-path="res://.godot/imported/town_hero.png-36cf9d13299618446f848c6446a0eb07.ctex"
+uid="uid://cm6iqiqy6gvvd"
+path="res://.godot/imported/walkright4-crop-folk-dogwalker.png-4a70f301645715fefce109d4f194a970.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/characters/town_hero.png"
-dest_files=["res://.godot/imported/town_hero.png-36cf9d13299618446f848c6446a0eb07.ctex"]
+source_file="res://assets/images/characters/villagers/walkright4-crop-folk-dogwalker.png"
+dest_files=["res://.godot/imported/walkright4-crop-folk-dogwalker.png-4a70f301645715fefce109d4f194a970.ctex"]
 
 [params]
 

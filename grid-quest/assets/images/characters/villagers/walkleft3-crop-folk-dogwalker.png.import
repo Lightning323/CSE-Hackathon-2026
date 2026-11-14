@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ctqoktrecstut"
-path="res://.godot/imported/town_npc.png-9e65166f3945a5dd1dd3bf876918726a.ctex"
+uid="uid://detyf4r75uoo"
+path="res://.godot/imported/walkleft3-crop-folk-dogwalker.png-2e8ce8e8a3fcb33e09de9b6208f5a086.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/characters/town_npc.png"
-dest_files=["res://.godot/imported/town_npc.png-9e65166f3945a5dd1dd3bf876918726a.ctex"]
+source_file="res://assets/images/characters/villagers/walkleft3-crop-folk-dogwalker.png"
+dest_files=["res://.godot/imported/walkleft3-crop-folk-dogwalker.png-2e8ce8e8a3fcb33e09de9b6208f5a086.ctex"]
 
 [params]
 

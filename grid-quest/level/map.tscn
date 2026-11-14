@@ -1,0 +1,21 @@
+[gd_scene format=3 uid="uid://dq5wjw2ae6xrh"]
+
+[ext_resource type="Script" path="res://level/MapGrid.cs" id="1_mapgrid"]
+[ext_resource type="PackedScene" uid="uid://dasd1exc7g0m2" path="res://player/player.tscn" id="2_player"]
+[ext_resource type="Script" uid="uid://bj4xtuiotm4im" path="res://level/KnightSpawnInput.cs" id="7_knight_spawn"]
+
+[node name="Map" type="Node2D" unique_id=650055367]
+
+[node name="MapGrid" type="Node2D" parent="." unique_id=1291245572]
+script = ExtResource("1_mapgrid")
+Width = null
+Height = null
+CellSize = null
+PlantChance = null
+RandomSeed = null
+
+[node name="Player" parent="." unique_id=1818209277 groups=["player"] instance=ExtResource("2_player")]
+position = Vector2(80, 80)
+
+[node name="KnightSpawnInput" type="Node" parent="." unique_id=1456873788]
+script = ExtResource("7_knight_spawn")

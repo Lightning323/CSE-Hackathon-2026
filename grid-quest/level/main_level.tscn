@@ -7,24 +7,22 @@
 [ext_resource type="PackedScene" path="res://enemy/elite_skeleton_enemy.tscn" id="5_elite"]
 [ext_resource type="Script" uid="uid://dn2u00418eaa5" path="res://level/EnemyTestSpawner.cs" id="6_spawner"]
 [ext_resource type="Script" uid="uid://bj4xtuiotm4im" path="res://level/KnightSpawnInput.cs" id="7_knight_spawn"]
-[ext_resource type="PackedScene" uid="uid://dodf7orbhnbtu" path="res://map/map.tscn" id="8_wpjvl"]
+[ext_resource type="Script" path="res://level/VillagerSpawnInput.cs" id="8_villager_spawn"]
+[ext_resource type="PackedScene" uid="uid://dodf7orbhnbtu" path="res://map/map.tscn" id="9_wpjvl"]
 
-[node name="Level" type="Node2D"]
-y_sort_enabled = true
+[node name="Level" type="Node2D" unique_id=426259724]
 script = ExtResource("1_wpjvl")
 
-[node name="Map" parent="." instance=ExtResource("8_wpjvl")]
-
-[node name="Player" parent="." groups=["player"] instance=ExtResource("2_player")]
+[node name="Player" parent="." unique_id=1496126262 groups=["player"] instance=ExtResource("2_player")]
 position = Vector2(160, 160)
 
-[node name="Enemy" parent="." instance=ExtResource("3_enemy")]
+[node name="Enemy" parent="." unique_id=630926247 instance=ExtResource("3_enemy")]
 position = Vector2(120, 120)
 
-[node name="SkeletonEnemy" parent="." instance=ExtResource("4_skeleton")]
+[node name="SkeletonEnemy" parent="." unique_id=805776756 instance=ExtResource("4_skeleton")]
 position = Vector2(300, 220)
 
-[node name="EliteSkeletonEnemy" parent="." instance=ExtResource("5_elite")]
+[node name="EliteSkeletonEnemy" parent="." unique_id=1767535368 instance=ExtResource("5_elite")]
 position = Vector2(840, 220)
 AttackDamage = 1
 AttackRange = 24.0
@@ -33,9 +31,14 @@ IdleFps = 6.0
 WalkFps = 10.0
 AttackFps = 10.0
 
-[node name="EnemyTestSpawner" type="Node2D" parent="."]
+[node name="EnemyTestSpawner" type="Node2D" parent="." unique_id=1614745774]
 position = Vector2(576, 420)
 script = ExtResource("6_spawner")
 
-[node name="KnightSpawnInput" type="Node" parent="."]
+[node name="KnightSpawnInput" type="Node" parent="." unique_id=327385053]
 script = ExtResource("7_knight_spawn")
+
+[node name="VillagerSpawnInput" type="Node" parent="."]
+script = ExtResource("8_villager_spawn")
+
+[node name="Map" parent="." unique_id=1437051292 instance=ExtResource("9_wpjvl")]

@@ -76,3 +76,12 @@ max_value = 5.0
 value = 5.0
 show_percentage = false
 mouse_filter = 2
+
+[node name="Camera2D" type="Camera2D" parent="."]
+zoom = Vector2(3, 3)
+limit_left = 0
+limit_top = 0
+limit_right = 1600
+limit_bottom = 1600
+position_smoothing_enabled = true
+position_smoothing_speed = 8.0
