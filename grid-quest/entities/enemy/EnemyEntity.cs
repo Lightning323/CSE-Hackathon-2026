@@ -200,7 +200,7 @@ public partial class EnemyEntity : NpcEntity
 		PlayAnimation(GetAnimationName(EnemyState.Attack, Facing));
 	}
 
-	private void OnAnimationFinished()
+	protected virtual void OnAnimationFinished()
 	{
 		if (IsDead) return;
 		if (State == EnemyState.Attack)
@@ -218,7 +218,7 @@ public partial class EnemyEntity : NpcEntity
 			Target.Call("TakeDamage", AttackDamage, this);
 	}
 
-	private Node2D FindClosestTarget()
+	protected Node2D? FindClosestTarget()
 	{
 		Node2D closest = null;
 		float bestDist = float.MaxValue;
@@ -282,6 +282,12 @@ public partial class EnemyEntity : NpcEntity
 		HealthBarNode.AddThemeStyleboxOverride("background", bg);
 		HealthBarNode.AddThemeStyleboxOverride("fill", fill);
 		HealthBarNode.SelfModulate = Colors.White;
+	}
+
+	public void SetCurrentHealthForBoss(int value)
+	{
+		Health = Mathf.Clamp(value, 0, Mathf.Max(1, MaxHealth));
+		UpdateHealthBar();
 	}
 
 	private void UpdateHealthBar() { if (HealthBarNode == null) return; HealthBarNode.MaxValue = MaxHealth; HealthBarNode.Value = Health; }

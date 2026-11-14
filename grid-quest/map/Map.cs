@@ -36,6 +36,17 @@ public partial class Map : Node2D
 	public int MapHeight => Height;
 	public Vector2 MonumentWorldPosition => CellToWorldBase(_monumentCell.X, _monumentCell.Y);
 
+	public void SetMonumentVisible(bool visible)
+	{
+		Node2D? monument = null;
+		var objects = GetNodeOrNull<Node>("Objects");
+		if (objects != null)
+			monument = objects.FindChild("Monument", true, false) as Node2D;
+		monument ??= FindChild("Monument", true, false) as Node2D;
+		if (monument != null && IsInstanceValid(monument))
+			monument.Visible = visible;
+	}
+
 	public override void _Ready()
 	{
 		AddToGroup("map");
@@ -64,6 +75,110 @@ public partial class Map : Node2D
 		AddChild(FloorLayer(Width, Height));
 		GenerateBuildings();
 		AddChild(ObjectLayer(Width, Height, rng, houses));
+	}
+
+	public void PrepareBossArena()
+	{
+		// Boss arena: remove all collision objects from the map except the border wall,
+		// keep the stone monument, and keep only cardinal direction stone paths to the monument.
+		// Turn the entire ground to grass except those cardinal paths.
+		RemoveBuildingsForBossArena();
+		RebuildObjectsForBossArena();
+		RebuildFloorForBossArena();
+		_villages.Clear();
+		_buildingInteriorRects.Clear();
+		Array.Clear(_reservedCells, 0, _reservedCells.Length);
+		Array.Clear(_occupiedCells, 0, _occupiedCells.Length);
+		MarkBorderOccupied();
+		MarkOccupiedRect(_monumentCell.X - 1, _monumentCell.Y - 1, 3, 2);
+		// Keep path cells only for cardinal monument paths.
+		RecomputeCardinalMonumentPathCells();
+	}
+
+	private void RemoveBuildingsForBossArena()
+	{
+		var toRemove = new List<Node>();
+		foreach (Node child in GetChildren())
+		{
+			if (child.Name.ToString().StartsWith("Building_", StringComparison.Ordinal))
+				toRemove.Add(child);
+		}
+		foreach (Node node in toRemove)
+		{
+			if (node.GetParent() == this) RemoveChild(node);
+			node.QueueFree();
+		}
+	}
+
+	private void RebuildObjectsForBossArena()
+	{
+		foreach (Node child in GetChildren())
+		{
+			if (child.Name == "Objects")
+			{
+				RemoveChild(child);
+				child.QueueFree();
+				break;
+			}
+		}
+
+		Node2D objectsRoot = new() { Name = "Objects", YSortEnabled = true };
+		Node2D wallsLayer = new() { Name = "Walls", YSortEnabled = false, ZIndex = -1 };
+		Node2D treesLayer = new() { Name = "Trees", YSortEnabled = true };
+
+		// Keep only border walls (all other collision objects removed).
+		for (int y = 0; y < Height; y++)
+		{
+			for (int x = 0; x < Width; x++)
+			{
+				bool isBorder = x == 0 || y == 0 || x == Width - 1 || y == Height - 1;
+				if (!isBorder) continue;
+				wallsLayer.AddChild(WallFactory.Create(x, y));
+			}
+		}
+
+		// Keep the stone monument.
+		var monumentScene = GD.Load<PackedScene>("res://map/map_objects/monument/monument.tscn");
+		var monument = monumentScene.Instantiate<Node2D>();
+		monument.Position = CellToWorldBase(_monumentCell.X, _monumentCell.Y);
+		treesLayer.AddChild(monument);
+
+		objectsRoot.AddChild(wallsLayer);
+		objectsRoot.AddChild(treesLayer);
+		AddChild(objectsRoot);
+	}
+
+	private void RebuildFloorForBossArena()
+	{
+		foreach (Node child in GetChildren())
+		{
+			if (child.Name == "Floor")
+			{
+				RemoveChild(child);
+				child.QueueFree();
+				break;
+			}
+		}
+		RecomputeCardinalMonumentPathCells();
+		AddChild(FloorLayer(Width, Height));
+	}
+
+	private void MarkBorderOccupied()
+	{
+		for (int y = 0; y < Height; y++)
+		{
+			for (int x = 0; x < Width; x++)
+			{
+				if (x == 0 || y == 0 || x == Width - 1 || y == Height - 1)
+					MarkOccupied(x, y);
+			}
+		}
+	}
+
+	private void RecomputeCardinalMonumentPathCells()
+	{
+		Array.Clear(_pathCells, 0, _pathCells.Length);
+		CarveMonumentApproachPaths(_monumentCell);
 	}
 
 	public Node2D GenerateBuilding(

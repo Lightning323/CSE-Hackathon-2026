@@ -9,6 +9,9 @@ public partial class WorldResetManager : Node
 
 	public bool TryRandomizeWorld()
 	{
+		if (IsAnyBossFightActive())
+			return false;
+
 		int cost = WorldProgress.GetWorldResetCost();
 		Player player = GetTree().GetFirstNodeInGroup("player") as Player;
 		Map map = GetTree().GetFirstNodeInGroup("map") as Map ?? GetTree().CurrentScene?.GetNodeOrNull<Map>("Map");
@@ -36,6 +39,13 @@ public partial class WorldResetManager : Node
 			monumentIndicator.CallDeferred("Refresh");
 
 		return true;
+	}
+
+	private bool IsAnyBossFightActive()
+	{
+		if (GetTree().GetFirstNodeInGroup("hellhound_swarm_boss_manager") is HellhoundSwarmBoss h && h.IsActive) return true;
+		if (GetTree().GetFirstNodeInGroup("executioner_boss_manager") is ExecutionerBoss e && e.IsActive) return true;
+		return false;
 	}
 
 	private void ClearTransientWorldEntities()

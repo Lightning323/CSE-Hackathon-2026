@@ -129,6 +129,17 @@ public partial class CheatMenu : Control
 		spawnRow.AddChild(spawn3);
 		root.AddChild(spawnRow);
 
+		root.AddChild(new Label { Text = "Boss Fights (debug):" });
+		var bossRow = new HBoxContainer();
+		bossRow.AddThemeConstantOverride("separation", 6);
+		var hellhoundBossBtn = new Button { Text = "Trigger Hellhound Swarm (Sunset)" };
+		hellhoundBossBtn.Pressed += TriggerHellhoundSwarmBoss;
+		bossRow.AddChild(hellhoundBossBtn);
+		var executionerBossBtn = new Button { Text = "Trigger Executioner (Sunset)" };
+		executionerBossBtn.Pressed += TriggerExecutionerBoss;
+		bossRow.AddChild(executionerBossBtn);
+		root.AddChild(bossRow);
+
 		_statusLabel = new Label { Text = "Press ` to close." };
 		_statusLabel.AutowrapMode = TextServer.AutowrapMode.Word;
 		root.AddChild(_statusLabel);
@@ -313,6 +324,42 @@ public partial class CheatMenu : Control
 		enemy.GlobalPosition = _player.GlobalPosition + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * dist;
 		GetTree().CurrentScene?.AddChild(enemy);
 		_statusLabel.Text = $"Spawned {label} near player.";
+	}
+
+	private async void TriggerHellhoundSwarmBoss()
+	{
+		var boss = GetTree().GetFirstNodeInGroup("hellhound_swarm_boss_manager") as HellhoundSwarmBoss
+			?? GetTree().CurrentScene?.FindChild("HellhoundSwarmBoss", true, false) as HellhoundSwarmBoss;
+		if (boss == null)
+		{
+			_statusLabel.Text = "Hellhound Swarm boss manager not found.";
+			return;
+		}
+		if (boss.IsActive)
+		{
+			_statusLabel.Text = "Hellhound Swarm boss fight is already active.";
+			return;
+		}
+		_statusLabel.Text = "Triggering Hellhound Swarm at sunset...";
+		await boss.TriggerCheatHellhoundSwarmAsync();
+	}
+
+	private async void TriggerExecutionerBoss()
+	{
+		var boss = GetTree().GetFirstNodeInGroup("executioner_boss_manager") as ExecutionerBoss
+			?? GetTree().CurrentScene?.FindChild("ExecutionerBoss", true, false) as ExecutionerBoss;
+		if (boss == null)
+		{
+			_statusLabel.Text = "Executioner boss manager not found.";
+			return;
+		}
+		if (boss.IsActive)
+		{
+			_statusLabel.Text = "Executioner boss fight is already active.";
+			return;
+		}
+		_statusLabel.Text = "Triggering Executioner at sunset...";
+		await boss.TriggerCheatExecutionerBossAsync();
 	}
 
 }

@@ -23,8 +23,21 @@ public partial class DayNightCycle : CanvasModulate
 		_wasDaytime = DaylightFactor >= 0.45f;
 	}
 
+	public bool IsTimeFrozen { get; private set; }
+
+	public void FreezeTime()
+	{
+		IsTimeFrozen = true;
+	}
+
+	public void ResumeTime()
+	{
+		IsTimeFrozen = false;
+	}
+
 	public override void _Process(double delta)
 	{
+		if (IsTimeFrozen) return;
 		UpdateCycle((float)delta);
 	}
 

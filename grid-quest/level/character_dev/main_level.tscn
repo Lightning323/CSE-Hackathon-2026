@@ -19,6 +19,9 @@
 [ext_resource type="PackedScene" path="res://menus/villager_chat_ui.tscn" id="23_villager_chat"]
 [ext_resource type="PackedScene" path="res://menus/trader_ui.tscn" id="24_trader_ui"]
 [ext_resource type="Script" path="res://level/WorldResetManager.cs" id="25_world_reset"]
+[ext_resource type="Script" path="res://level/boss/HellhoundSwarmBoss.cs" id="26_hellhound_boss"]
+[ext_resource type="PackedScene" path="res://menus/boss_fight_ui.tscn" id="27_boss_fight_ui"]
+[ext_resource type="Script" path="res://level/boss/ExecutionerBoss.cs" id="28_executioner_boss"]
 
 [node name="Level" type="Node2D" unique_id=426259724]
 y_sort_enabled = true
@@ -41,6 +44,12 @@ script = ExtResource("16_knight_mgr")
 
 [node name="EnemySpawnOnKill" type="Node" parent="."]
 script = ExtResource("18_enemy_spawn")
+
+[node name="HellhoundSwarmBoss" type="Node" parent="."]
+script = ExtResource("26_hellhound_boss")
+
+[node name="ExecutionerBoss" type="Node" parent="."]
+script = ExtResource("28_executioner_boss")
 
 [node name="SurvivalStats" type="Node" parent="."]
 script = ExtResource("20_survival_stats")
@@ -67,6 +76,8 @@ script = ExtResource("21_survival_timer")
 [node name="VillagerChatUi" parent="CanvasLayer" instance=ExtResource("23_villager_chat")]
 
 [node name="TraderUi" parent="CanvasLayer" instance=ExtResource("24_trader_ui")]
+
+[node name="BossFightUi" parent="CanvasLayer" instance=ExtResource("27_boss_fight_ui")]
 
 [node name="GameOverMenu" parent="CanvasLayer" instance=ExtResource("22_game_over")]
 

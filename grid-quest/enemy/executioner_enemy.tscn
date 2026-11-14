@@ -1,0 +1,47 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://entities/enemy/ExecutionerEnemy.cs" id="1_script"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_exec"]
+animations = [{
+"frames": [],
+"loop": true,
+"name": &"idle",
+"speed": 8.0
+}]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_exec"]
+radius = 10.0
+height = 28.0
+
+[node name="ExecutionerEnemy" type="CharacterBody2D" groups=["enemies"]]
+script = ExtResource("1_script")
+Speed = 260.0
+MaxHealth = 220
+AttackDamage = 18
+AttackRange = 46.0
+AttackCooldown = 0.8
+AgroRange = 2000.0
+CoinDropCount = 0
+scale = Vector2(1.2, 1.2)
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+texture_filter = 1
+position = Vector2(0, -34)
+sprite_frames = SubResource("SpriteFrames_exec")
+animation = &"idle"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -6)
+shape = SubResource("CapsuleShape2D_exec")
+
+[node name="HealthBar" type="ProgressBar" parent="."]
+modulate = Color(1, 0.7, 0.7, 1)
+offset_left = -18.0
+offset_top = -58.0
+offset_right = 18.0
+offset_bottom = -54.0
+max_value = 220.0
+value = 220.0
+show_percentage = false
+mouse_filter = 2

@@ -231,6 +231,13 @@ public partial class SkillsUi : Control
 		}
 	}
 
+	private bool IsAnyBossFightActive()
+	{
+		if (GetTree().GetFirstNodeInGroup("hellhound_swarm_boss_manager") is HellhoundSwarmBoss h && h.IsActive) return true;
+		if (GetTree().GetFirstNodeInGroup("executioner_boss_manager") is ExecutionerBoss e && e.IsActive) return true;
+		return false;
+	}
+
 	private void OnRandomizeWorldPressed()
 	{
 		ResolvePlayer();
@@ -238,6 +245,12 @@ public partial class SkillsUi : Control
 		if (_player == null)
 		{
 			_statusLabel.Text = "Player not found.";
+			return;
+		}
+		if (IsAnyBossFightActive())
+		{
+			_statusLabel.Text = "Cannot randomize/reset the world during an active boss fight.";
+			Refresh();
 			return;
 		}
 		if (_player.Gold < cost)
@@ -274,8 +287,13 @@ public partial class SkillsUi : Control
 		}
 		if (_resetWorldButton != null)
 		{
+			bool bossActive = IsAnyBossFightActive();
 			_resetWorldButton.Text = $"Randomize Map Again ({resetCost}c)";
-			_resetWorldButton.Disabled = _player == null || _player.Gold < resetCost;
+			_resetWorldButton.Disabled = bossActive || _player == null || _player.Gold < resetCost;
+			if (bossActive)
+				_resetWorldButton.TooltipText = "Unavailable during an active boss fight.";
+			else
+				_resetWorldButton.TooltipText = "";
 		}
 
 		if (_currentOfferIds.Count == 0)

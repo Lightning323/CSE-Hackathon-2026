@@ -28,6 +28,7 @@ public partial class EnemySpawnOnKill : Node
 
 	private float _timer;
 	private float _hordeTimer;
+	public bool BossFightActive { get; set; } = false;
 
 	public override void _Ready()
 	{
@@ -64,6 +65,8 @@ public partial class EnemySpawnOnKill : Node
 
 	public override void _Process(double delta)
 	{
+		if (BossFightActive) return;
+
 		float dt = (float)delta;
 		_timer -= dt;
 		_hordeTimer -= dt;

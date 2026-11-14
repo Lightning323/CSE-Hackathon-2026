@@ -1,0 +1,46 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://entities/enemy/HellhoundEnemy.cs" id="1_script"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_hellhound"]
+animations = [{
+"frames": [],
+"loop": true,
+"name": &"idle",
+"speed": 10.0
+}]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hellhound"]
+radius = 12.0
+
+[node name="HellhoundEnemy" type="CharacterBody2D" groups=["enemies"]]
+script = ExtResource("1_script")
+Speed = 1000.0
+MaxHealth = 8
+AttackDamage = 1
+AttackRange = 22.0
+AttackCooldown = 0.55
+AgroRange = 320.0
+CoinDropCount = 0
+Variant = 1
+scale = Vector2(0.5, 0.5)
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+texture_filter = 1
+position = Vector2(0, -8)
+sprite_frames = SubResource("SpriteFrames_hellhound")
+animation = &"idle"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_hellhound")
+
+[node name="HealthBar" type="ProgressBar" parent="."]
+modulate = Color(1, 0.7, 0.7, 1)
+offset_left = -10.0
+offset_top = -22.0
+offset_right = 10.0
+offset_bottom = -18.0
+max_value = 8.0
+value = 8.0
+show_percentage = false
+mouse_filter = 2

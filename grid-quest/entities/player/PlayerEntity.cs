@@ -1,6 +1,7 @@
 #nullable enable
 using Godot;
 using GridQuest.Entities.Base;
+using System.Threading.Tasks;
 using GridQuest.Items;
 using GridQuest.PlayerUpgrades;
 using System;
@@ -212,6 +213,33 @@ public partial class PlayerEntity : Entity
 		UpdateAoeAuraVisual();
 	}
 
+	private bool _bossForceLampOff;
+	private bool _bossLampFlicker;
+	private double _bossLampFlickerTime;
+	private bool _bossMovementLocked;
+
+	public void SetBossMovementLocked(bool locked)
+	{
+		_bossMovementLocked = locked;
+		if (locked)
+			Velocity = Vector2.Zero;
+	}
+
+	public void SetBossLampDisabled(bool disabled)
+	{
+		_bossForceLampOff = disabled;
+		if (disabled) _bossLampFlicker = false;
+	}
+
+	public async Task FlickerBossLampOnAsync(float duration = 0.8f)
+	{
+		_bossLampFlicker = true;
+		_bossLampFlickerTime = 0.0;
+		_bossForceLampOff = false;
+		await ToSignal(GetTree().CreateTimer(duration, true, false, true), SceneTreeTimer.SignalName.Timeout);
+		_bossLampFlicker = false;
+	}
+
 	private void UpdatePlayerLight()
 	{
 		if (_pointLight == null || !IsInstanceValid(_pointLight)) return;
@@ -219,25 +247,50 @@ public partial class PlayerEntity : Entity
 		bool insideBuilding = map != null && map.IsWorldPositionInsideBuilding(GlobalPosition);
 		_pointLight.RangeItemCullMask = 1;
 		_pointLight.ShadowEnabled = insideBuilding;
+
+		if (_bossForceLampOff)
+		{
+			_pointLight.Enabled = false;
+			_pointLight.Energy = 0.0f;
+			return;
+		}
+
 		bool shouldEnable = insideBuilding;
 		if (!insideBuilding)
 		{
 			DayNightCycle cycle = GetTree().GetFirstNodeInGroup("day_night_cycle") as DayNightCycle;
 			shouldEnable = cycle != null && cycle.DaylightFactor < 0.45f;
 		}
+		if (_bossLampFlicker) shouldEnable = true;
 		_pointLight.Enabled = shouldEnable;
 		if (!shouldEnable)
 		{
 			_pointLight.Energy = 0.0f; _pointLight.TextureScale = 1.0f; _pointLight.Color = Colors.White; return;
 		}
+
+		float energy;
+		float scale;
+		Color color;
 		if (insideBuilding)
 		{
-			_pointLight.Energy = 0.95f; _pointLight.TextureScale = 1.15f; _pointLight.Color = new Color(1.0f, 0.98f, 0.92f, 1.0f);
+			energy = 0.95f; scale = 1.15f; color = new Color(1.0f, 0.98f, 0.92f, 1.0f);
 		}
 		else
 		{
-			_pointLight.Energy = 1.0f; _pointLight.TextureScale = 1.0f; _pointLight.Color = Colors.White;
+			energy = 1.0f; scale = 1.0f; color = Colors.White;
 		}
+
+		if (_bossLampFlicker)
+		{
+			_bossLampFlickerTime += GetProcessDeltaTime();
+			float pulse = 0.35f + 0.65f * Mathf.Abs(Mathf.Sin((float)_bossLampFlickerTime * 28.0f));
+			energy *= pulse;
+			scale *= 0.9f + 0.15f * pulse;
+		}
+
+		_pointLight.Energy = energy;
+		_pointLight.TextureScale = scale;
+		_pointLight.Color = color;
 	}
 
 	public void AddGold(int amount) => AddMoney(amount);
@@ -346,6 +399,16 @@ public partial class PlayerEntity : Entity
 			Velocity = Vector2.Zero; _velocityCurrent = Vector2.Zero;
 			if (_state != State.Attack) { _state = State.Idle; PlayAnimation(GetIdleAnimName()); }
 			MoveAndSlide(); return;
+		}
+
+		if (_bossMovementLocked)
+		{
+			CancelCrossbowCharge(resetAnim: true);
+			_velocityCurrent = Vector2.Zero;
+			Velocity = Vector2.Zero;
+			if (_state != State.Attack) { _state = State.Idle; PlayAnimation(GetIdleAnimName()); }
+			MoveAndSlide();
+			return;
 		}
 
 		ApplyDerivedStats(healOnMaxHealthIncrease: false);
