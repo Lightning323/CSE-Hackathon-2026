@@ -10,6 +10,8 @@
 [ext_resource type="Script" path="res://npc/villager/VillagePopulationManager.cs" id="12_village_mgr"]
 [ext_resource type="Script" path="res://menus/MonumentIndicator.cs" id="13_monument_indicator"]
 [ext_resource type="Script" path="res://npc/knight/VillageKnightPopulationManager.cs" id="14_knight_mgr"]
+[ext_resource type="PackedScene" path="res://menus/skills_ui.tscn" id="15_skills_ui"]
+[ext_resource type="PackedScene" path="res://menus/cheat_menu.tscn" id="16_cheat_menu"]
 
 [node name="Level" type="Node2D" unique_id=426259724]
 y_sort_enabled = true
@@ -38,6 +40,10 @@ script = ExtResource("14_knight_mgr")
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
 [node name="InventoryUi" parent="CanvasLayer" instance=ExtResource("11_inv")]
+
+[node name="SkillsUi" parent="CanvasLayer" instance=ExtResource("15_skills_ui")]
+
+[node name="CheatMenu" parent="CanvasLayer" instance=ExtResource("16_cheat_menu")]
 
 [node name="MonumentIndicator" type="TextureRect" parent="CanvasLayer"]
 script = ExtResource("13_monument_indicator")

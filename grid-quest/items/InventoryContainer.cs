@@ -50,6 +50,42 @@ public class InventoryContainer
 		return count <= 0;
 	}
 
+	public int CountItem(string itemId)
+	{
+		if (string.IsNullOrEmpty(itemId)) return 0;
+		int total = 0;
+		for (int i = 0; i < Slots.Length; i++)
+		{
+			var s = Slots[i];
+			if (!s.IsEmpty && s.ItemId == itemId)
+				total += s.Count;
+		}
+		return total;
+	}
+
+	public bool RemoveItem(string itemId, int count = 1)
+	{
+		if (string.IsNullOrEmpty(itemId) || count <= 0) return false;
+		if (CountItem(itemId) < count) return false;
+
+		int remaining = count;
+		for (int i = 0; i < Slots.Length && remaining > 0; i++)
+		{
+			var s = Slots[i];
+			if (s.IsEmpty || s.ItemId != itemId) continue;
+			int take = System.Math.Min(remaining, s.Count);
+			s.Count -= take;
+			remaining -= take;
+			if (s.Count <= 0)
+			{
+				s.ItemId = null;
+				s.Count = 0;
+			}
+		}
+
+		return remaining <= 0;
+	}
+
 	public static void SwapOrMove(InventoryContainer a, int ai, InventoryContainer b, int bi)
 	{
 		var sa = a.Get(ai);

@@ -1,0 +1,229 @@
+using Godot;
+using GridQuest.PlayerUpgrades;
+
+public partial class SkillsUi : Control
+{
+	private Player _player;
+	private Label _coinsLabel;
+	private VBoxContainer _list;
+	private Label _statusLabel;
+
+	public override void _Ready()
+	{
+		AddToGroup("skills_ui");
+		Visible = false;
+		ProcessMode = ProcessModeEnum.Always;
+		MouseFilter = MouseFilterEnum.Stop;
+		SetAnchorsPreset(LayoutPreset.FullRect);
+		BuildUi();
+		CallDeferred(nameof(ResolvePlayer));
+	}
+
+	private void BuildUi()
+	{
+		foreach (Node child in GetChildren())
+			child.QueueFree();
+
+		var dim = new ColorRect { Color = new Color(0, 0, 0, 0.5f) };
+		dim.SetAnchorsPreset(LayoutPreset.FullRect);
+		dim.MouseFilter = MouseFilterEnum.Stop;
+		AddChild(dim);
+
+		var panel = new PanelContainer { CustomMinimumSize = new Vector2(720, 520) };
+		panel.SetAnchorsPreset(LayoutPreset.Center);
+		panel.GrowHorizontal = GrowDirection.Both;
+		panel.GrowVertical = GrowDirection.Both;
+		var sb = new StyleBoxFlat { BgColor = new Color(0.12f, 0.12f, 0.16f, 0.97f) };
+		sb.SetCornerRadiusAll(8);
+		sb.SetContentMarginAll(10);
+		panel.AddThemeStyleboxOverride("panel", sb);
+		AddChild(panel);
+
+		var root = new VBoxContainer();
+		root.SetAnchorsPreset(LayoutPreset.FullRect);
+		root.OffsetLeft = 10; root.OffsetTop = 10; root.OffsetRight = -10; root.OffsetBottom = -10;
+		root.AddThemeConstantOverride("separation", 8);
+		panel.AddChild(root);
+
+		var title = new Label
+		{
+			Text = "Stone Monument Upgrades",
+			HorizontalAlignment = HorizontalAlignment.Center
+		};
+		title.AddThemeFontSizeOverride("font_size", 22);
+		root.AddChild(title);
+
+		_coinsLabel = new Label { Text = "Coins: 0" };
+		root.AddChild(_coinsLabel);
+
+		_statusLabel = new Label { Text = "Spend coins to upgrade your attributes. No level cap." };
+		_statusLabel.AutowrapMode = TextServer.AutowrapMode.Word;
+		root.AddChild(_statusLabel);
+
+		var scroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+		root.AddChild(scroll);
+		_list = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		_list.AddThemeConstantOverride("separation", 6);
+		scroll.AddChild(_list);
+
+		var hint = new Label { Text = "Press F or Esc to close." };
+		hint.AddThemeFontSizeOverride("font_size", 12);
+		root.AddChild(hint);
+
+		BuildUpgradeRows();
+	}
+
+	private void BuildUpgradeRows()
+	{
+		_list.ClearChildrenSafe();
+		foreach (var def in UpgradeCatalog.All)
+		{
+			var rowPanel = new PanelContainer();
+			var rowStyle = new StyleBoxFlat { BgColor = new Color(0.18f, 0.18f, 0.22f, 1.0f) };
+			rowStyle.SetCornerRadiusAll(4);
+			rowStyle.SetContentMarginAll(6);
+			rowPanel.AddThemeStyleboxOverride("panel", rowStyle);
+			rowPanel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+
+			var h = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+			h.AddThemeConstantOverride("separation", 8);
+			rowPanel.AddChild(h);
+
+			var info = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+			info.AddThemeConstantOverride("separation", 2);
+			h.AddChild(info);
+
+			var nameLabel = new Label { Name = "NameLabel", Text = def.Name };
+			nameLabel.AddThemeFontSizeOverride("font_size", 16);
+			info.AddChild(nameLabel);
+
+			var descLabel = new Label { Name = "DescLabel", Text = def.Description };
+			descLabel.AutowrapMode = TextServer.AutowrapMode.Word;
+			descLabel.AddThemeFontSizeOverride("font_size", 12);
+			info.AddChild(descLabel);
+
+			var statsLabel = new Label { Name = "StatsLabel", Text = "" };
+			statsLabel.AddThemeFontSizeOverride("font_size", 12);
+			info.AddChild(statsLabel);
+
+			var buy = new Button { Name = "BuyButton", Text = "Buy", CustomMinimumSize = new Vector2(140, 40) };
+			buy.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+			string id = def.Id;
+			buy.Pressed += () => OnBuyPressed(id);
+			h.AddChild(buy);
+
+			rowPanel.SetMeta("upgrade_id", def.Id);
+			_list.AddChild(rowPanel);
+		}
+	}
+
+	private void ResolvePlayer()
+	{
+		_player ??= GetTree().GetFirstNodeInGroup("player") as Player;
+		Refresh();
+	}
+
+	public void Open()
+	{
+		ResolvePlayer();
+		Visible = true;
+		Refresh();
+	}
+
+	public void Close()
+	{
+		Visible = false;
+	}
+
+	public override void _UnhandledInput(InputEvent @event)
+	{
+		if (!Visible) return;
+		if (@event is InputEventKey key && key.Pressed && !key.Echo && (key.Keycode == Key.F || key.Keycode == Key.Escape))
+		{
+			Close();
+			GetViewport().SetInputAsHandled();
+		}
+	}
+
+	private void OnBuyPressed(string upgradeId)
+	{
+		ResolvePlayer();
+		if (_player == null) return;
+		var def = UpgradeCatalog.Get(upgradeId);
+		if (def == null) return;
+
+		int cost = _player.GetUpgradeCost(upgradeId);
+		if (_player.TryPurchaseUpgrade(upgradeId))
+		{
+			_statusLabel.Text = $"Purchased {def.Name} for {cost} coin(s).";
+		}
+		else
+		{
+			_statusLabel.Text = $"Not enough coins for {def.Name} (need {cost}).";
+		}
+		Refresh();
+	}
+
+	public void Refresh()
+	{
+		ResolvePlayer();
+		int coins = _player?.Gold ?? 0;
+		_coinsLabel.Text = $"Coins: {coins}";
+
+		foreach (Node child in _list.GetChildren())
+		{
+			if (child is not PanelContainer row || !row.HasMeta("upgrade_id")) continue;
+			string id = row.GetMeta("upgrade_id").AsString();
+			var def = UpgradeCatalog.Get(id);
+			if (def == null) continue;
+			int level = _player?.GetUpgradeLevel(id) ?? 0;
+			int cost = def.GetCost(level);
+
+			var stats = row.GetNodeOrNull<Label>("HBoxContainer/VBoxContainer/StatsLabel")
+				?? row.GetNodeOrNull<Label>("HBoxContainer/Info/StatsLabel"); // fallback, won't match
+			// find by traversal
+			Label statsLabel = FindLabel(row, "StatsLabel");
+			Button buy = FindButton(row, "BuyButton");
+			if (statsLabel != null)
+			{
+				statsLabel.Text = $"Level: {level}    Cost: {cost} coin(s)    Next total power: scales with level (no cap)";
+			}
+			if (buy != null)
+			{
+				buy.Text = $"Buy ({cost})";
+				buy.Disabled = _player == null || _player.Gold < cost;
+			}
+		}
+	}
+
+	private static Label FindLabel(Node root, string name)
+	{
+		foreach (Node n in root.GetChildren())
+		{
+			if (n is Label l && n.Name == name) return l;
+			var found = FindLabel(n, name);
+			if (found != null) return found;
+		}
+		return null;
+	}
+
+	private static Button FindButton(Node root, string name)
+	{
+		foreach (Node n in root.GetChildren())
+		{
+			if (n is Button b && n.Name == name) return b;
+			var found = FindButton(n, name);
+			if (found != null) return found;
+		}
+		return null;
+	}
+}
+
+internal static class NodeUiExtensions
+{
+	public static void ClearChildrenSafe(this Node node)
+	{
+		foreach (Node child in node.GetChildren())
+			child.QueueFree();
+	}
+}

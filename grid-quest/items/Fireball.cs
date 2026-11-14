@@ -6,6 +6,8 @@ public partial class Fireball : Area2D
 	[Export] public int Damage { get; set; } = 2;
 	private Vector2 _dir = Vector2.Right;
 	private float _life = 2.0f;
+	private float _knockbackStrength = 0.0f;
+	private Player _sourcePlayer;
 
 	public override void _Ready()
 	{
@@ -18,9 +20,13 @@ public partial class Fireball : Area2D
 		}
 	}
 
-	public void Init(Vector2 direction, Vector2 fromPos)
+	public void Init(Vector2 direction, Vector2 fromPos, float speed = 220.0f, int damage = 2, float knockbackStrength = 0.0f, Player sourcePlayer = null)
 	{
 		GlobalPosition = fromPos;
+		Speed = speed;
+		Damage = damage;
+		_knockbackStrength = knockbackStrength;
+		_sourcePlayer = sourcePlayer;
 		_dir = direction.Normalized();
 		// bias toward nearest enemy (one-time)
 		Node2D nearest = null;
@@ -52,7 +58,20 @@ public partial class Fireball : Area2D
 	{
 		if (body.IsInGroup("enemies") && body.HasMethod("TakeDamage"))
 		{
-			body.Call("TakeDamage", Damage);
+			int damage = Damage;
+			if (_sourcePlayer != null && IsInstanceValid(_sourcePlayer))
+			{
+				damage = _sourcePlayer.ComputeDamageForTarget(body as Node2D, Damage);
+			}
+			body.Call("TakeDamage", damage);
+			if (_knockbackStrength > 0.0f && body.HasMethod("ApplyKnockback"))
+			{
+				body.Call("ApplyKnockback", _dir, _knockbackStrength);
+			}
+			if (_sourcePlayer != null && IsInstanceValid(_sourcePlayer) && _sourcePlayer.HasMethod("NotifyProjectileHit"))
+			{
+				_sourcePlayer.Call("NotifyProjectileHit", body);
+			}
 			QueueFree();
 		}
 	}

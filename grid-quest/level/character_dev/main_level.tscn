@@ -2,9 +2,6 @@
 
 [ext_resource type="Script" uid="uid://c7dqdoq22nup6" path="res://level/character_dev/MainLevel.cs" id="1_fcrcf"]
 [ext_resource type="PackedScene" uid="uid://dasd1exc7g0m2" path="res://player/player.tscn" id="2_0hvbd"]
-[ext_resource type="PackedScene" path="res://enemy/enemy.tscn" id="3_57x3f"]
-[ext_resource type="PackedScene" path="res://enemy/skeleton_enemy.tscn" id="4_01uyu"]
-[ext_resource type="PackedScene" path="res://enemy/elite_skeleton_enemy.tscn" id="5_7ii3e"]
 [ext_resource type="PackedScene" uid="uid://dodf7orbhnbtu" path="res://map/map.tscn" id="9_m5bjr"]
 [ext_resource type="PackedScene" path="res://menus/inventory_ui.tscn" id="10_inv"]
 [ext_resource type="PackedScene" path="res://menus/skills_ui.tscn" id="11_skills"]
@@ -13,6 +10,8 @@
 [ext_resource type="Script" path="res://menus/MonumentIndicator.cs" id="14_monument_indicator"]
 [ext_resource type="Script" path="res://level/character_dev/KnightSpawnInput.cs" id="15_knight_spawn"]
 [ext_resource type="Script" path="res://npc/knight/VillageKnightPopulationManager.cs" id="16_knight_mgr"]
+[ext_resource type="PackedScene" path="res://menus/cheat_menu.tscn" id="17_cheat_menu"]
+[ext_resource type="Script" path="res://level/EnemySpawnOnKill.cs" id="18_enemy_spawn"]
 
 [node name="Level" type="Node2D" unique_id=426259724]
 y_sort_enabled = true
@@ -20,24 +19,6 @@ script = ExtResource("1_fcrcf")
 
 [node name="Player" parent="." unique_id=1496126262 groups=["player"] instance=ExtResource("2_0hvbd")]
 position = Vector2(160, 160)
-
-[node name="Enemy" parent="." unique_id=630926247 instance=ExtResource("3_57x3f")]
-position = Vector2(120, 120)
-
-[node name="SkeletonEnemy" parent="." unique_id=805776756 instance=ExtResource("4_01uyu")]
-position = Vector2(300, 220)
-
-[node name="EliteSkeletonEnemy" parent="." unique_id=1767535368 instance=ExtResource("5_7ii3e")]
-position = Vector2(840, 220)
-AttackDamage = 1
-AttackRange = 24.0
-AttackCooldown = 0.8
-IdleFps = 6.0
-WalkFps = 10.0
-AttackFps = 10.0
-
-[node name="EnemyTestSpawner" type="Node2D" parent="." unique_id=1614745774]
-position = Vector2(576, 420)
 
 [node name="KnightSpawnInput" type="Node" parent="." unique_id=327385053]
 script = ExtResource("15_knight_spawn")
@@ -51,6 +32,9 @@ script = ExtResource("13_village_mgr")
 [node name="VillageKnightPopulationManager" type="Node" parent="."]
 script = ExtResource("16_knight_mgr")
 
+[node name="EnemySpawnOnKill" type="Node" parent="."]
+script = ExtResource("18_enemy_spawn")
+
 [node name="Map" parent="." unique_id=1437051292 instance=ExtResource("9_m5bjr")]
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1127083425]
@@ -58,6 +42,8 @@ script = ExtResource("16_knight_mgr")
 [node name="InventoryUi" parent="CanvasLayer" unique_id=1849161941 instance=ExtResource("10_inv")]
 
 [node name="SkillsUi" parent="CanvasLayer" instance=ExtResource("11_skills")]
+
+[node name="CheatMenu" parent="CanvasLayer" instance=ExtResource("17_cheat_menu")]
 
 [node name="MonumentIndicator" type="TextureRect" parent="CanvasLayer"]
 script = ExtResource("14_monument_indicator")

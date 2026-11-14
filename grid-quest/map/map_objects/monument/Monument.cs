@@ -15,6 +15,7 @@ public partial class Monument : Node2D
 		YSortEnabled = true;
 		_sprite = GetNodeOrNull<Sprite2D>("Sprite2D");
 		AddToGroup("monument");
+		AddToGroup("interactables");
 	}
 
 	public override void _Process(double delta)
@@ -34,16 +35,53 @@ public partial class Monument : Node2D
 	public override void _UnhandledInput(InputEvent @event)
 	{
 		if (!_playerNear) return;
-		if (@event is InputEventKey key && key.Pressed && !key.Echo && key.Keycode == Key.F)
+		if (!(@event is InputEventKey key && key.Pressed && !key.Echo && key.Keycode == Key.F))
+			return;
+
+		// Prefer chest interactions and avoid opening while a chest panel is already open.
+		var inventoryUi = GetTree().GetFirstNodeInGroup("inventory_ui") as InventoryUi;
+		if (inventoryUi != null && inventoryUi.Visible)
 		{
-			Discovered = true;
-			var skills = GetTree().GetFirstNodeInGroup("skills_ui") as Control;
-			if (skills != null && skills.HasMethod("Open"))
-				skills.Call("Open");
-			else
-				GD.Print("Open skills panel (placeholder)");
+			// If inventory is open for chest interaction, F is reserved for chest/UI behavior.
+			// (Chest-open state is handled by InventoryUi.TryInteractChest; this avoids conflicts.)
+			return;
+		}
+		if (IsPlayerNearChest())
+			return;
+		if (IsPlayerNearVillager())
+			return;
+
+		Discovered = true;
+		var skills = GetTree().GetFirstNodeInGroup("skills_ui") as Control;
+		if (skills != null && skills.HasMethod("Open"))
+		{
+			skills.Call("Open");
 			GetViewport().SetInputAsHandled();
 		}
+	}
+
+	private bool IsPlayerNearChest()
+	{
+		var player = GetTree().GetFirstNodeInGroup("player") as Node2D;
+		if (player == null) return false;
+		foreach (var node in GetTree().GetNodesInGroup("chests"))
+		{
+			if (node is Node2D chest && IsInstanceValid(chest) && player.GlobalPosition.DistanceTo(chest.GlobalPosition) <= 40.0f)
+				return true;
+		}
+		return false;
+	}
+
+	private bool IsPlayerNearVillager()
+	{
+		var player = GetTree().GetFirstNodeInGroup("player") as Node2D;
+		if (player == null) return false;
+		foreach (var node in GetTree().GetNodesInGroup("villager_npcs"))
+		{
+			if (node is Villager villager && IsInstanceValid(villager) && player.GlobalPosition.DistanceTo(villager.GlobalPosition) <= villager.InteractRange)
+				return true;
+		}
+		return false;
 	}
 
 	private void SetHighlight(bool on)

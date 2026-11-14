@@ -151,9 +151,12 @@ public partial class InventoryUi : Control
 
 		if (interact)
 		{
-			TryInteractChest();
-			GetViewport().SetInputAsHandled();
-			return;
+			if (TryInteractChest())
+			{
+				GetViewport().SetInputAsHandled();
+				return;
+			}
+			// No chest interaction consumed F; allow monument/villager handlers to process it.
 		}
 
 		if (toggle)
@@ -197,10 +200,10 @@ public partial class InventoryUi : Control
 		Refresh();
 	}
 
-	private void TryInteractChest()
+	private bool TryInteractChest()
 	{
 		if (_player == null || !IsInstanceValid(_player)) ResolvePlayer();
-		if (_player == null) return;
+		if (_player == null) return false;
 		Chest nearest = null;
 		float best = 40f * 40f;
 		foreach (var node in GetTree().GetNodesInGroup("chests"))
@@ -213,9 +216,15 @@ public partial class InventoryUi : Control
 		}
 		if (nearest != null)
 		{
-			if (Visible && _openChest == nearest) { CloseChest(); return; }
+			if (Visible && _openChest == nearest)
+			{
+				CloseChest();
+				return true;
+			}
 			nearest.Interact(_player);
+			return true;
 		}
+		return false;
 	}
 
 	private void OnSlotPressed(InventorySlotUi slot)
