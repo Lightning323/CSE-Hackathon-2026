@@ -75,7 +75,11 @@ grid-quest/
 ├── game_generator/            # New-game generation flow and UI
 │   ├── GameGenerator.cs       # Generator scene behavior (save creation, story generation, progress UI)
 │   ├── GameGenerator.tscn     # Generator UI scene (main node)
-│   └── StoryGenerator.cs      # LLM/fallback campaign story generation and JSON serialization
+│   ├── StoryGenerator.cs      # LLM/fallback campaign story generation and JSON serialization
+│   ├── AIUtils.cs             # Shared generation/JSON utilities
+│   └── llm/
+│       ├── LlmApi.cs          # Autoload LLM API (streaming, hooks, provider requests)
+│       └── LlmSettingsStore.cs # LLM settings model/persistence in app data
 ├── npc/
 │   └── knight/
 │       ├── KnightNpc.cs       # Allied knight AI, combat, and regeneration
@@ -187,8 +191,8 @@ sprites under `assets/images/characters/`. Knights are allied village protectors
 
 - `menus/mainMenu/SettingsMenu.tscn` (UI in scene) and `menus/mainMenu/SettingsMenu.cs` provide LLM configuration: provider selection (OpenAI, Anthropic, LM Studio, Custom OpenAI-compatible), base URL, model, API key, and an **Enable thinking** option (disabled by default).
 - **Test Model** pings the configured provider/model and reports connection/status in the settings UI.
-- `menus/mainMenu/LlmSettingsStore.cs` persists LLM settings (including `EnableThinking`) to app data (`OS.GetUserDataDir()/llm_settings.json`).
-- `menus/mainMenu/LlmApi.cs` is registered as an autoload (`LlmApi`) and exposes async methods (`ChatAsync`, `TestConnectionAsync`) so game/UI code can call an LLM directly in Godot using saved or overridden settings (OpenAI-compatible chat completions and Anthropic messages APIs), applying provider-specific thinking controls based on settings.
+- `game_generator/llm/LlmSettingsStore.cs` persists LLM settings (including `EnableThinking`) to app data (`OS.GetUserDataDir()/llm_settings.json`).
+- `game_generator/llm/LlmApi.cs` is registered as an autoload (`LlmApi`) and exposes async methods (`ChatAsync`, `TestConnectionAsync`) for direct in-Godot LLM use (OpenAI-compatible and Anthropic APIs). `ChatAsync` supports streaming with intermediate chunk output: prints chunks to terminal as they arrive via `GD.PrintRaw`/`GD.Print` and exposes optional hooks (`onChunk` callback parameter and `StreamChunkReceived` event) so callers can consume streamed data incrementally. Story/game generation uses these hooks during LLM generation.
 
 ## UI Theme
 
