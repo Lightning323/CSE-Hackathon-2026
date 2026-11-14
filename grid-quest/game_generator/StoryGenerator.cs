@@ -1,4 +1,5 @@
 using Godot;
+using GridQuest.Menus.MainMenu;
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
@@ -6,7 +7,7 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace GridQuest.Menus.MainMenu;
+namespace GridQuest.GameGenerator;
 
 public sealed class StoryCampaign
 {
@@ -96,11 +97,9 @@ public static class StoryGenerator
 		if (string.IsNullOrWhiteSpace(text)) return null;
 		text = text.Trim();
 
-		// strip markdown fences if present
 		var fence = Regex.Match(text, "```(?:json)?\\s*(\\{.*\\})\\s*```", RegexOptions.Singleline | RegexOptions.IgnoreCase);
 		if (fence.Success) text = fence.Groups[1].Value.Trim();
 
-		// try extract first JSON object
 		if (!text.StartsWith("{"))
 		{
 			int start = text.IndexOf('{');

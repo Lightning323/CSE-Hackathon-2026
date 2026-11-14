@@ -10,6 +10,7 @@ public partial class SettingsMenu : Control
 	private LineEdit _baseUrlEdit;
 	private LineEdit _modelEdit;
 	private LineEdit _apiKeyEdit;
+	private CheckBox _thinkingCheck;
 	private Label _statusLabel;
 	private Button _backButton;
 	private Button _saveButton;
@@ -21,6 +22,7 @@ public partial class SettingsMenu : Control
 		_baseUrlEdit = GetNode<LineEdit>("%BaseUrlEdit");
 		_modelEdit = GetNode<LineEdit>("%ModelEdit");
 		_apiKeyEdit = GetNode<LineEdit>("%ApiKeyEdit");
+		_thinkingCheck = GetNode<CheckBox>("%ThinkingCheck");
 		_statusLabel = GetNode<Label>("%StatusLabel");
 		_backButton = GetNode<Button>("%BackButton");
 		_saveButton = GetNode<Button>("%SaveButton");
@@ -46,6 +48,7 @@ public partial class SettingsMenu : Control
 		_baseUrlEdit.Text = settings.BaseUrl;
 		_modelEdit.Text = settings.Model;
 		_apiKeyEdit.Text = settings.ApiKey;
+		_thinkingCheck.ButtonPressed = settings.EnableThinking;
 		_statusLabel.Text = "Settings loaded.";
 	}
 
@@ -70,6 +73,7 @@ public partial class SettingsMenu : Control
 			BaseUrl = _baseUrlEdit.Text?.Trim() ?? "",
 			ApiKey = _apiKeyEdit.Text?.Trim() ?? "",
 			Model = _modelEdit.Text?.Trim() ?? "",
+			EnableThinking = _thinkingCheck.ButtonPressed,
 		};
 		return LlmSettingsStore.Normalize(settings);
 	}

@@ -11,6 +11,7 @@ public sealed class LlmSettings
 	public string BaseUrl { get; set; } = "https://api.openai.com/v1";
 	public string ApiKey { get; set; } = "";
 	public string Model { get; set; } = "gpt-4o-mini";
+	public bool EnableThinking { get; set; } = false;
 }
 
 public static class LlmSettingsStore

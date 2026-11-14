@@ -65,12 +65,17 @@ grid-quest/
 │       ├── SettingsMenu.cs    # LLM settings menu behavior
 │       ├── SettingsMenu.tscn  # LLM settings scene (UI in scene)
 │       ├── SaveManager.cs     # Save discovery/creation/deletion in app data
-│       ├── StoryGenerator.cs  # LLM/fallback campaign story generation and JSON serialization
+│       ├── StoryGenerator.cs   # LLM/fallback campaign story generation and JSON serialization
 │       ├── GameGenerationScene.cs # Game generation flow scene behavior
 │       ├── GameGenerationScene.tscn # Generation progress UI scene
 │       ├── LlmSettingsStore.cs # LLM provider/model/key persistence in app data
 │       ├── LlmApi.cs          # Autoload LLM API for in-game requests/tests
 │       └── GameSession.cs     # Autoload holding currently selected save
+
+├── game_generator/            # New-game generation flow and UI
+│   ├── GameGenerator.cs       # Generator scene behavior (save creation, story generation, progress UI)
+│   ├── GameGenerator.tscn     # Generator UI scene (main node)
+│   └── StoryGenerator.cs      # LLM/fallback campaign story generation and JSON serialization
 ├── npc/
 │   └── knight/
 │       ├── KnightNpc.cs       # Allied knight AI, combat, and regeneration
@@ -173,20 +178,26 @@ sprites under `assets/images/characters/`. Knights are allied village protectors
 
 - `menus/mainMenu/MainMenu.tscn` is the startup scene (`project.godot` `run/main_scene`) containing the menu UI layout; `menus/mainMenu/MainMenu.cs` handles behavior/wiring.
 - The main menu lists save folders from the app data saves directory (`OS.GetUserDataDir()/saves`), and supports **Play**, **Delete**, **New Save**, and **Settings**.
-- **New Save** opens a dialog for title and description, then transitions to `menus/mainMenu/GameGenerationScene.tscn`, which shows a progress bar and status descriptions while creating the save folder and generating `story.json` via `StoryGenerator`/`LlmApi` (with fallback if unavailable), then returns to the main menu and selects the new save (it does not automatically boot into the game).
-- `menus/mainMenu/StoryGenerator.cs` generates campaign/story JSON (campaign metadata + progression stages/objectives/rewards/modifiers) using `LlmApi` when available and writes the schema-compatible `story.json` for the new save. `GameSession` carries pending new-save inputs and the last created save ID across the generation scene transition.
+- **New Save** opens a dialog for title and description, then transitions to `game_generator/GameGenerator.tscn`, which shows a progress bar and status descriptions while creating the save folder and generating `story.json` via `StoryGenerator`/`LlmApi` (with fallback if unavailable), then returns to the main menu and selects the new save (it does not automatically boot into the game).
+- `game_generator/StoryGenerator.cs` generates campaign/story JSON (campaign metadata + progression stages/objectives/rewards/modifiers) using `LlmApi` when available and writes the schema-compatible `story.json` for the new save. `GameSession` carries pending new-save inputs and the last created save ID across the generation scene transition.
 - **Play** sets the selected save as the active session save and boots into `res://level/character_dev/main_level.tscn`.
 - `menus/mainMenu/GameSession.cs` is registered as an autoload (`GameSession`) to store the currently selected/created save for the running session.
 - A debug button in the main menu opens the saves/app-data folder via `OS.ShellOpen`.
 
 ## Main Menu Settings and LLM API
 
-- `menus/mainMenu/SettingsMenu.tscn` (UI in scene) and `menus/mainMenu/SettingsMenu.cs` provide LLM configuration: provider selection (OpenAI, Anthropic, LM Studio, Custom OpenAI-compatible), base URL, model, and API key.
+- `menus/mainMenu/SettingsMenu.tscn` (UI in scene) and `menus/mainMenu/SettingsMenu.cs` provide LLM configuration: provider selection (OpenAI, Anthropic, LM Studio, Custom OpenAI-compatible), base URL, model, API key, and an **Enable thinking** option (disabled by default).
 - **Test Model** pings the configured provider/model and reports connection/status in the settings UI.
-- `menus/mainMenu/LlmSettingsStore.cs` persists LLM settings to app data (`OS.GetUserDataDir()/llm_settings.json`).
-- `menus/mainMenu/LlmApi.cs` is registered as an autoload (`LlmApi`) and exposes async methods (`ChatAsync`, `TestConnectionAsync`) so game/UI code can call an LLM directly in Godot using saved or overridden settings (OpenAI-compatible chat completions and Anthropic messages APIs).
+- `menus/mainMenu/LlmSettingsStore.cs` persists LLM settings (including `EnableThinking`) to app data (`OS.GetUserDataDir()/llm_settings.json`).
+- `menus/mainMenu/LlmApi.cs` is registered as an autoload (`LlmApi`) and exposes async methods (`ChatAsync`, `TestConnectionAsync`) so game/UI code can call an LLM directly in Godot using saved or overridden settings (OpenAI-compatible chat completions and Anthropic messages APIs), applying provider-specific thinking controls based on settings.
 
 ## UI Theme
 
 - `assets/main_theme.tres` is the shared UI theme and uses `assets/fonts/pixel_operator/PixelOperator.ttf` as the default font.
 - Menu/UI scenes (including `menus/mainMenu/MainMenu.tscn`, `menus/mainMenu/SettingsMenu.tscn`, inventory/skills menus) apply `res://assets/main_theme.tres` on their root controls.
+
+
+## Tests
+
+- `tests/generation_tests.tscn` + `tests/GenerationTests.cs`: procedural generation/integration checks (run headless with `godot --headless --path . res://tests/generation_tests.tscn`).
+- `tests/llm_hello_test.tscn` + `tests/LlmHelloTest.cs`: loads saved LLM settings from `OS.GetUserDataDir()/llm_settings.json` and sends a "hello world" prompt via `LlmApi`, printing provider/model/response to the terminal then exiting (run headless with `godot --headless --path . res://tests/llm_hello_test.tscn`).

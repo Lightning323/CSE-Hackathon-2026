@@ -7,7 +7,7 @@ public partial class MainMenu : Control
 {
 	private const string LevelScenePath = "res://level/character_dev/main_level.tscn";
 	private const string SettingsScenePath = "res://menus/mainMenu/SettingsMenu.tscn";
-	private const string GenerationScenePath = "res://menus/mainMenu/GameGenerationScene.tscn";
+	private const string GenerationScenePath = "res://game_generator/GameGenerator.tscn";
 
 	private ItemList _saveList;
 	private Button _playButton;

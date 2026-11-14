@@ -1,10 +1,11 @@
 using Godot;
+using GridQuest.Menus.MainMenu;
 using System;
 using System.Threading.Tasks;
 
-namespace GridQuest.Menus.MainMenu;
+namespace GridQuest.GameGenerator;
 
-public partial class GameGenerationScene : Control
+public partial class GameGenerator : Control
 {
 	private const string MainMenuScenePath = "res://menus/mainMenu/MainMenu.tscn";
 

@@ -3,6 +3,7 @@ using System;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
 namespace GridQuest.Menus.MainMenu;
@@ -51,19 +52,25 @@ public partial class LlmApi : Node
 		if (!string.IsNullOrWhiteSpace(settings.ApiKey))
 			req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", settings.ApiKey);
 
-		var messages = new System.Collections.Generic.List<object>();
+		var messages = new JsonArray();
 		if (!string.IsNullOrWhiteSpace(systemPrompt))
-			messages.Add(new { role = "system", content = systemPrompt });
-		messages.Add(new { role = "user", content = prompt });
+			messages.Add(new JsonObject { ["role"] = "system", ["content"] = systemPrompt });
+		messages.Add(new JsonObject { ["role"] = "user", ["content"] = prompt });
 
-		var payload = new
+		var payload = new JsonObject
 		{
-			model = settings.Model,
-			messages,
-			temperature = 0.2,
+			["model"] = settings.Model,
+			["messages"] = messages,
+			["temperature"] = 0.2,
+			["chat_template_kwargs"] = new JsonObject { ["enable_thinking"] = settings.EnableThinking },
 		};
+		if (!settings.EnableThinking)
+		{
+			// Best-effort hints for common OpenAI-compatible reasoning models/endpoints.
+			payload["reasoning_effort"] = "none";
+		}
 
-		req.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+		req.Content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json");
 		using var res = await Http.SendAsync(req);
 		var body = await res.Content.ReadAsStringAsync();
 		if (!res.IsSuccessStatusCode)
@@ -89,18 +96,26 @@ public partial class LlmApi : Node
 			req.Headers.TryAddWithoutValidation("x-api-key", settings.ApiKey);
 		req.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
 
-		var payload = new
+		var payload = new JsonObject
 		{
-			model = settings.Model,
-			max_tokens = 256,
-			system = systemPrompt ?? "",
-			messages = new[]
+			["model"] = settings.Model,
+			["max_tokens"] = settings.EnableThinking ? 1024 : 256,
+			["system"] = systemPrompt ?? "",
+			["messages"] = new JsonArray
 			{
-				new { role = "user", content = prompt }
+				new JsonObject { ["role"] = "user", ["content"] = prompt }
 			}
 		};
+		if (settings.EnableThinking)
+		{
+			payload["thinking"] = new JsonObject
+			{
+				["type"] = "enabled",
+				["budget_tokens"] = 512,
+			};
+		}
 
-		req.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+		req.Content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json");
 		using var res = await Http.SendAsync(req);
 		var body = await res.Content.ReadAsStringAsync();
 		if (!res.IsSuccessStatusCode)
