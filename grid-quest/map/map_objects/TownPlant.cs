@@ -1,20 +1,21 @@
 using Godot;
+using GridQuest.Map;
 
 namespace GridQuest.Map.MapObjects;
 
-public partial class TownPlant : MapObject
+public partial class PlantFactory : MapObjectFactory
 {
 	public const string Plant1TexturePath = "res://assets/images/map_tiles/plants/town_plant-1.png";
 	public const string Plant2TexturePath = "res://assets/images/map_tiles/plants/town_plant-2.png";
 	public const string Plant3TexturePath = "res://assets/images/map_tiles/plants/town_plant-3.png";
 
-	public static TownPlant Create(Vector2 worldPosition, int cellSize, string texturePath, string name)
+	private PlantFactory Create(int x, int y, string texturePath, string name)
 	{
 		Texture2D texture = GD.Load<Texture2D>(texturePath);
-		var plant = new TownPlant
+		var plant = new PlantFactory
 		{
 			Name = name,
-			Position = worldPosition,
+			Position = new Vector2(x * MapConstants.CELL_SIZE, y * MapConstants.CELL_SIZE),
 			BlocksMovement = false,
 		};
 
@@ -31,13 +32,13 @@ public partial class TownPlant : MapObject
 		return plant;
 	}
 
-	public static TownPlant CreateVariant(Vector2 worldPosition, int cellSize, int variant)
+	public PlantFactory CreateVariant(int x,int y,  int variant)
 	{
 		return variant switch
 		{
-			1 => Create(worldPosition, cellSize, Plant1TexturePath, "TownPlant1"),
-			2 => Create(worldPosition, cellSize, Plant2TexturePath, "TownPlant2"),
-			_ => Create(worldPosition, cellSize, Plant3TexturePath, "TownPlant3"),
+			1 => Create(x,y, Plant1TexturePath, "TownPlant1"),
+			2 => Create(x,y, Plant2TexturePath, "TownPlant2"),
+			_ => Create(x,y, Plant3TexturePath, "TownPlant3"),
 		};
 	}
 }

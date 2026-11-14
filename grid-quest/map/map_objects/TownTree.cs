@@ -2,17 +2,17 @@ using Godot;
 
 namespace GridQuest.Map.MapObjects;
 
-public partial class TownTree2 : MapObject
+public partial class TreeFactory : MapObjectFactory
 {
 	public const string TexturePath = "res://assets/images/map_tiles/trees/town_tree-2.png";
 
-	public static TownTree2 Create(Vector2 worldPosition, int cellSize)
+	public TreeFactory Create(int x, int y)
 	{
 		Texture2D texture = GD.Load<Texture2D>(TexturePath);
-		var tree = new TownTree2
+		var tree = new TreeFactory
 		{
-			Name = "TownTree2",
-			Position = worldPosition,
+			Name = "TownTree",
+			Position = new Vector2(x * MapConstants.CELL_SIZE, y * MapConstants.CELL_SIZE),
 			BlocksMovement = true,
 			YSortEnabled = false,
 		};

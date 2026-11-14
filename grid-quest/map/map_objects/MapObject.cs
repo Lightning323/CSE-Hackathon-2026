@@ -2,7 +2,7 @@ using Godot;
 
 namespace GridQuest.Map.MapObjects;
 
-public abstract partial class MapObject : Node2D
+public abstract partial class MapObjectFactory : Node2D
 {
 	[Export] public bool BlocksMovement { get; set; }
 
