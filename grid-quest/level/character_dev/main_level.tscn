@@ -1,27 +1,19 @@
 [gd_scene format=3 uid="uid://ddxtte0xls8ph"]
 
 [ext_resource type="Script" uid="uid://c7dqdoq22nup6" path="res://level/character_dev/MainLevel.cs" id="1_fcrcf"]
-[ext_resource type="PackedScene" uid="uid://dasd1exc7g0m2" path="res://player/player.tscn" id="2_0hvbd"]
+[ext_resource type="PackedScene" uid="uid://dasd1exc7g0m2" path="res://entities/player/player.tscn" id="2_0hvbd"]
 [ext_resource type="PackedScene" uid="uid://dodf7orbhnbtu" path="res://map/map.tscn" id="9_m5bjr"]
 [ext_resource type="PackedScene" path="res://menus/inventory_ui.tscn" id="10_inv"]
 [ext_resource type="PackedScene" path="res://menus/skills_ui.tscn" id="11_skills"]
-[ext_resource type="Script" path="res://level/character_dev/VillagerSpawnInput.cs" id="12_villager_spawn"]
-[ext_resource type="Script" path="res://npc/villager/VillagePopulationManager.cs" id="13_village_mgr"]
 [ext_resource type="Script" path="res://menus/MonumentIndicator.cs" id="14_monument_indicator"]
-[ext_resource type="Script" path="res://level/character_dev/KnightSpawnInput.cs" id="15_knight_spawn"]
-[ext_resource type="Script" path="res://npc/knight/VillageKnightPopulationManager.cs" id="16_knight_mgr"]
 [ext_resource type="PackedScene" path="res://menus/cheat_menu.tscn" id="17_cheat_menu"]
-[ext_resource type="Script" path="res://level/EnemySpawnOnKill.cs" id="18_enemy_spawn"]
 [ext_resource type="Script" path="res://level/DayNightCycle.cs" id="19_daynight"]
 [ext_resource type="Script" path="res://level/SurvivalStats.cs" id="20_survival_stats"]
 [ext_resource type="Script" path="res://menus/SurvivalTimerUi.cs" id="21_survival_timer"]
 [ext_resource type="PackedScene" path="res://menus/game_over_menu.tscn" id="22_game_over"]
 [ext_resource type="PackedScene" path="res://menus/villager_chat_ui.tscn" id="23_villager_chat"]
-[ext_resource type="PackedScene" path="res://menus/trader_ui.tscn" id="24_trader_ui"]
 [ext_resource type="Script" path="res://level/WorldResetManager.cs" id="25_world_reset"]
-[ext_resource type="Script" path="res://level/boss/HellhoundSwarmBoss.cs" id="26_hellhound_boss"]
-[ext_resource type="PackedScene" path="res://menus/boss_fight_ui.tscn" id="27_boss_fight_ui"]
-[ext_resource type="Script" path="res://level/boss/ExecutionerBoss.cs" id="28_executioner_boss"]
+[ext_resource type="Script" path="res://entities/EntityPopulationManager.cs" id="29_entity_population"]
 
 [node name="Level" type="Node2D" unique_id=426259724]
 y_sort_enabled = true
@@ -30,26 +22,8 @@ script = ExtResource("1_fcrcf")
 [node name="Player" parent="." unique_id=1496126262 groups=["player"] instance=ExtResource("2_0hvbd")]
 position = Vector2(160, 160)
 
-[node name="KnightSpawnInput" type="Node" parent="." unique_id=327385053]
-script = ExtResource("15_knight_spawn")
-
-[node name="VillagerSpawnInput" type="Node" parent="." unique_id=1122821778]
-script = ExtResource("12_villager_spawn")
-
-[node name="VillagePopulationManager" type="Node" parent="."]
-script = ExtResource("13_village_mgr")
-
-[node name="VillageKnightPopulationManager" type="Node" parent="."]
-script = ExtResource("16_knight_mgr")
-
-[node name="EnemySpawnOnKill" type="Node" parent="."]
-script = ExtResource("18_enemy_spawn")
-
-[node name="HellhoundSwarmBoss" type="Node" parent="."]
-script = ExtResource("26_hellhound_boss")
-
-[node name="ExecutionerBoss" type="Node" parent="."]
-script = ExtResource("28_executioner_boss")
+[node name="EntityPopulationManager" type="Node" parent="."]
+script = ExtResource("29_entity_population")
 
 [node name="SurvivalStats" type="Node" parent="."]
 script = ExtResource("20_survival_stats")
@@ -74,10 +48,6 @@ script = ExtResource("21_survival_timer")
 [node name="CheatMenu" parent="CanvasLayer" instance=ExtResource("17_cheat_menu")]
 
 [node name="VillagerChatUi" parent="CanvasLayer" instance=ExtResource("23_villager_chat")]
-
-[node name="TraderUi" parent="CanvasLayer" instance=ExtResource("24_trader_ui")]
-
-[node name="BossFightUi" parent="CanvasLayer" instance=ExtResource("27_boss_fight_ui")]
 
 [node name="GameOverMenu" parent="CanvasLayer" instance=ExtResource("22_game_over")]
 

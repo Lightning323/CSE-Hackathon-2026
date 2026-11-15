@@ -13,7 +13,6 @@ public static class WorldProgress
 	private static ProgressData _data = Load();
 	private static int _runWorldResets;
 	private static int _runCurrentWorldDay = 1;
-	private static int _runLastBossWarpMilestone; // 3,6,9... completed/triggered for this run
 
 	public static int WorldResets => _runWorldResets; // run-local (not historical)
 	public static int WorldResetHighScore => _data.WorldResetHighScore;
@@ -38,43 +37,6 @@ public static class WorldProgress
 		Save();
 	}
 
-	public static int GetNextBossWarpMilestone() => ((_runWorldResets / 3) + 1) * 3;
-
-	public static bool HasPendingBossForCurrentWarp()
-	{
-		// Bosses occur every 3rd warp after (3,6,9...) on the sunset of that warp/world spawn.
-		return _runWorldResets >= 3 && _runWorldResets % 3 == 0 && _runLastBossWarpMilestone < _runWorldResets;
-	}
-
-	public static int GetPendingBossIndex()
-	{
-		return HasPendingBossForCurrentWarp() ? (_runWorldResets / 3) : 0; // 1-based boss index
-	}
-
-	public static void MarkPendingBossCompleted()
-	{
-		if (HasPendingBossForCurrentWarp())
-			_runLastBossWarpMilestone = _runWorldResets;
-	}
-
-	public static void DebugPrepareHellhoundBossTrigger()
-	{
-		DebugPrepareBossTrigger(1);
-	}
-
-	public static void DebugPrepareExecutionerBossTrigger()
-	{
-		DebugPrepareBossTrigger(2);
-	}
-
-	public static void DebugPrepareBossTrigger(int bossIndex)
-	{
-		int warp = Mathf.Max(3, bossIndex * 3);
-		_runWorldResets = warp;
-		_runCurrentWorldDay = 1;
-		_runLastBossWarpMilestone = warp - 3;
-	}
-
 	public static void CompleteWorldReset()
 	{
 		RegisterResetHighScoreProgress();
@@ -92,7 +54,6 @@ public static class WorldProgress
 		// World reset count is per-run, not historical. Day resets for a clean start.
 		_runWorldResets = 0;
 		_runCurrentWorldDay = 1;
-		_runLastBossWarpMilestone = 0;
 	}
 
 	public static void ClearHighScore()

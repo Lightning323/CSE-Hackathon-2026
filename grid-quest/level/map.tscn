@@ -1,14 +1,7 @@
 [gd_scene format=3 uid="uid://dv1dl5h11q1yt"]
 
-[ext_resource type="PackedScene" uid="uid://dasd1exc7g0m2" path="res://player/player.tscn" id="2_player"]
-[ext_resource type="Script" path="res://level/character_dev/KnightSpawnInput.cs" id="7_knight_spawn"]
+[ext_resource type="PackedScene" uid="uid://dasd1exc7g0m2" path="res://entities/player/player.tscn" id="2_player"]
 
 [node name="Map" type="Node2D" unique_id=650055367]
 
 [node name="MapGrid" type="Node2D" parent="." unique_id=1291245572]
-
-[node name="Player" parent="." unique_id=1818209277 groups=["player"] instance=ExtResource("2_player")]
-position = Vector2(80, 80)
-
-[node name="KnightSpawnInput" type="Node" parent="." unique_id=1456873788]
-script = ExtResource("7_knight_spawn")

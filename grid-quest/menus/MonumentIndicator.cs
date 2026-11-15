@@ -21,12 +21,6 @@ public partial class MonumentIndicator : TextureRect
 
 	public override void _Process(double delta)
 	{
-		if (IsBossFightActive())
-		{
-			Visible = false;
-			return;
-		}
-
 		_monument ??= GetTree().GetFirstNodeInGroup("monument") as Monument;
 		_player ??= GetTree().GetFirstNodeInGroup("player") as Node2D;
 
@@ -53,10 +47,4 @@ public partial class MonumentIndicator : TextureRect
 		Position = center + dir * Mathf.Min(viewportSize.X, viewportSize.Y) * 0.22f - Size / 2.0f;
 	}
 
-	private bool IsBossFightActive()
-	{
-		if (GetTree().GetFirstNodeInGroup("hellhound_swarm_boss_manager") is HellhoundSwarmBoss h && h.IsActive) return true;
-		if (GetTree().GetFirstNodeInGroup("executioner_boss_manager") is ExecutionerBoss e && e.IsActive) return true;
-		return false;
-	}
 }

@@ -1,7 +1,6 @@
 #nullable enable
 using Godot;
 using GridQuest.Entities.Base;
-using System.Threading.Tasks;
 using GridQuest.Items;
 using GridQuest.PlayerUpgrades;
 using System;
@@ -18,6 +17,8 @@ public partial class PlayerEntity : Entity
 {
 	[Signal]
 	public delegate void DiedEventHandler();
+
+	[Export] public bool UseHumanInput { get; set; } = true;
 
 	[Export] public new float Speed { get => base.Speed; set => base.Speed = value; }
 	[Export] public new float AttackCooldown { get => base.AttackCooldown; set => base.AttackCooldown = value; }
@@ -158,7 +159,7 @@ public partial class PlayerEntity : Entity
 	public float CurrentAoeAuraTickInterval => 0.75f;
 	public float CurrentGoldDropMultiplier => 1.0f + GetUpgradeLevel("midas_touch") * 0.15f;
 
-	public int GetScaledMobGoldDrop(int baseGoldAmount)
+	public int GetScaledEntityGoldDrop(int baseGoldAmount)
 	{
 		if (baseGoldAmount <= 0) return 0;
 		return Mathf.Max(baseGoldAmount, Mathf.RoundToInt(baseGoldAmount * CurrentGoldDropMultiplier));
@@ -166,6 +167,8 @@ public partial class PlayerEntity : Entity
 
 	public override void _Ready()
 	{
+		Faction = "player";
+		SkinId = string.IsNullOrWhiteSpace(SkinId) ? "player" : SkinId;
 		base.MaxHealth = BaseMaxHealth;
 		base.AttackDamage = BaseAttackDamage;
 		base.AttackRange = BaseAttackRange;
@@ -213,33 +216,6 @@ public partial class PlayerEntity : Entity
 		UpdateAoeAuraVisual();
 	}
 
-	private bool _bossForceLampOff;
-	private bool _bossLampFlicker;
-	private double _bossLampFlickerTime;
-	private bool _bossMovementLocked;
-
-	public void SetBossMovementLocked(bool locked)
-	{
-		_bossMovementLocked = locked;
-		if (locked)
-			Velocity = Vector2.Zero;
-	}
-
-	public void SetBossLampDisabled(bool disabled)
-	{
-		_bossForceLampOff = disabled;
-		if (disabled) _bossLampFlicker = false;
-	}
-
-	public async Task FlickerBossLampOnAsync(float duration = 0.8f)
-	{
-		_bossLampFlicker = true;
-		_bossLampFlickerTime = 0.0;
-		_bossForceLampOff = false;
-		await ToSignal(GetTree().CreateTimer(duration, true, false, true), SceneTreeTimer.SignalName.Timeout);
-		_bossLampFlicker = false;
-	}
-
 	private void UpdatePlayerLight()
 	{
 		if (_pointLight == null || !IsInstanceValid(_pointLight)) return;
@@ -248,20 +224,12 @@ public partial class PlayerEntity : Entity
 		_pointLight.RangeItemCullMask = 1;
 		_pointLight.ShadowEnabled = insideBuilding;
 
-		if (_bossForceLampOff)
-		{
-			_pointLight.Enabled = false;
-			_pointLight.Energy = 0.0f;
-			return;
-		}
-
 		bool shouldEnable = insideBuilding;
 		if (!insideBuilding)
 		{
 			DayNightCycle cycle = GetTree().GetFirstNodeInGroup("day_night_cycle") as DayNightCycle;
 			shouldEnable = cycle != null && cycle.DaylightFactor < 0.45f;
 		}
-		if (_bossLampFlicker) shouldEnable = true;
 		_pointLight.Enabled = shouldEnable;
 		if (!shouldEnable)
 		{
@@ -278,14 +246,6 @@ public partial class PlayerEntity : Entity
 		else
 		{
 			energy = 1.0f; scale = 1.0f; color = Colors.White;
-		}
-
-		if (_bossLampFlicker)
-		{
-			_bossLampFlickerTime += GetProcessDeltaTime();
-			float pulse = 0.35f + 0.65f * Mathf.Abs(Mathf.Sin((float)_bossLampFlickerTime * 28.0f));
-			energy *= pulse;
-			scale *= 0.9f + 0.15f * pulse;
 		}
 
 		_pointLight.Energy = energy;
@@ -321,7 +281,7 @@ public partial class PlayerEntity : Entity
 		return TrySpendMoney(amount);
 	}
 
-	public bool TryPurchaseUpgrade(string upgradeId)
+	public override bool TryPurchaseUpgrade(string upgradeId)
 	{
 		var def = UpgradeCatalog.Get(upgradeId);
 		if (def == null) return false;
@@ -385,30 +345,20 @@ public partial class PlayerEntity : Entity
 
 	public override void _PhysicsProcess(double delta)
 	{
+		base._PhysicsProcess(delta);
 		float dt = (float)delta;
 		if (IsDead) { Velocity = Vector2.Zero; MoveAndSlide(); return; }
 
 		var inv = GetTree().GetFirstNodeInGroup("inventory_ui") as Control;
 		var skills = GetTree().GetFirstNodeInGroup("skills_ui") as Control;
 		var cheat = GetTree().GetFirstNodeInGroup("cheat_ui") as Control;
-		var trader = GetTree().GetFirstNodeInGroup("trader_ui") as Control;
-		bool uiBlocking = (inv != null && inv.Visible) || (skills != null && skills.Visible) || (cheat != null && cheat.Visible) || (trader != null && trader.Visible);
+		bool uiBlocking = (inv != null && inv.Visible) || (skills != null && skills.Visible) || (cheat != null && cheat.Visible);
 		if (uiBlocking)
 		{
 			CancelCrossbowCharge(resetAnim: true);
 			Velocity = Vector2.Zero; _velocityCurrent = Vector2.Zero;
 			if (_state != State.Attack) { _state = State.Idle; PlayAnimation(GetIdleAnimName()); }
 			MoveAndSlide(); return;
-		}
-
-		if (_bossMovementLocked)
-		{
-			CancelCrossbowCharge(resetAnim: true);
-			_velocityCurrent = Vector2.Zero;
-			Velocity = Vector2.Zero;
-			if (_state != State.Attack) { _state = State.Idle; PlayAnimation(GetIdleAnimName()); }
-			MoveAndSlide();
-			return;
 		}
 
 		ApplyDerivedStats(healOnMaxHealthIncrease: false);
@@ -421,7 +371,8 @@ public partial class PlayerEntity : Entity
 		UpdateAoeAura(dt);
 
 		SyncEquippedFromId();
-		HandleWeaponInput(dt);
+		if (UseHumanInput)
+			HandleWeaponInput(dt);
 
 		Vector2 input = GetMoveInput();
 
@@ -455,6 +406,9 @@ public partial class PlayerEntity : Entity
 
 	private Vector2 GetMoveInput()
 	{
+		if (!UseHumanInput)
+			return GetIntentMovementDirection();
+
 		Vector2 input = Input.GetVector("move_left", "move_right", "move_up", "move_down");
 		if (input.LengthSquared() < 0.0001f) input = Input.GetVector("ui_left", "ui_right", "ui_up", "ui_down");
 		if (input.Length() > 1.0f) input = input.Normalized();
@@ -629,6 +583,27 @@ public partial class PlayerEntity : Entity
 		return _facing switch { "up" => Vector2.Up, "down" => Vector2.Down, "side" => _faceLeft ? Vector2.Left : Vector2.Right, _ => Vector2.Down };
 	}
 
+	public override bool TryAttackEntity(Entity target)
+	{
+		if (target == null || !IsInstanceValid(target) || target == this || target.IsDead ||
+			GlobalPosition.DistanceTo(target.GlobalPosition) > AttackRange || _attackTimer > 0.0f)
+			return false;
+
+		Vector2 direction = target.GlobalPosition - GlobalPosition;
+		if (direction.LengthSquared() > 0.001f)
+			UpdateFacing(direction.Normalized());
+
+		if (EquippedWeaponId == "crossbow")
+		{
+			ShootCrossbowBolt(CrossbowFullChargeTime);
+			_attackTimer = CurrentAttackCooldown;
+			return true;
+		}
+
+		StartAttack();
+		return true;
+	}
+
 	private void StartAttack()
 	{
 		_attackTimer = CurrentAttackCooldown;
@@ -649,9 +624,9 @@ public partial class PlayerEntity : Entity
 		PlayAnimation(GetAttackAnimName());
 		PlaySlashSfx();
 		if (EquippedWeaponId == "scythe")
-			DamageEnemiesAroundPlayer360();
+			DamageEntitiesAroundPlayer360();
 		else
-			DamageEnemiesInRange();
+			DamageEntitiesInRange();
 	}
 
 	public override void _UnhandledInput(InputEvent @event)
@@ -760,7 +735,7 @@ public partial class PlayerEntity : Entity
 		if (_aoeAuraTickTimer > 0.0f) return;
 		_aoeAuraTickTimer = CurrentAoeAuraTickInterval;
 
-		ApplyAoeAuraDamageToGroup("enemies", radius, damage);
+		ApplyAoeAuraDamageToGroup("entities", radius, damage);
 	}
 
 	private void ApplyAoeAuraDamageToGroup(string group, float radius, int damage)
@@ -768,7 +743,7 @@ public partial class PlayerEntity : Entity
 		float radiusSq = radius * radius;
 		foreach (Node node in GetTree().GetNodesInGroup(group))
 		{
-			if (node is not Node2D target || !IsInstanceValid(target)) continue;
+			if (node is not Node2D target || !IsInstanceValid(target) || target == this) continue;
 			if (GlobalPosition.DistanceSquaredTo(target.GlobalPosition) > radiusSq) continue;
 			DealDamageToTarget(target, damage, applyKnockback: false);
 		}
@@ -792,13 +767,12 @@ public partial class PlayerEntity : Entity
 		ApplyOnHitEffects(target);
 	}
 
-	private void DamageEnemiesInRange() { DamageGroupInRange("enemies"); DamageGroupInRange("knights"); }
+	private void DamageEntitiesInRange() => DamageGroupInRange("entities");
 
-	private void DamageEnemiesAroundPlayer360()
+	private void DamageEntitiesAroundPlayer360()
 	{
 		// Scythe: 360-degree melee damage around the player (superior range/damage).
-		DamageGroupInRange360("enemies");
-		DamageGroupInRange360("knights");
+		DamageGroupInRange360("entities");
 	}
 
 	private void DamageGroupInRange360(string group)
@@ -807,7 +781,7 @@ public partial class PlayerEntity : Entity
 		float rangeSq = range * range;
 		foreach (Node node in GetTree().GetNodesInGroup(group))
 		{
-			if (node is not Node2D target || !IsInstanceValid(target)) continue;
+			if (node is not Node2D target || !IsInstanceValid(target) || target == this) continue;
 			if (GlobalPosition.DistanceSquaredTo(target.GlobalPosition) > rangeSq || !target.HasMethod("TakeDamage")) continue;
 			DealDamageToTarget(target, CurrentAttackDamage, applyKnockback: true);
 		}
@@ -839,7 +813,7 @@ public partial class PlayerEntity : Entity
 	{
 		foreach (Node node in GetTree().GetNodesInGroup(group))
 		{
-			if (node is not Node2D target || !IsInstanceValid(target)) continue;
+			if (node is not Node2D target || !IsInstanceValid(target) || target == this) continue;
 			if (GlobalPosition.DistanceTo(target.GlobalPosition) > CurrentAttackRange || !target.HasMethod("TakeDamage")) continue;
 			DealDamageToTarget(target, CurrentAttackDamage, applyKnockback: true);
 		}
@@ -981,7 +955,7 @@ public partial class PlayerEntity : Entity
 		if (frames.HasAnimation(name)) frames.RemoveAnimation(name);
 		frames.AddAnimation(name);
 		frames.SetAnimationSpeed(name, fps);
-		frames.SetAnimationLoop(name, loop);
+		frames.SetAnimationLoopMode(name, loop ? SpriteFrames.LoopMode.Linear : SpriteFrames.LoopMode.None);
 		foreach (Rect2 rect in rects)
 		{
 			frames.AddFrame(name, new AtlasTexture
@@ -1006,7 +980,7 @@ public partial class PlayerEntity : Entity
 		if (frames.HasAnimation(name)) frames.RemoveAnimation(name);
 		frames.AddAnimation(name);
 		frames.SetAnimationSpeed(name, fps);
-		frames.SetAnimationLoop(name, loop);
+		frames.SetAnimationLoopMode(name, loop ? SpriteFrames.LoopMode.Linear : SpriteFrames.LoopMode.None);
 		int cols = Math.Min(frameCount, maxCols);
 		for (int i = 0; i < cols; i++)
 		{

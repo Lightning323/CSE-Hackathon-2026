@@ -7,7 +7,6 @@ public partial class Fireball : Area2D
 	private Vector2 _dir = Vector2.Right;
 	private float _life = 2.0f;
 	private float _knockbackStrength = 0.0f;
-	private global::Player _sourcePlayer;
 	private global::GridQuest.Entities.Player.PlayerEntity _sourcePlayerEntity;
 
 	public override void _Ready()
@@ -25,28 +24,26 @@ public partial class Fireball : Area2D
 	public void Init(Vector2 direction, Vector2 fromPos, float speed = 220.0f, int damage = 2, float knockbackStrength = 0.0f, global::GridQuest.Entities.Player.PlayerEntity sourcePlayer = null)
 	{
 		_sourcePlayerEntity = sourcePlayer;
-		_sourcePlayer = sourcePlayer as global::Player;
-
 		GlobalPosition = fromPos;
 		Speed = speed;
 		Damage = damage;
 		_knockbackStrength = knockbackStrength;
 		_dir = direction.Normalized();
-		// bias toward nearest enemy (one-time)
-		Node2D nearest = null;
+		// Bias toward the nearest entity once when the projectile is created.
+		Node2D nearestEntity = null;
 		float best = 300.0f * 300.0f;
-		foreach (Node n in GetTree().GetNodesInGroup("enemies"))
+		foreach (Node n in GetTree().GetNodesInGroup("entities"))
 		{
-			if (n is Node2D e && IsInstanceValid(e))
+			if (n is Node2D e && IsInstanceValid(e) && e != _sourcePlayerEntity)
 			{
 				float d2 = fromPos.DistanceSquaredTo(e.GlobalPosition);
-				if (d2 < best) { best = d2; nearest = e; }
+				if (d2 < best) { best = d2; nearestEntity = e; }
 			}
 		}
-		if (nearest != null)
+		if (nearestEntity != null)
 		{
-			Vector2 toEnemy = (nearest.GlobalPosition - fromPos).Normalized();
-			_dir = _dir.Lerp(toEnemy, 0.3f).Normalized(); // small sway/bias, can overshoot
+			Vector2 toEntity = (nearestEntity.GlobalPosition - fromPos).Normalized();
+			_dir = _dir.Lerp(toEntity, 0.3f).Normalized();
 		}
 		Rotation = _dir.Angle();
 	}
@@ -63,7 +60,7 @@ public partial class Fireball : Area2D
 		if (body == null || !IsInstanceValid(body))
 			return;
 
-		if (body.IsInGroup("enemies") && body.HasMethod("TakeDamage"))
+		if (body.IsInGroup("entities") && body != _sourcePlayerEntity && body.HasMethod("TakeDamage"))
 		{
 			int damage = Damage;
 			if (_sourcePlayerEntity != null && IsInstanceValid(_sourcePlayerEntity))

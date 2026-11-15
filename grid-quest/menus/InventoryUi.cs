@@ -1,10 +1,11 @@
 using Godot;
+using GridQuest.Entities.Player;
 using GridQuest.Items;
 using GridQuest.Map.MapObjects;
 
 public partial class InventoryUi : Control
 {
-	private Player _player;
+	private PlayerEntity _player;
 	private Chest _openChest;
 
 	private Label _titleLabel;
@@ -137,7 +138,7 @@ public partial class InventoryUi : Control
 
 	private void ResolvePlayer()
 	{
-		_player = GetTree().GetFirstNodeInGroup("player") as Player;
+		_player = GetTree().GetFirstNodeInGroup("player") as PlayerEntity;
 		Refresh();
 	}
 
@@ -147,10 +148,6 @@ public partial class InventoryUi : Control
 		var villagerChat = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
 		if (villagerChat != null && villagerChat.Visible)
 			return;
-		var traderUi = GetTree().GetFirstNodeInGroup("trader_ui") as Control;
-		if (traderUi != null && traderUi.Visible)
-			return;
-
 		bool togglePressed = @event.IsActionPressed("toggle_inventory");
 		bool interactPressed = @event.IsActionPressed("interact");
 		bool cancelPressed = @event.IsActionPressed("ui_cancel") || @event.IsActionPressed("pause_menu");
@@ -546,7 +543,7 @@ public partial class InventoryUi : Control
 
 	public void Refresh()
 	{
-		if (_player == null || !IsInstanceValid(_player)) _player = GetTree().GetFirstNodeInGroup("player") as Player;
+		if (_player == null || !IsInstanceValid(_player)) _player = GetTree().GetFirstNodeInGroup("player") as PlayerEntity;
 		if (_player != null)
 		{
 			_player.ConvertInventoryCoinsToGold();

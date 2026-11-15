@@ -20,20 +20,21 @@ grid-quest/
 │       ├── map_tiles/         # Grass, plants, and trees used by the map
 │       ├── characters/        # Character sprites (player, allies, animals)
 │       └── enemies/           # Enemy sprites (e.g. skeleton, slime assets)
-├── enemy/
-│   ├── Enemy.cs               # Configurable enemy AI, combat, and animation
-│   ├── enemy.tscn             # Base skeleton enemy
-│   ├── skeleton_enemy.tscn    # Medium skeleton variant
-│   ├── elite_skeleton_enemy.tscn # Hard skeleton variant
-│   ├── hellhound_enemy.tscn   # Hellhound boss-swarm enemy variant (Hellhound_1..3 assets)
-│   └── executioner_enemy.tscn # Executioner boss enemy scene (Executioner assets)
+├── entities/
+│   ├── base/Entity.cs         # Shared identity, state, inventory, and tools
+│   ├── EntityPopulationManager.cs # Spawns generic autonomous villagers
+│   ├── LlmEntity.cs           # LLM decision loop and generic character chat
+│   ├── SkinCatalog.cs         # Reusable entity skin definitions and sprites
+│   ├── llm_entity.tscn        # Generic LLM-driven character scene
+│   └── player/
+│       ├── PlayerEntity.cs    # Human input and player combat controls
+│       ├── PlayerUpgradeDefs.cs # Player upgrade definitions
+│       └── player.tscn        # Player scene
 ├── level/
-│   ├── boss/
-│   │   ├── HellhoundSwarmBoss.cs # Hellhound Swarm boss encounter manager (warp 3 / boss 1)
-│   │   └── ExecutionerBoss.cs   # Executioner boss encounter manager (warp 6 / boss 2)
-│   ├── EnemyTestSpawner.cs    # Temporary number-key enemy spawner
-│   ├── KnightSpawnInput.cs    # Spawns an allied knight helper on G
-│   └── main_level.tscn        # Main gameplay level (map, player, enemies, helpers)
+│   ├── character_dev/main_level.tscn # Character development gameplay scene
+│   ├── map_dev/main_level.tscn # Map development gameplay scene
+│   ├── DayNightCycle.cs       # World lighting and day progression
+│   └── WorldResetManager.cs   # Map reset and entity repopulation
 ├── items/                     # Item/inventory data model
 │   ├── Coin.cs                # World coin pickup
 │   ├── Fireball.cs            # Fire staff projectile logic
@@ -57,19 +58,15 @@ grid-quest/
 │       ├── tree/              # Tree factory/scene
 │       └── walls/             # Wall factory/scene
 ├── menus/
-│   ├── BossFightUi.cs         # Boss fight overlay UI (intro sequences/text, red tint, boss health bar)
-│   ├── CheatMenu.cs           # Debug/cheat menu (invincibility, add coins, add weapons, villager trust/time/enemy/boss debug triggers)
+│   ├── CheatMenu.cs           # Debug/cheat menu
 │   ├── InventoryUi.cs         # Inventory + chest UI (drag/drop, move, take-all)
 │   ├── InventorySlotUi.cs     # Reusable inventory slot UI control
 │   ├── MonumentIndicator.cs   # Directional indicator pointing to the monument
 │   ├── SkillsUi.cs            # Monument upgrade menu/UI (purchasable player attributes)
-│   ├── TraderUi.cs            # Village trader shop UI (sell loot/items/weapons, buy weapons, 5g full heal)
 │   ├── VillagerChatUi.cs      # NPC chat interface (ask questions, streamed LLM replies)
-│   ├── boss_fight_ui.tscn     # Boss fight UI scene
 │   ├── cheat_menu.tscn        # Debug/cheat menu UI scene
 │   ├── inventory_ui.tscn      # Inventory/chest UI scene root
 │   ├── skills_ui.tscn         # Monument/skills upgrade UI scene
-│   ├── trader_ui.tscn         # Trader UI scene
 │   ├── villager_chat_ui.tscn  # Villager chat UI scene
 │   ├── main_menu.tscn         # Legacy main menu scene
 │   └── mainMenu/
@@ -93,57 +90,22 @@ grid-quest/
 │   └── llm/
 │       ├── LlmApi.cs          # Autoload LLM API (streaming, hooks, provider requests)
 │       └── LlmSettingsStore.cs # LLM settings model/persistence in app data
-├── npc/
-│   ├── knight/
-│   │   ├── KnightNpc.cs       # Compatibility wrapper -> entities/npc/KnightEntity.cs
-│   │   └── knight_npc.tscn    # Knight character scene
-│   └── villager/
-│       ├── Villager.cs        # Compatibility wrapper -> entities/npc/VillagerEntity.cs
-│       └── villager.tscn      # Villager character scene
-└── player/
-	├── Player.cs              # Compatibility wrapper -> entities/player/PlayerEntity.cs
-	├── PlayerUpgradeDefs.cs   # Monument upgrade definitions and cost scaling
-	├── Player.cs.uid          # Godot-generated script UID
-	└── player.tscn            # Player character scene
 ```
 
 ## Entity Architecture (`entities/`)
 
-Grid Quest now uses a shared entity class hierarchy under `entities/` to centralize common RPG/actor state and LLM/tool-facing APIs:
+`entities/base/Entity.cs` is the shared abstract root for characters. It owns skin/faction identity, health and combat stats, equipment and inventory, money, persistent memory, chat history, movement intent, world observations, and the common tool registry/executor.
 
-- **`entities/base/Entity.cs` (`GridQuest.Entities.Base.Entity`)**: common base for all entities (player, enemy, villager, knight). Includes shared core data/APIs:
-  - Health/state: `Health`, `MaxHealth`, `IsDead`, damage/heal hooks and methods (`TakeDamageAmount`, `Heal`)
-  - Combat/stat fields: `Speed`, `AttackDamage`, `AttackRange`, `AttackCooldown`
-  - Equipment/inventory/money: `EquippedWeaponId` (weapon slot), `Inventory` (`InventoryContainer`), `Money`, `AddMoney`/`TrySpendMoney`, `AddItem`
-  - State export for tools/debugging: `GetEntityState()`, `GetEntityStateJson()`
-- **`entities/base/NpcEntity.cs` (`GridQuest.Entities.Base.NpcEntity`)**: extends `Entity` for non-playable/controllable entities with LLM-friendly control/state APIs:
-  - Intent/navigation requests: `GoToPosition(...)`, `GoToEntity(...)`, `ClearIntent()`, intent/target state
-  - Arbitrary structured state: `RememberState`, `RecallState`, `ApplyNpcStateData`, `GetNpcStateData`
-  - Internal chat/history for LLM context: `AppendChatHistory`, `GetChatHistory`, `GetChatHistoryState`
-  - Control-state export: `GetNpcControlState()`, `GetNpcControlStateJson()`
-- **`entities/player/PlayerEntity.cs` (`GridQuest.Entities.Player.PlayerEntity`)**: player implementation (input, upgrades, combat, lighting/progression) inheriting `Entity`
-- **`entities/enemy/EnemyEntity.cs` (`GridQuest.Entities.Enemy.EnemyEntity`)**: enemy implementation (aggro/wander/combat/loot) inheriting `NpcEntity` for tool-readable/control APIs
-- **`entities/npc/VillagerEntity.cs` (`GridQuest.Entities.Npc.VillagerEntity`)**: villager NPC implementation inheriting `NpcEntity` (dialogue/trust/advice/flee/home behavior + chat/LLM helpers)
-- **`entities/npc/KnightEntity.cs` (`GridQuest.Entities.Npc.KnightEntity`)**: knight NPC implementation inheriting `NpcEntity` (village protection/combat/regen/patrol)
+- **`entities/player/PlayerEntity.cs`** extends `Entity` with player movement, human input, combat animation, and upgrade behavior. Setting `UseHumanInput` to `false` routes movement through the shared entity intent.
+- **`entities/LlmEntity.cs`** extends `PlayerEntity` so autonomous characters can use the same inventory, combat, and upgrade capabilities. It disables human input and runs a one-action-at-a-time agent loop through `LlmApi`, reacting to startup, interaction, and damage events with a periodic fallback decision.
+- **`entities/SkinCatalog.cs`** is the shared skin list and sprite-frame builder. Entity instances select a skin by `SkinId`; villager profiles select skin and system prompt independently of entity behavior.
+- **`entities/EntityPopulationManager.cs`** creates generic LLM villagers for each generated village and schedules off-screen respawns.
 
-### Scene Compatibility Wrappers
-
-Existing scene/script paths are preserved via thin `[GlobalClass]` wrappers so `.tscn` references and legacy type lookups continue to work:
-
-- `player/Player.cs` → inherits `GridQuest.Entities.Player.PlayerEntity`
-- `enemy/Enemy.cs` → inherits `GridQuest.Entities.Enemy.EnemyEntity`
-- `npc/villager/Villager.cs` → inherits `GridQuest.Entities.Npc.VillagerEntity`
-- `npc/knight/KnightNpc.cs` → inherits `GridQuest.Entities.Npc.KnightEntity`
-
-### LLM / Tool-Control API Notes
-
-- NPCs and enemies expose `GetNpcControlState()` / JSON variants for reading current intent, stats, inventory/money/weapon, chat history, and arbitrary state.
-- Common tool-style convenience methods are provided on controllable entities (e.g. `ToolGoTo`, `ToolGoToEntity`, `ToolRemember`, `ToolAppendChat` where applicable) to simplify tool-call wiring.
-- Villagers additionally expose chat/advice prompt builders and runtime dialogue/trust context methods for in-game LLM interactions.
+The base tool list includes observation, movement, stop, attack, interaction, inventory inspection, weapon equip, upgrades, memory, and speech. `GetWorldObservation()` packages the entity state, nearby entities and interactables, time-of-day, and available tools for the LLM.
 
 ## Player
 
-`player/Player.cs` is a compatibility wrapper around `entities/player/PlayerEntity.cs`, which builds `SpriteFrames` at runtime based on equipped weapon (`assets/images/characters/cute_Player.png` default 32x32 sheet, `assets/images/characters/cute_Player_Scythe.png` when scythe equipped, `assets/images/characters/cute_Player_Crossbow.png` when crossbow equipped):
+`entities/player/player.tscn` uses `entities/player/PlayerEntity.cs`, which builds player animations at runtime based on the equipped weapon:
 
 | Row | Animation | Frames |
 | --- | --- | --- |
@@ -153,28 +115,27 @@ Existing scene/script paths are preserved via thin `[GlobalClass]` wrappers so `
 | 9 | death | 4 |
 
 Movement is 4-directional (`WASD`/arrow keys, controller left stick/D-pad) and is allowed during attacks. Attack: `Space`/`J` or controller **A** (uses the `attack` action). The player camera supports zoom in/out via mouse wheel and the `+` / `-` keys next to Backspace (no Shift), including keypad `+` / `-` (clamped).
-The player can damage enemies and knights. Health is shown in the player health bar. Debug cheats (including invincibility toggle) are available via the in-game cheat menu (`menus/CheatMenu.cs`, `` ` `` key) instead of direct gameplay keybinds.
+Health is shown in the player health bar. Debug cheats (including invincibility toggle) are available via the in-game cheat menu (`menus/CheatMenu.cs`, `` ` `` key) instead of direct gameplay keybinds.
 The player can equip sword, fire staff, **scythe** (superior melee: higher base damage/faster attacks, 360° damage around the player), and **crossbow** (superior ranged: higher base damage/faster projectile performance, hold attack to charge and release a heavy piercing bolt from `assets/images/fx/crossbow__bolt.png` that passes through multiple enemies). Equipping scythe/crossbow swaps to weapon-specific player animations.
 
 The player has a slot-based backpack inventory and weapon slot (`items/ItemDefs.cs`, `InventoryContainer.cs`).
 Coins collected in-world are tracked as gold in the player's wallet (used for monument upgrades). Coins are not stored as backpack items; coin transfers from chests are converted to wallet immediately, and any legacy coin stacks in the backpack are normalized into the wallet.
-`player/PlayerUpgradeDefs.cs` defines monument upgrade definitions/cost scaling, and `Player.cs` stores upgrade levels and applies derived combat/movement stats (including acceleration, regen/delay, armor, lifesteal, thorns, knockback, projectile/melee upgrades, temporary speed buffs, boss bonus damage hooks, AOE aura damage/radius, and Midas Touch gold-drop scaling). Coin purchases spend gold and remove coin items from inventory to stay in sync. Mob coin drops scale with the player's Midas Touch upgrade when mobs die (including projectile kills such as fire staff).
+`entities/player/PlayerUpgradeDefs.cs` defines monument upgrade definitions/cost scaling, and `PlayerEntity.cs` stores upgrade levels and applies derived combat/movement stats (including acceleration, regeneration, armor, lifesteal, thorns, knockback, projectile/melee upgrades, temporary speed buffs, AOE aura damage/radius, and Midas Touch gold-drop scaling). Coin purchases spend gold and remove coin items from inventory to stay in sync.
 
 ## Inventory, Chests, and Items
 
 - `menus/inventory_ui.tscn` + `InventoryUi.cs`/`InventorySlotUi.cs` provide the inventory UI and chest UI.
   - Toggle inventory: `E`/`Tab`/`I` or controller **Y** (`toggle_inventory`); close: same toggle, `Esc`, or controller **B/Start** (`ui_cancel`/`pause_menu`) depending on context.
-  - Interact/open nearby chest, villager/trader, or monument: `F` or controller **X** (`interact`). While the chest menu is open, inventory/close actions (`E`/`Tab`/`I`, `Esc`/`B`, or `F`/`X` when interacting with the open chest) or **Close Chest** close the entire inventory + chest view.
+  - Interact/open a nearby chest, villager, or monument: `F` or controller **X** (`interact`). While the chest menu is open, inventory/close actions (`E`/`Tab`/`I`, `Esc`/`B`, or `F`/`X` when interacting with the open chest) or **Close Chest** close the entire inventory + chest view.
   - Supports click-to-select move/swap and drag-and-drop between backpack, weapon slot, and chest; stacks merge where applicable, and chest loot can be moved with **Take All**. Controller UI navigation uses focus/directional input and **A** (`ui_accept`) to activate/select. The inventory panel also lists **purchased monument attribute upgrades** (name and level) below the backpack slots once acquired, so progression remains visible without spoiling unpurchased upgrades.
   - Coins taken from a chest into the player's inventory (including **Take All**) are consumed from the chest and added directly to the player's coin wallet instead of occupying backpack slots.
 - `menus/skills_ui.tscn` + `menus/SkillsUi.cs` provide the monument upgrade UI (`skills_ui` group). It opens from the monument, presents a **roll of 3 random upgrade options** at a time, and requires picking/purchasing one option before showing the next random 3 (uncapped levels; cost increases per level). Closes with `F`/`Esc` or cancel actions.
-- `menus/trader_ui.tscn` + `menus/TraderUi.cs` provide the village trader trade UI (`trader_ui` group), styled like the inventory/menus panels. Players can sell unequipped backpack loot/items and weapons (including chest-spawnable items such as key/bomb/orbs/letter/boots and all weapons) for coins at per-item sell prices (with quantity selection for stacks), buy weapons from the trader at higher prices, and purchase a permanent **5g Full Heal** service (separately highlighted in the UI).
 - `map/map_objects/chest/` defines a stateful chest object (`Chest.cs`, `chest.tscn`) that opens on interaction, generates/stores loot in a 12-slot container for transfer in/out, and supports daily restocking. Chest loot is increased overall but falls off rapidly to nothing after the **third day of the current world spawn** (`level/WorldProgress.cs` loot multiplier by world day). Procedural building/dungeon chests configured for daily restocking refill at sunrise, but their rewards decay with world day progression until nothing after day 3.
 - `RoomGenerator` can place room chests selectively (not every room) and add simple procedural room decor. `Map.GenerateBuildings()` places varied procedural buildings (different room counts/sizes) before wilderness decoration.
 
 ## Map and Tiles
 
-- `map/Map.cs` (attached to `map/map.tscn`) procedurally generates the 200×200 map at runtime (`MapConstants.CELL_SIZE` = 16px) and composes it into a `Floor` layer and an `Objects` layer (`Walls`, `Plants`, `Decor`, `Houses`, `Trees`), and can place generated buildings/rooms. It also provides a random player spawn point on an unoccupied grass tile within the playable/camera-reachable area.
+- `map/Map.cs` (attached to `map/map.tscn`) procedurally generates the 300×300 map at runtime (`MapConstants.CELL_SIZE` = 16px) and composes it into a `Floor` layer and an `Objects` layer (`Walls`, `Plants`, `Decor`, `Houses`, `Trees`), and can place generated buildings/rooms. It also provides a random player spawn point on an unoccupied grass tile within the playable/camera-reachable area.
 - **Ground:** the base terrain is a `Floor` `TileMapLayer` generated via `map/map_floors/FloorTileMapFactory.cs`/`FloorTiles.cs` (shared `TileSet` with grass/stone atlas sources, 16x16). Grass is placed everywhere by default; procedural villages and monument approach routes carve stone path tiles (`assets/images/map_tiles/floor/stone.png`).
 - **Villages:** generation places a limited number of spaced village clumps fully within the camera-reachable/playable map area (including village bounds, paths, and surrounding town-tree rings), without overlap with each other, the monument, paths/reserved areas, or map borders. `Map` exposes their bounds/centers as `Map.Villages` (`VillageArea`). Each village includes a small path network, 3–4 houses, and naturally decorated interiors with plants and town bushes placed on non-path, non-occupied ground. Houses are scene-backed map objects (`map/map_objects/house/house.tscn`, `HouseFactory.cs`) using `assets/images/map_tiles/cute_House_1_Wood_Base_Blue.png` with collision at the base.
 - **Village-only town trees:** colliding, y-sorted town trees (`assets/images/map_tiles/trees/town_tree-1.png`, `town_tree-2.png`) are placed only in a ring around village bounds as village-edge decoration (separate from forest trees), sparsely placed while avoiding paths/objects/reserved areas and overlap, and kept within the camera-reachable map area.
@@ -186,69 +147,29 @@ Coins collected in-world are tracked as gold in the player's wallet (used for mo
 - `FloorTiles` / `FloorTileMapFactory` (`map/map_floors/`) build/configure floor `TileMapLayer`s and the shared grass/stone `TileSet`.
 - See [map-architecture.md](./map-architecture.md) for tile-versus-node decisions.
 
-## Villagers
+## Autonomous Villagers
 
-- `npc/villager/Villager.cs` builds villager animations at runtime and runs simple idle/patrol/flee AI. Villagers target-threat flee from enemies, can take damage, and prefer to stay within/near their assigned home village (`SetHome`) by wandering locally and returning when displaced.
-- `npc/villager/VillagePopulationManager.cs` spawns a configurable number of regular villagers and one trader NPC per generated village at startup, and respawns villagers/traders after death when the village area is not visible to the active camera. Manual spawn inputs (`level/character_dev/VillagerSpawnInput.cs`) can also place/assign villagers to generated villages.
-- **Trader NPCs:** each village includes a trader using the normal villager sprite/animation with slower idle/patrol movement and a persistent blue `Trader` label above them (`npc/villager/villager.tscn`, `entities/npc/VillagerEntity.cs`). Interacting with a trader (`F`/controller **X**) opens the trader interface instead of villager chat.
-- **Trader interface:** `menus/trader_ui.tscn` + `menus/TraderUi.cs` provide an inventory-styled trade UI for selling unequipped backpack items and equipped weapons (looted/chest-spawnable non-coin items and all weapons) at per-item sell prices (with quantity selection for stacked items), buying weapons at higher prices using player coins, and purchasing a permanent **5g Full Heal** service (visually distinct/separate from weapon purchases). The UI pauses gameplay while open and closes with `Esc`/controller **B/Start**/`F`/Close.
-- **Interaction & chat:** regular villagers display a dynamically sized speech bubble above their head (`npc/villager/villager.tscn`) with state-based dialogue. Pressing `F` or controller **X** (`interact`) near the closest villager opens the villager chat interface (`menus/villager_chat_ui.tscn`, `VillagerChatUi.cs`) for streamed in-character responses (via `LlmApi` and `Villager` context); `Esc`/controller **B/Start**/Close closes it. Typing responses remains keyboard-based, and chat input is consumed while open so gameplay/menu keybinds do not trigger while typing.
-- **Trust & advice system (0–10):** calm regular villagers can ask the player for life advice during chat. Player responses are evaluated (LLM-based rating with fallback heuristics) to update a per-villager trust score (`0–10`). One good/helpful life-advice response increases trust to full high trust (`10`); normal interactions change trust by `+2` or `-2` (including negative/dismissive responses). Higher trust makes villagers more likely to randomly gift coin drops when the player is nearby, showing contextual thank-you speech-bubble messages (e.g. for help/upgrades). Gift frequency/amount scales with trust to support upgrade progression. Trader NPCs do not participate in advice/trust gifting/chat behavior.
-- **Flee/recovery dialogue:** while being chased, villagers show flee messages with a **10-second cooldown** between messages (one message, then at least 10s before another can appear if still chased). Recovered/idle dialogue states continue to update contextually, and temporary gift/trust messages can appear as speech-bubble dialogue.
-- **Dialogue/chat context:** `Villager` exposes dialogue/emotional/trust state and runtime context for dialogue/chat and advice evaluation via methods/properties such as `CurrentDialogueEmotion`, `CurrentDialogueText`, `Trust` (`0–10`), `GetDialogueContext()`, and chat/advice prompt helpers (state/emotion, fleeing/recovery/threat/home/player proximity, health, current dialogue, trust, etc.). Traders share the base villager entity/scene but are identified as trader-role NPCs.
+- `entities/EntityPopulationManager.cs` creates three generic `LlmEntity` villagers per generated village. Each profile supplies a name, skin, and system prompt; dead villagers respawn after a delay when their village is off screen.
+- `entities/LlmEntity.cs` uses `LlmApi` for an event-driven, one-tool-per-decision loop with a periodic fallback. Observations include nearby entities and interactables, self state, memory, conversation history, and available tools.
+- Pressing `F` or the `interact` action near a villager opens `menus/villager_chat_ui.tscn`. The villager's reply is generated from its profile and recent context, then it returns to autonomous decisions.
 
 ## Monument, Upgrades, and World Resets
 
 - `map/map_objects/monument/Monument.cs` tracks discovery when the player comes within discovery/interact range and opens the monument UI (`skills_ui`) when the player presses `F` nearby (with basic priority checks to avoid conflicting with chest/villager interactions). `menus/MonumentIndicator.cs` (added to level UI layers) displays a `meta_pickaxe.png` directional arrow that always points toward the monument from the screen center (texture top treated as the pointing direction) and is layered behind gameplay/UI overlays so menus and interfaces appear over it.
 - `menus/SkillsUi.cs` presents monument upgrades as a **3-option roll system**: 3 random upgrades are shown and the player must pick/purchase one before the next random 3 are rolled. The current roll persists when closing/reopening the monument until a purchase is made. Upgrades remain uncapped with increasing per-level coin costs. Purchases deduct coins/gold from the player.
 - The monument also provides an **always-available "Randomize Map Again"** world-reset option. It rerandomizes/regenerates the map (new layout/villages/buildings/monument placement, respawned world entities, player moved to a valid spawn, time set to sunrise) while keeping player progression (stats, inventory, purchased attribute upgrades/levels, and money). World-reset progress is tracked and shown in the monument UI (resets completed **this run**, current world day, high score/world reached, next cost). The world-reset count/cost scaling is **per-run** (resets on a fresh start) while the high score is persistent. Reset cost starts at **50 coins** and increases by **50** each reset in the current run.
-- **Boss fights (warp milestones):** boss encounters are scheduled every **3rd warp** in the current run (boss index = warp/3). At the **sunset** of that warp/world spawn, the corresponding boss encounter triggers. During boss fights, background/ambient music and normal enemy spawning are suppressed, the arena is transformed (keeps the **stone monument** and its **cardinal stone paths only**, turns other ground to grass, removes other collision/obstacle objects except the **border wall**), non-essential entities are cleared, the player is repositioned in the arena, day/night time and lighting are frozen, and **world reset/randomize is blocked** until the boss is defeated. `menus/CheatMenu.cs` includes debug triggers to set sunset and start boss encounters.
-  - **Hellhound Swarm** (3rd warp, boss 1): plays `assets/audio/sfx/hellhoundsummon.mp3`, then shows **"Hell is coming"** (white text) during a **black screen flash**. After intro, a slight red tint fades in and a top-centered boss bar labeled **"Hellhound Swarm"** tracks a large boss health pool. Hellhounds spawn in a **constant stream** (high active swarm, very fast/small) after a short ready delay until the health pool is depleted; the reward spawns only after the final hellhound is defeated (150 coins base, scaled for later boss milestones).
-  - **Executioner** (6th warp, boss 2): the spawn audio `assets/audio/sfx/executionersummon.mp3` and boss music `assets/audio/sfx/ambientexc_music.mp3` start at the **sunset bossfight trigger** (before the blackout). A **6-second blackout** shows white text **"Judge... Jury..."** while the arena is cleared/transformed (monument hidden for the fight, cardinal stone paths kept), entities are cleared, and the player is placed; after the blackout ends the Executioner begins its **`summonDeath` spawn-in animation** (8 seconds) near the center of the stone/monument area. Time is set to **midnight** and frozen with a darkened (but visible) environment for the duration of the fight, and the **"Executioner"** boss bar loads in. Exactly **7 seconds after the sunset/bossfight trigger** the player's lamp goes out and player movement unlocks; exactly **14 seconds after the trigger** (audio end moment) the spawn-in finishes and the spawn audio stops. The Executioner becomes combat-active at least **1–2 seconds after the audio ends**. It is a fast, hard-hitting, unpredictable single-target boss (teleport-like dash bursts and retreat jumps after attacks) that plays a coin-pickup cue and emits a faint **green light** during attack windup/strikes. When defeated, the monument reappears, the player's lamp flickers back on, boss music stops, time/lighting resume, and a larger reward (scaled for the 6th world reset/boss milestone) is spawned. This fight is tuned to be significantly harder than the Hellhound Swarm.
-- Available upgrades include: Player Movement Speed, Player Acceleration, Attack Speed, Attack Damage, Maximum Health, Slow Health Regeneration, Health Regeneration Delay, Damage Reduction Armor, Lifesteal, Thorns Damage, Knockback Strength, Projectile Speed, Projectile Damage, Melee Range, Movement Speed After Taking Damage, Movement Speed After Killing an Enemy, **AOE Aura** (small visible damaging circle around the player; upgrades slowly increase range and damage), and **Midas Touch** (increases gold dropped by mobs).
-
-## Enemies
-
-`Enemy.cs` builds `SpriteFrames` at runtime from a configurable 32×32 sprite sheet. It exposes
-movement, health, combat, texture, and animation settings. When not aggroed, enemies idle/wander around locally; when a target (player, allied knight, or villager) is within agro range they chase and attack with a timed windup that applies damage at the end of the attack animation if the target is still in range. Horde-spawned enemies can be flagged to force-chase the player.
-
-| Scene | Variant | Speed | Health | Attack | Appearance/notes |
-| --- | --- | --- | --- | --- | --- |
-| `enemy.tscn` | Base | 50 | 3 | 1 dmg, 24 range, 0.8s cooldown | Skeleton |
-| `skeleton_enemy.tscn` | Medium | 50 | 3 | 1 dmg, 24 range, 0.8s cooldown | Standard skeleton |
-| `elite_skeleton_enemy.tscn` | Hard | 70 | 6 | 2 dmg, 26 range, 0.7s cooldown | Larger red-tinted skeleton |
-| `blood_monster_enemy.tscn` | Blood Monster | 75 | 10 | 3 dmg, 30 range, 0.7s cooldown | Spawns day 3+ of current world spawn (added onto existing spawns), harder/faster, drops 5 gold; sprite from `assets/images/enemies/Blood_Monster/` |
-| `goblin_enemy.tscn` | Goblin | 85 | 2 | 1 dmg, 20 range, 0.45s cooldown | Spawns only inside building/dungeon interiors, small (fits doors), quick/annoying, drops 2 gold; sprite from `assets/images/enemies/Goblin/` |
-| `vampire_enemy.tscn` | Vampire | 70 | 6 | 2 dmg, 24 range, 0.7s cooldown | Spawns only at night, flees offscreen at sunrise (despawns on escape, dies+drops coins if stuck), drops 5 gold; sprite from `assets/images/enemies/vampire/` |
-| `hellhound_enemy.tscn` | Hellhound | 1000 | 8 | 1 dmg, 22 range, 0.55s cooldown | Boss-swarm enemy using `assets/images/enemies/Hellhound_1..3/` strip animations (idle/walk/run/attack/hurt/dead), very fast and small (50% scale), spawned continuously by the Hellhound Swarm boss fight (variants randomized). |
-| `executioner_enemy.tscn` | Executioner | 260 (dash bursts) | 220 | 18 dmg, 46 range, 0.8s cooldown | Single-target boss spawned by the Executioner encounter (warp 6). Uses `assets/images/enemies/Executioner/` animations (spawn/idle/walk/skill/attack/death), fights with fast dash/teleport-like movement, and shows a faint green attack light during strikes. |
-
-`level/EnemySpawnOnKill.cs` performs off-camera monster spawning with an initial population seed, a maintained minimum population, and a higher cap to keep many monsters roaming the map. Spawns favor normal skeletons over elite skeletons and run in gameplay levels (including the main character dev level). Base spawn pressure is tuned higher, with additional night-time scaling and survival-time difficulty scaling that increases enemy counts over time (capped, without increasing mob health). The spawner can trigger random night-weighted hordes (targeting the player) and enforces special spawn rules: other mobs cannot spawn inside building/dungeon (walled interior) areas (only goblins), goblins spawn only inside building/dungeon interiors (small enough to pass doors, low damage/fast, 2 gold), blood monsters spawn on day 3+ of the current world spawn relative to the last respawn/world reset and are added onto existing mob spawns (harder/faster/more damage, 5 gold), and vampires spawn only at night (fairly fast/decent damage, 5 gold) then flee offscreen at sunrise to despawn or die and drop coins if unable to flee. During active boss fights, normal enemy spawning is suppressed and non-boss enemies are cleared for the encounter. `level/character_dev/EnemyTestSpawner.cs` remains a temporary manual test spawner if attached/scripted for dev use. Remove temporary spawners when no longer needed.
-
-Enemy combat integrates with player upgrade effects: `Enemy.cs` supports knockback (`ApplyKnockback`) and passes attacker context on player damage so thorns can trigger. `items/Fireball.cs` uses upgraded projectile speed/damage/knockback, passes damage/source context for kills, and notifies the player on hits for on-hit effects (e.g. lifesteal / kill-speed hooks). Player projectiles are stopped by wall objects (`walls` group, e.g. border/building stone walls) but pass through trees/other non-wall obstacles. When mobs die they drop their gold amount as coin pickups (scaled by Midas Touch), including kills from melee, AOE aura, and projectile weapons such as the fire staff and crossbow.
-
-## Allied Knight NPC
-
-`npc/knight/KnightNpc.cs` builds `SpriteFrames` at runtime from the `forest_hero` character
-sprites under `assets/images/characters/`. Knights are allied village protectors: they target and attack nearby monsters threatening their village, can take damage, regenerate slowly after a delay out of combat, and can be assigned a home village (`SetHome`) to patrol/return near and stay in the village area.
-- `npc/knight/VillageKnightPopulationManager.cs` spawns 2 knights per generated village at startup (within village bounds) and respawns them quickly (10s) when the village area is not visible to the camera to maintain the garrison.
-- Manual spawn input (`G`) can still spawn a knight near the player (dev/testing). The player can also damage knights.
+- Available upgrades include: Player Movement Speed, Player Acceleration, Attack Speed, Attack Damage, Maximum Health, Slow Health Regeneration, Health Regeneration Delay, Damage Reduction Armor, Lifesteal, Thorns Damage, Knockback Strength, Projectile Speed, Projectile Damage, Melee Range, Movement Speed After Taking Damage, Movement Speed After Defeating a Target, **AOE Aura** (small visible damaging circle around the player; upgrades slowly increase range and damage), and **Midas Touch** (increases gold drops).
 
 ## Day/Night Cycle and Lighting
 
-- `level/DayNightCycle.cs` (attached to level `CanvasModulate` nodes, group `day_night_cycle`) drives a continuous day-night cycle over a configurable duration (default 300s full cycle), starts at **sunrise** by default, and emits a sunrise transition signal for daily systems. Sunrise advances the current **world-spawn day counter** used for loot/restock decay (`level/WorldProgress.cs`). Time/lighting progression can be frozen/resumed (used by boss fights, e.g. Hellhound Swarm).
-- The cycle tints the world via `CanvasModulate` with smooth gradient transitions: deep night, brighter-yellow sunrise, full day, orangish sunset, and back to night.
-- `level/EnemySpawnOnKill.cs` queries the active day/night cycle to apply increased enemy pressure at night (higher effective min/max population and spawn pacing/chance scaling), in addition to time-survival difficulty scaling and night-weighted horde spawns.
-- Generated building/room interiors are visually darkened (`RoomGenerator` room modulate) so buildings remain dark. `Map` tracks building interior rects and exposes `IsWorldPositionInsideBuilding(...)` for indoor checks.
-- The player's `PointLight2D` is used for exploration lighting: it turns on inside buildings (with brighter/wider indoor light for visibility), turns on outdoors around sunset/night when ambient daylight is low, and turns off outdoors during the day (around sunrise/daylight). Boss encounters can temporarily override this behavior (e.g. force lamp off and flicker it back on) via player lighting control APIs.
-- Procedural building/dungeon chests configured for daily restocking refill at sunrise, with rewards decaying by world day until nothing after day 3.
+- `level/DayNightCycle.cs` drives the configurable day-night cycle, updates world-spawn day progression at sunrise, and modulates ambient lighting.
+- The player's `PointLight2D` illuminates building interiors and outdoor areas at night. Generated building interiors are darkened for exploration.
+- Building chests can restock at sunrise; loot decreases with world-spawn day and reaches zero after day three.
 
-## Survival Time and Difficulty
+## World Progress and Resets
 
-- `level/SurvivalStats.cs` (group `survival_stats`, added to gameplay levels) tracks elapsed survival time and provides a capped difficulty multiplier used to increase enemy counts over time (without changing mob health).
-- `level/WorldProgress.cs` persists the global **world-reset high score** (`user://world_progress.json` / `OS.GetUserDataDir()`), tracks **per-run** world resets and the current world-spawn day for loot decay/reset logic, and provides helpers used by monument resets, sunrise/day progression, chest loot scaling, and death/reset high-score recording (high score updates only when a higher world number is reached). `level/WorldResetManager.cs` (level node) orchestrates in-session map rerandomization/reset flow from the monument UI.
-- `menus/SurvivalTimerUi.cs` displays a small unobtrusive survival timer in the top-left HUD (CanvasLayer), formatted dynamically as seconds, minutes, or hours as time progresses (no milliseconds).
-- `level/EnemySpawnOnKill.cs` uses survival time and day/night state to scale ambient spawn pressure and to trigger random hordes (groups of base skeletons, primarily at night) that target the player.
+- `level/WorldProgress.cs` tracks per-run resets and world days, and persists the highest world reached.
+- `level/WorldResetManager.cs` regenerates the map while preserving player progression, then asks `EntityPopulationManager` to repopulate its villages.
 
 ## Notes
  
@@ -284,10 +205,9 @@ sprites under `assets/images/characters/`. Knights are allied village protectors
 - `assets/audio/music/` and `assets/audio/sfx/` contain imported audio resources (`.ogg/.mp3/.wav`).
 - **Main level BGM:** `level/character_dev/MainLevel.cs` starts `res://assets/audio/sfx/forest_ancient_path.ogg` on a looping `AudioStreamPlayer` in the main gameplay level.
 - **Gameplay SFX:**
-  - Enemy death: `enemy/Enemy.cs` plays `res://assets/audio/sfx/forest_enemy-death.ogg` when an enemy dies.
-  - Player hurt: `player/Player.cs` plays `res://assets/audio/sfx/forest_hurt.ogg` on damage (non-overlapping while already playing).
+  - Player hurt: `entities/player/PlayerEntity.cs` plays `res://assets/audio/sfx/forest_hurt.ogg` on damage (non-overlapping while already playing).
   - Coin pickup: `items/Coin.cs` plays `res://assets/audio/sfx/forest_item.ogg` on collection (overlapping allowed).
-  - Sword attack: `player/Player.cs` plays `res://assets/audio/sfx/forest_slash.ogg` when using a sword/melee attack (not fire staff).
+  - Sword attack: `entities/player/PlayerEntity.cs` plays `res://assets/audio/sfx/forest_slash.ogg` when using a sword/melee attack (not fire staff).
 
 
 ## Tests

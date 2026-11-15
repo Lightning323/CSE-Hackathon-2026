@@ -1,11 +1,12 @@
 using Godot;
+using GridQuest.Entities.Player;
 using GridQuest.PlayerUpgrades;
 using System;
 using System.Collections.Generic;
 
 public partial class SkillsUi : Control
 {
-	private Player _player;
+	private PlayerEntity _player;
 	private Label _coinsLabel;
 	private VBoxContainer _list;
 	private Label _statusLabel;
@@ -95,7 +96,7 @@ public partial class SkillsUi : Control
 	private void ResolvePlayer()
 	{
 		if (_player == null || !GodotObject.IsInstanceValid(_player))
-			_player = GetTree().GetFirstNodeInGroup("player") as Player;
+			_player = GetTree().GetFirstNodeInGroup("player") as PlayerEntity;
 	}
 
 	public void Open()
@@ -117,8 +118,6 @@ public partial class SkillsUi : Control
 	{
 		var villagerChat = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
 		if (villagerChat != null && villagerChat.Visible) return;
-		var traderUi = GetTree().GetFirstNodeInGroup("trader_ui") as Control;
-		if (traderUi != null && traderUi.Visible) return;
 		if (!Visible) return;
 		bool closePressed = @event.IsActionPressed("interact") || @event.IsActionPressed("ui_cancel") || @event.IsActionPressed("pause_menu");
 		if (!closePressed && @event is InputEventKey key && key.Pressed && !key.Echo && (key.Keycode == Key.F || key.Keycode == Key.Escape))
@@ -231,13 +230,6 @@ public partial class SkillsUi : Control
 		}
 	}
 
-	private bool IsAnyBossFightActive()
-	{
-		if (GetTree().GetFirstNodeInGroup("hellhound_swarm_boss_manager") is HellhoundSwarmBoss h && h.IsActive) return true;
-		if (GetTree().GetFirstNodeInGroup("executioner_boss_manager") is ExecutionerBoss e && e.IsActive) return true;
-		return false;
-	}
-
 	private void OnRandomizeWorldPressed()
 	{
 		ResolvePlayer();
@@ -245,12 +237,6 @@ public partial class SkillsUi : Control
 		if (_player == null)
 		{
 			_statusLabel.Text = "Player not found.";
-			return;
-		}
-		if (IsAnyBossFightActive())
-		{
-			_statusLabel.Text = "Cannot randomize/reset the world during an active boss fight.";
-			Refresh();
 			return;
 		}
 		if (_player.Gold < cost)
@@ -287,13 +273,9 @@ public partial class SkillsUi : Control
 		}
 		if (_resetWorldButton != null)
 		{
-			bool bossActive = IsAnyBossFightActive();
 			_resetWorldButton.Text = $"Randomize Map Again ({resetCost}c)";
-			_resetWorldButton.Disabled = bossActive || _player == null || _player.Gold < resetCost;
-			if (bossActive)
-				_resetWorldButton.TooltipText = "Unavailable during an active boss fight.";
-			else
-				_resetWorldButton.TooltipText = "";
+			_resetWorldButton.Disabled = _player == null || _player.Gold < resetCost;
+			_resetWorldButton.TooltipText = "";
 		}
 
 		if (_currentOfferIds.Count == 0)

@@ -50,7 +50,7 @@ public partial class CrossbowBolt : Area2D
 		if (body == null || !IsInstanceValid(body))
 			return;
 
-		if (body.IsInGroup("enemies") && body.HasMethod("TakeDamage"))
+		if (body.IsInGroup("entities") && body != _sourcePlayerEntity && body.HasMethod("TakeDamage"))
 		{
 			ulong id = body.GetInstanceId();
 			if (_hitTargets.Contains(id))
@@ -84,7 +84,7 @@ public partial class CrossbowBolt : Area2D
 				_sourcePlayerEntity.NotifyProjectileHit(body);
 			}
 
-			// Heavy piercing: pass through multiple enemies, then expire.
+			// Heavy piercing: pass through multiple targets, then expire.
 			PierceCount--;
 			if (PierceCount <= 0)
 				QueueFree();

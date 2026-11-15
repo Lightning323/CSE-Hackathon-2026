@@ -30,34 +30,6 @@ public partial class MainLevel : Node2D
 			bgm.Play();
 	}
 
-	public void StopBackgroundMusicForBoss()
-	{
-		var bgm = GetNodeOrNull<AudioStreamPlayer>("BgmPlayer");
-		if (bgm != null && bgm.Playing)
-			bgm.Stop();
-		// Also stop any other ambient/background music players in scene if present.
-		foreach (Node n in GetTree().GetNodesInGroup("ambient_music"))
-		{
-			if (n is AudioStreamPlayer asp) asp.Stop();
-			else if (n is AudioStreamPlayer2D asp2d) asp2d.Stop();
-		}
-	}
-
-	public void ResumeBackgroundMusicAfterBoss()
-	{
-		var bgm = GetNodeOrNull<AudioStreamPlayer>("BgmPlayer");
-		if (bgm != null && !bgm.Playing)
-		{
-			bgm.VolumeDb = -8.0f;
-			bgm.Play();
-		}
-		foreach (Node n in GetTree().GetNodesInGroup("ambient_music"))
-		{
-			if (n is AudioStreamPlayer asp && asp.Stream != null && !asp.Playing) asp.Play();
-			else if (n is AudioStreamPlayer2D asp2d && asp2d.Stream != null && !asp2d.Playing) asp2d.Play();
-		}
-	}
-
 	private void PlacePlayerAtRandomSpawn()
 	{
 		var player = GetNodeOrNull<Node2D>("Player");

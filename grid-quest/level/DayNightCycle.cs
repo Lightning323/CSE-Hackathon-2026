@@ -86,20 +86,6 @@ public partial class DayNightCycle : CanvasModulate
 		_wasDaytime = isDaytime;
 	}
 
-	public float GetEnemySpawnMultiplier()
-	{
-		// Slightly more enemies during night, smooth ramp.
-		return Mathf.Lerp(1.0f, 1.35f, NightFactor);
-	}
-
-	public int GetAdjustedEnemyCount(int baseCount, bool minimum = false)
-	{
-		float mult = GetEnemySpawnMultiplier();
-		if (minimum)
-			mult = Mathf.Lerp(1.0f, 1.2f, NightFactor);
-		return Mathf.Max(1, Mathf.CeilToInt(baseCount * mult));
-	}
-
 	private static Color EvaluateColor(float t, out float daylight)
 	{
 		// Keyframes over full cycle:

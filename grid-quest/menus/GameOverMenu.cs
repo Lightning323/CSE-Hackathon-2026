@@ -1,4 +1,5 @@
 using Godot;
+using GridQuest.Entities.Player;
 
 public partial class GameOverMenu : Control
 {
@@ -42,8 +43,8 @@ public partial class GameOverMenu : Control
 
 	private void ConnectToPlayer()
 	{
-		var player = GetTree().GetFirstNodeInGroup("player") as Player;
-		if (player != null && !player.IsConnected(Player.SignalName.Died, Callable.From(OnPlayerDied)))
+		var player = GetTree().GetFirstNodeInGroup("player") as PlayerEntity;
+		if (player != null && !player.IsConnected(PlayerEntity.SignalName.Died, Callable.From(OnPlayerDied)))
 			player.Died += OnPlayerDied;
 	}
 
@@ -76,8 +77,7 @@ public partial class GameOverMenu : Control
 		var skills = GetTree().GetFirstNodeInGroup("skills_ui") as Control;
 		var cheat = GetTree().GetFirstNodeInGroup("cheat_ui") as Control;
 		var villagerChat = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
-		var trader = GetTree().GetFirstNodeInGroup("trader_ui") as Control;
-		if ((inv != null && inv.Visible) || (skills != null && skills.Visible) || (cheat != null && cheat.Visible) || (villagerChat != null && villagerChat.Visible) || (trader != null && trader.Visible))
+		if ((inv != null && inv.Visible) || (skills != null && skills.Visible) || (cheat != null && cheat.Visible) || (villagerChat != null && villagerChat.Visible))
 			return;
 
 		if (Visible)
@@ -202,7 +202,7 @@ public partial class GameOverMenu : Control
 			"  Move: WASD / Arrow Keys / Controller Left Stick / D-pad\n\n" +
 			"[b]Combat & Interaction[/b]\n" +
 			"  Attack: Space / J / Controller A\n" +
-			"  Interact (chest, villager/trader, monument): F / Controller X\n\n" +
+			"  Interact (chest, villager, monument): F / Controller X\n\n" +
 			"[b]Inventory & UI[/b]\n" +
 			"  Toggle Inventory: E / Tab / I / Controller Y\n" +
 			"  UI Navigate: Arrow Keys / D-pad / Left Stick\n" +

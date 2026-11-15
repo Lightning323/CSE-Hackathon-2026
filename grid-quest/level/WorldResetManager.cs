@@ -1,4 +1,6 @@
 using Godot;
+using GridQuest.Entities;
+using GridQuest.Entities.Player;
 
 public partial class WorldResetManager : Node
 {
@@ -9,11 +11,8 @@ public partial class WorldResetManager : Node
 
 	public bool TryRandomizeWorld()
 	{
-		if (IsAnyBossFightActive())
-			return false;
-
 		int cost = WorldProgress.GetWorldResetCost();
-		Player player = GetTree().GetFirstNodeInGroup("player") as Player;
+		PlayerEntity player = GetTree().GetFirstNodeInGroup("player") as PlayerEntity;
 		Map map = GetTree().GetFirstNodeInGroup("map") as Map ?? GetTree().CurrentScene?.GetNodeOrNull<Map>("Map");
 		if (player == null || map == null)
 			return false;
@@ -41,21 +40,14 @@ public partial class WorldResetManager : Node
 		return true;
 	}
 
-	private bool IsAnyBossFightActive()
-	{
-		if (GetTree().GetFirstNodeInGroup("hellhound_swarm_boss_manager") is HellhoundSwarmBoss h && h.IsActive) return true;
-		if (GetTree().GetFirstNodeInGroup("executioner_boss_manager") is ExecutionerBoss e && e.IsActive) return true;
-		return false;
-	}
-
 	private void ClearTransientWorldEntities()
 	{
-		string[] groups = { "enemies", "villager_npcs", "knights", "villagers", "traders", "coin_pickups", "projectiles" };
+		string[] groups = { "llm_entities", "coin_pickups", "projectiles" };
 		foreach (string group in groups)
 		{
 			foreach (Node node in GetTree().GetNodesInGroup(group))
 			{
-				if (node is Player) continue;
+				if (node.IsInGroup("player")) continue;
 				if (IsInstanceValid(node))
 					node.QueueFree();
 			}
@@ -66,7 +58,7 @@ public partial class WorldResetManager : Node
 		if (scene == null) return;
 		foreach (Node child in scene.GetChildren())
 		{
-			if (child is Player || child is Map || child is CanvasLayer || child is CanvasModulate) continue;
+			if (child is Map || child is CanvasLayer || child is CanvasModulate) continue;
 			if (child is Node && (child.Name.ToString().Contains("Fireball", System.StringComparison.OrdinalIgnoreCase) || child.Name.ToString().Contains("Coin", System.StringComparison.OrdinalIgnoreCase)))
 				child.QueueFree();
 		}
@@ -74,19 +66,7 @@ public partial class WorldResetManager : Node
 
 	private void ReinitializeWorldSystems()
 	{
-		if (GetTree().GetFirstNodeInGroup("village_population_manager") is VillagePopulationManager vpm && vpm.HasMethod("ResetForNewMap"))
-			vpm.CallDeferred("ResetForNewMap");
-		else if (GetTree().CurrentScene?.GetNodeOrNull<Node>("VillagePopulationManager") is Node n1 && n1.HasMethod("ResetForNewMap"))
-			n1.CallDeferred("ResetForNewMap");
-
-		if (GetTree().GetFirstNodeInGroup("village_knight_population_manager") is VillageKnightPopulationManager kpm && kpm.HasMethod("ResetForNewMap"))
-			kpm.CallDeferred("ResetForNewMap");
-		else if (GetTree().CurrentScene?.GetNodeOrNull<Node>("VillageKnightPopulationManager") is Node n2 && n2.HasMethod("ResetForNewMap"))
-			n2.CallDeferred("ResetForNewMap");
-
-		if (GetTree().GetFirstNodeInGroup("enemy_spawn_manager") is EnemySpawnOnKill esm && esm.HasMethod("ResetForNewMap"))
-			esm.CallDeferred("ResetForNewMap");
-		else if (GetTree().CurrentScene?.GetNodeOrNull<Node>("EnemySpawnOnKill") is Node n3 && n3.HasMethod("ResetForNewMap"))
-			n3.CallDeferred("ResetForNewMap");
+		if (GetTree().GetFirstNodeInGroup("entity_population_manager") is EntityPopulationManager manager)
+			manager.CallDeferred(nameof(EntityPopulationManager.ResetForNewMap));
 	}
 }

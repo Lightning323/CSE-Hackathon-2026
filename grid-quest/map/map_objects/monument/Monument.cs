@@ -1,4 +1,6 @@
 using Godot;
+using GridQuest.Entities;
+using GridQuest.Entities.Player;
 
 public partial class Monument : Node2D
 {
@@ -16,6 +18,13 @@ public partial class Monument : Node2D
 		_sprite = GetNodeOrNull<Sprite2D>("Sprite2D");
 		AddToGroup("monument");
 		AddToGroup("interactables");
+	}
+
+	public void Interact(PlayerEntity actor)
+	{
+		Discovered = true;
+		if (!actor.UseHumanInput)
+			actor.RememberState("monument_discovered", true);
 	}
 
 	public override void _Process(double delta)
@@ -36,8 +45,6 @@ public partial class Monument : Node2D
 	{
 		var villagerChat = GetTree().GetFirstNodeInGroup("villager_chat_ui") as Control;
 		if (villagerChat != null && villagerChat.Visible) return;
-		var traderUi = GetTree().GetFirstNodeInGroup("trader_ui") as Control;
-		if (traderUi != null && traderUi.Visible) return;
 		if (!_playerNear) return;
 		bool interactPressed = @event.IsActionPressed("interact");
 		if (!interactPressed && @event is InputEventKey key && key.Pressed && !key.Echo && key.Keycode == Key.F)
@@ -83,9 +90,9 @@ public partial class Monument : Node2D
 	{
 		var player = GetTree().GetFirstNodeInGroup("player") as Node2D;
 		if (player == null) return false;
-		foreach (var node in GetTree().GetNodesInGroup("villager_npcs"))
+		foreach (var node in GetTree().GetNodesInGroup("llm_entities"))
 		{
-			if (node is Villager villager && IsInstanceValid(villager) && player.GlobalPosition.DistanceTo(villager.GlobalPosition) <= villager.InteractRange)
+			if (node is LlmEntity villager && IsInstanceValid(villager) && player.GlobalPosition.DistanceTo(villager.GlobalPosition) <= villager.InteractionRange)
 				return true;
 		}
 		return false;

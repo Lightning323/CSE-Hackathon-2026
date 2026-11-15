@@ -1,4 +1,6 @@
 using Godot;
+using GridQuest.Entities;
+using GridQuest.Entities.Player;
 using GridQuest.Items;
 
 namespace GridQuest.Map.MapObjects;
@@ -20,6 +22,7 @@ public partial class Chest : MapObjectFactory
 		BlocksMovement = true;
 		YSortEnabled = true;
 		AddToGroup("chests");
+		AddToGroup("interactables");
 		if (RestocksDaily) AddToGroup("daily_restock_chests");
 		_sprite = GetNodeOrNull<Sprite2D>("Sprite2D");
 		UpdateVisual();
@@ -42,11 +45,21 @@ public partial class Chest : MapObjectFactory
 		RestockLoot();
 	}
 
-	public void Interact(Player player)
+	public void Interact(PlayerEntity player)
 	{
 		if (!IsOpen)
 		{
 			OpenChest();
+		}
+		if (!player.UseHumanInput)
+		{
+			foreach (var slot in Contents.Slots)
+			{
+				if (slot == null || slot.IsEmpty || !player.AddItem(slot.ItemId, slot.Count)) continue;
+				slot.ItemId = null;
+				slot.Count = 0;
+			}
+			return;
 		}
 		var ui = GetTree().GetFirstNodeInGroup("inventory_ui") as InventoryUi;
 		ui?.OpenChest(this);
