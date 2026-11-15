@@ -23,13 +23,13 @@ public static class SkinCatalog
 
 	public static IReadOnlyList<EntitySkin> All { get; } = new[]
 	{
-		new EntitySkin("player", "Player", "res://assets/images/characters/cute_Player.png"),
-		new EntitySkin("folk-dogwalker", "Dogwalker", VillagerPath + "folk-dogwalker.png"),
-		new EntitySkin("folk-grandma", "Grandma", VillagerPath + "folk-grandma.png"),
-		new EntitySkin("school-teacher", "Teacher", VillagerPath + "school-teacher.png"),
-		new EntitySkin("season-pumpkin", "Pumpkin", VillagerPath + "season-pumpkin.png"),
-		new EntitySkin("work-chef", "Chef", VillagerPath + "work-chef.png"),
-		new EntitySkin("shop-barista", "Barista", VillagerPath + "shop-barista.png")
+		new EntitySkin("player", "Player", "res://assets/images/characters/cute_Player.png")
+		// new EntitySkin("folk-dogwalker", "Dogwalker", VillagerPath + "folk-dogwalker.png"),
+		// new EntitySkin("folk-grandma", "Grandma", VillagerPath + "folk-grandma.png"),
+		// new EntitySkin("school-teacher", "Teacher", VillagerPath + "school-teacher.png"),
+		// new EntitySkin("season-pumpkin", "Pumpkin", VillagerPath + "season-pumpkin.png"),
+		// new EntitySkin("work-chef", "Chef", VillagerPath + "work-chef.png"),
+		// new EntitySkin("shop-barista", "Barista", VillagerPath + "shop-barista.png")
 	};
 
 	public static EntitySkin Get(string id)
