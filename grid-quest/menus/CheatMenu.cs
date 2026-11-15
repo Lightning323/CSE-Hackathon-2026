@@ -1,10 +1,9 @@
 using Godot;
 using GridQuest.Entities;
-using GridQuest.Entities.Player;
 
 public partial class CheatMenu : Control
 {
-	private PlayerEntity _player;
+	private Entity _player;
 	private CheckButton _invincibilityToggle;
 	private Label _statusLabel;
 
@@ -64,8 +63,8 @@ public partial class CheatMenu : Control
 		}
 		root.AddChild(weapons);
 
-		var spawn = new Button { Text = "Spawn LLM Villager" };
-		spawn.Pressed += SpawnLlmEntity;
+		var spawn = new Button { Text = "Spawn AI Entity" };
+		spawn.Pressed += SpawnEntity;
 		root.AddChild(spawn);
 
 		var timeRow = new HBoxContainer();
@@ -85,7 +84,7 @@ public partial class CheatMenu : Control
 	private void ResolvePlayer()
 	{
 		if (_player == null || !IsInstanceValid(_player))
-			_player = GetTree().GetFirstNodeInGroup("player") as PlayerEntity;
+			_player = GetTree().GetFirstNodeInGroup("controlled_entity") as Entity ?? GetTree().GetFirstNodeInGroup("player") as Entity;
 		if (_player != null && _invincibilityToggle != null)
 			_invincibilityToggle.ButtonPressed = _player.DebugInvulnerable;
 	}
@@ -130,19 +129,20 @@ public partial class CheatMenu : Control
 		_statusLabel.Text = added ? $"Added {itemId}." : "Inventory is full.";
 	}
 
-	private void SpawnLlmEntity()
+	private void SpawnEntity()
 	{
 		ResolvePlayer();
-		if (_player == null) return;
-		var scene = GD.Load<PackedScene>("res://entities/llm_entity.tscn");
+		Vector2 pos = _player?.GlobalPosition ?? new Vector2(160, 160);
+		var scene = GD.Load<PackedScene>("res://entities/entity.tscn");
 		if (scene == null)
 		{
-			GD.PushError("Could not load the generic LLM entity scene.");
+			GD.PushError("Could not load the entity scene.");
 			return;
 		}
-		var entity = scene.Instantiate<LlmEntity>();
-		entity.Name = "SpawnedVillager";
-		entity.GlobalPosition = _player.GlobalPosition + Vector2.Right * 40.0f;
+		var entity = scene.Instantiate<Entity>();
+		entity.Name = "SpawnedEntity";
+		entity.AiControlled = true;
+		entity.GlobalPosition = pos + Vector2.Right * 40.0f;
 		GetTree().CurrentScene?.AddChild(entity);
 	}
 

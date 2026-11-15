@@ -1,6 +1,5 @@
 using Godot;
 using GridQuest.Entities;
-using GridQuest.Entities.Player;
 using GridQuest.Items;
 
 namespace GridQuest.Map.MapObjects;
@@ -45,13 +44,13 @@ public partial class Chest : MapObjectFactory
 		RestockLoot();
 	}
 
-	public void Interact(PlayerEntity player)
+	public void Interact(Entity player)
 	{
 		if (!IsOpen)
 		{
 			OpenChest();
 		}
-		if (!player.UseHumanInput)
+		if (player.AiControlled)
 		{
 			foreach (var slot in Contents.Slots)
 			{

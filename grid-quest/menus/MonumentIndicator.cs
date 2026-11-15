@@ -22,7 +22,7 @@ public partial class MonumentIndicator : TextureRect
 	public override void _Process(double delta)
 	{
 		_monument ??= GetTree().GetFirstNodeInGroup("monument") as Monument;
-		_player ??= GetTree().GetFirstNodeInGroup("player") as Node2D;
+		_player ??= GetTree().GetFirstNodeInGroup("controlled_entity") as Node2D ?? GetTree().GetFirstNodeInGroup("player") as Node2D;
 
 		if (_monument == null || _player == null)
 		{

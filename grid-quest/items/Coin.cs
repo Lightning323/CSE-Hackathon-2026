@@ -85,7 +85,7 @@ public partial class Coin : Area2D
 			return;
 		}
 
-		Node2D player = GetTree().GetFirstNodeInGroup("player") as Node2D;
+		Node2D player = GetTree().GetFirstNodeInGroup("controlled_entity") as Node2D ?? GetTree().GetFirstNodeInGroup("player") as Node2D;
 		if (player == null || !IsInstanceValid(player))
 		{
 			return;
@@ -120,7 +120,7 @@ public partial class Coin : Area2D
 
 	private void OnBodyEntered(Node2D body)
 	{
-		if (body.IsInGroup("player"))
+		if (body.IsInGroup("controlled_entity") || body.IsInGroup("player"))
 		{
 			Collect(body);
 		}

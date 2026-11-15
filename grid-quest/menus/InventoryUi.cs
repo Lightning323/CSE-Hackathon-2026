@@ -1,11 +1,11 @@
 using Godot;
-using GridQuest.Entities.Player;
+using GridQuest.Entities;
 using GridQuest.Items;
 using GridQuest.Map.MapObjects;
 
 public partial class InventoryUi : Control
 {
-	private PlayerEntity _player;
+	private Entity _player;
 	private Chest _openChest;
 
 	private Label _titleLabel;
@@ -85,7 +85,7 @@ public partial class InventoryUi : Control
 			_playerGrid.AddChild(slot);
 		}
 
-		_hintLabel = new Label { Text = "E: Close | Click or drag items to move/swap | Click chest to open", AutowrapMode = TextServer.AutowrapMode.Word };
+		_hintLabel = new Label { Text = "E/I: Close | Click or drag items to move/swap | Click chest to open", AutowrapMode = TextServer.AutowrapMode.Word };
 		_hintLabel.AddThemeFontSizeOverride("font_size", 12);
 		pvb.AddChild(_hintLabel);
 
@@ -138,7 +138,7 @@ public partial class InventoryUi : Control
 
 	private void ResolvePlayer()
 	{
-		_player = GetTree().GetFirstNodeInGroup("player") as PlayerEntity;
+		_player = GetTree().GetFirstNodeInGroup("controlled_entity") as Entity ?? GetTree().GetFirstNodeInGroup("player") as Entity;
 		Refresh();
 	}
 
@@ -155,7 +155,7 @@ public partial class InventoryUi : Control
 		// Fallbacks for direct device events (and when actions are remapped in-editor)
 		if (@event is InputEventKey key && key.Pressed && !key.Echo)
 		{
-			if (key.Keycode == Key.E || key.Keycode == Key.Tab || key.Keycode == Key.I) togglePressed = true;
+			if (key.Keycode == Key.E || key.Keycode == Key.I) togglePressed = true;
 			if (key.Keycode == Key.F) interactPressed = true;
 			if (key.Keycode == Key.Escape && Visible) cancelPressed = true;
 		}
@@ -543,7 +543,7 @@ public partial class InventoryUi : Control
 
 	public void Refresh()
 	{
-		if (_player == null || !IsInstanceValid(_player)) _player = GetTree().GetFirstNodeInGroup("player") as PlayerEntity;
+		if (_player == null || !IsInstanceValid(_player)) _player = GetTree().GetFirstNodeInGroup("controlled_entity") as Entity ?? GetTree().GetFirstNodeInGroup("player") as Entity;
 		if (_player != null)
 		{
 			_player.ConvertInventoryCoinsToGold();
@@ -562,8 +562,8 @@ public partial class InventoryUi : Control
 		RefreshUpgrades();
 		HighlightSelected();
 		_hintLabel.Text = _openChest != null
-			? "Inventory/Cancel: Close | Interact: Close chest | D-pad/Stick + Accept to select/move, Take All for loot"
-			: "Inventory: Open/Close | Interact: Open chest | D-pad/Stick + Accept to select/move/swap";
+			? "Inventory (E/I)/Cancel: Close | Interact: Close chest | D-pad/Stick + Accept to select/move, Take All for loot"
+			: "Inventory (E/I): Open/Close | Interact: Open chest | D-pad/Stick + Accept to select/move/swap | Tab: Switch observed entity (when not controlling)";
 	}
 
 	private void RefreshUpgrades()

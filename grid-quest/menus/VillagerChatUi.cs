@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 public partial class VillagerChatUi : Control
 {
-	private LlmEntity _entity;
+	private Entity _entity;
 	private Label _titleLabel;
 	private RichTextLabel _transcript;
 	private LineEdit _input;
@@ -32,7 +32,7 @@ public partial class VillagerChatUi : Control
 		if (_input != null) _input.TextSubmitted += _ => OnSendPressed();
 	}
 
-	public void Open(LlmEntity entity)
+	public void Open(Entity entity)
 	{
 		if (entity == null || !IsInstanceValid(entity)) return;
 		_entity = entity;

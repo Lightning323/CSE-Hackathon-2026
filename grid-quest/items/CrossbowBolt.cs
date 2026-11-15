@@ -10,7 +10,7 @@ public partial class CrossbowBolt : Area2D
 	private Vector2 _dir = Vector2.Right;
 	private float _life = 2.5f;
 	private float _knockbackStrength = 0.0f;
-	private global::GridQuest.Entities.Player.PlayerEntity _sourcePlayerEntity;
+	private global::GridQuest.Entities.Entity _sourceEntity;
 	private readonly HashSet<ulong> _hitTargets = new();
 
 	public override void _Ready()
@@ -25,13 +25,13 @@ public partial class CrossbowBolt : Area2D
 		}
 	}
 
-	public void Init(Vector2 direction, Vector2 fromPos, float speed = 420.0f, int damage = 4, float knockbackStrength = 0.0f, global::GridQuest.Entities.Player.PlayerEntity sourcePlayer = null, int pierceCount = 3)
+	public void Init(Vector2 direction, Vector2 fromPos, float speed = 420.0f, int damage = 4, float knockbackStrength = 0.0f, global::GridQuest.Entities.Entity sourceEntity = null, int pierceCount = 3)
 	{
 		GlobalPosition = fromPos;
 		Speed = speed;
 		Damage = damage;
 		_knockbackStrength = knockbackStrength;
-		_sourcePlayerEntity = sourcePlayer;
+		_sourceEntity = sourceEntity;
 		PierceCount = Mathf.Max(1, pierceCount);
 		_dir = direction.LengthSquared() > 0.0001f ? direction.Normalized() : Vector2.Right;
 		// Sprite bottom should point in firing direction.
@@ -50,7 +50,7 @@ public partial class CrossbowBolt : Area2D
 		if (body == null || !IsInstanceValid(body))
 			return;
 
-		if (body.IsInGroup("entities") && body != _sourcePlayerEntity && body.HasMethod("TakeDamage"))
+		if (body.IsInGroup("entities") && body != _sourceEntity && body.HasMethod("TakeDamage"))
 		{
 			ulong id = body.GetInstanceId();
 			if (_hitTargets.Contains(id))
@@ -58,15 +58,15 @@ public partial class CrossbowBolt : Area2D
 			_hitTargets.Add(id);
 
 			int damage = Damage;
-			if (_sourcePlayerEntity != null && IsInstanceValid(_sourcePlayerEntity))
+			if (_sourceEntity != null && IsInstanceValid(_sourceEntity))
 			{
-				damage = _sourcePlayerEntity.ComputeDamageForTarget(body, Damage);
+				damage = _sourceEntity.ComputeDamageForTarget(body, Damage);
 			}
 
 			if (body.HasMethod("TakeDamageAmount"))
 			{
-				if (_sourcePlayerEntity != null && IsInstanceValid(_sourcePlayerEntity))
-					body.Call("TakeDamageAmount", damage, _sourcePlayerEntity);
+				if (_sourceEntity != null && IsInstanceValid(_sourceEntity))
+					body.Call("TakeDamageAmount", damage, _sourceEntity);
 				else
 					body.Call("TakeDamageAmount", damage, (Node2D?)null);
 			}
@@ -79,9 +79,9 @@ public partial class CrossbowBolt : Area2D
 			{
 				body.Call("ApplyKnockback", _dir, _knockbackStrength);
 			}
-			if (_sourcePlayerEntity != null && IsInstanceValid(_sourcePlayerEntity))
+			if (_sourceEntity != null && IsInstanceValid(_sourceEntity))
 			{
-				_sourcePlayerEntity.NotifyProjectileHit(body);
+				_sourceEntity.NotifyProjectileHit(body);
 			}
 
 			// Heavy piercing: pass through multiple targets, then expire.

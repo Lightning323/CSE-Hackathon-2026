@@ -7,7 +7,7 @@ public partial class Fireball : Area2D
 	private Vector2 _dir = Vector2.Right;
 	private float _life = 2.0f;
 	private float _knockbackStrength = 0.0f;
-	private global::GridQuest.Entities.Player.PlayerEntity _sourcePlayerEntity;
+	private global::GridQuest.Entities.Entity _sourceEntity;
 
 	public override void _Ready()
 	{
@@ -21,9 +21,9 @@ public partial class Fireball : Area2D
 		}
 	}
 
-	public void Init(Vector2 direction, Vector2 fromPos, float speed = 220.0f, int damage = 2, float knockbackStrength = 0.0f, global::GridQuest.Entities.Player.PlayerEntity sourcePlayer = null)
+	public void Init(Vector2 direction, Vector2 fromPos, float speed = 220.0f, int damage = 2, float knockbackStrength = 0.0f, global::GridQuest.Entities.Entity sourceEntity = null)
 	{
-		_sourcePlayerEntity = sourcePlayer;
+		_sourceEntity = sourceEntity;
 		GlobalPosition = fromPos;
 		Speed = speed;
 		Damage = damage;
@@ -34,7 +34,7 @@ public partial class Fireball : Area2D
 		float best = 300.0f * 300.0f;
 		foreach (Node n in GetTree().GetNodesInGroup("entities"))
 		{
-			if (n is Node2D e && IsInstanceValid(e) && e != _sourcePlayerEntity)
+			if (n is Node2D e && IsInstanceValid(e) && e != _sourceEntity)
 			{
 				float d2 = fromPos.DistanceSquaredTo(e.GlobalPosition);
 				if (d2 < best) { best = d2; nearestEntity = e; }
@@ -60,18 +60,18 @@ public partial class Fireball : Area2D
 		if (body == null || !IsInstanceValid(body))
 			return;
 
-		if (body.IsInGroup("entities") && body != _sourcePlayerEntity && body.HasMethod("TakeDamage"))
+		if (body.IsInGroup("entities") && body != _sourceEntity && body.HasMethod("TakeDamage"))
 		{
 			int damage = Damage;
-			if (_sourcePlayerEntity != null && IsInstanceValid(_sourcePlayerEntity))
+			if (_sourceEntity != null && IsInstanceValid(_sourceEntity))
 			{
-				damage = _sourcePlayerEntity.ComputeDamageForTarget(body as Node2D, Damage);
+				damage = _sourceEntity.ComputeDamageForTarget(body as Node2D, Damage);
 			}
 
 			if (body.HasMethod("TakeDamageAmount"))
 			{
-				if (_sourcePlayerEntity != null && IsInstanceValid(_sourcePlayerEntity))
-					body.Call("TakeDamageAmount", damage, _sourcePlayerEntity);
+				if (_sourceEntity != null && IsInstanceValid(_sourceEntity))
+					body.Call("TakeDamageAmount", damage, _sourceEntity);
 				else
 					body.Call("TakeDamageAmount", damage, (Node2D?)null);
 			}
@@ -84,9 +84,9 @@ public partial class Fireball : Area2D
 			{
 				body.Call("ApplyKnockback", _dir, _knockbackStrength);
 			}
-			if (_sourcePlayerEntity != null && IsInstanceValid(_sourcePlayerEntity))
+			if (_sourceEntity != null && IsInstanceValid(_sourceEntity))
 			{
-				_sourcePlayerEntity.NotifyProjectileHit(body as Node2D);
+				_sourceEntity.NotifyProjectileHit(body as Node2D);
 			}
 			QueueFree();
 			return;

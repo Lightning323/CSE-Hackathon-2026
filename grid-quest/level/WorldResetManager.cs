@@ -1,6 +1,5 @@
 using Godot;
 using GridQuest.Entities;
-using GridQuest.Entities.Player;
 
 public partial class WorldResetManager : Node
 {
@@ -12,7 +11,7 @@ public partial class WorldResetManager : Node
 	public bool TryRandomizeWorld()
 	{
 		int cost = WorldProgress.GetWorldResetCost();
-		PlayerEntity player = GetTree().GetFirstNodeInGroup("player") as PlayerEntity;
+		Entity player = GetTree().GetFirstNodeInGroup("controlled_entity") as Entity ?? GetTree().GetFirstNodeInGroup("player") as Entity;
 		Map map = GetTree().GetFirstNodeInGroup("map") as Map ?? GetTree().CurrentScene?.GetNodeOrNull<Map>("Map");
 		if (player == null || map == null)
 			return false;
@@ -47,7 +46,7 @@ public partial class WorldResetManager : Node
 		{
 			foreach (Node node in GetTree().GetNodesInGroup(group))
 			{
-				if (node.IsInGroup("player")) continue;
+				if (node.IsInGroup("controlled_entity") || node.IsInGroup("player")) continue;
 				if (IsInstanceValid(node))
 					node.QueueFree();
 			}
@@ -66,7 +65,6 @@ public partial class WorldResetManager : Node
 
 	private void ReinitializeWorldSystems()
 	{
-		if (GetTree().GetFirstNodeInGroup("entity_population_manager") is EntityPopulationManager manager)
-			manager.CallDeferred(nameof(EntityPopulationManager.ResetForNewMap));
+		// Entity population is managed by level content; no automatic repopulation required.
 	}
 }

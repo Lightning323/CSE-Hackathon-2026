@@ -1,6 +1,5 @@
 using Godot;
 using GridQuest.Entities;
-using GridQuest.Entities.Player;
 
 public partial class Monument : Node2D
 {
@@ -20,16 +19,16 @@ public partial class Monument : Node2D
 		AddToGroup("interactables");
 	}
 
-	public void Interact(PlayerEntity actor)
+	public void Interact(Entity actor)
 	{
 		Discovered = true;
-		if (!actor.UseHumanInput)
+		if (actor.AiControlled)
 			actor.RememberState("monument_discovered", true);
 	}
 
 	public override void _Process(double delta)
 	{
-		var player = GetTree().GetFirstNodeInGroup("player") as Node2D;
+		var player = GetTree().GetFirstNodeInGroup("controlled_entity") as Node2D ?? GetTree().GetFirstNodeInGroup("player") as Node2D;
 		if (player == null) { SetHighlight(false); return; }
 		float dist = GlobalPosition.DistanceTo(player.GlobalPosition);
 		bool near = dist <= InteractRange;
@@ -76,7 +75,7 @@ public partial class Monument : Node2D
 
 	private bool IsPlayerNearChest()
 	{
-		var player = GetTree().GetFirstNodeInGroup("player") as Node2D;
+		var player = GetTree().GetFirstNodeInGroup("controlled_entity") as Node2D ?? GetTree().GetFirstNodeInGroup("player") as Node2D;
 		if (player == null) return false;
 		foreach (var node in GetTree().GetNodesInGroup("chests"))
 		{
@@ -88,11 +87,11 @@ public partial class Monument : Node2D
 
 	private bool IsPlayerNearVillager()
 	{
-		var player = GetTree().GetFirstNodeInGroup("player") as Node2D;
+		var player = GetTree().GetFirstNodeInGroup("controlled_entity") as Node2D ?? GetTree().GetFirstNodeInGroup("player") as Node2D;
 		if (player == null) return false;
-		foreach (var node in GetTree().GetNodesInGroup("llm_entities"))
+		foreach (var node in GetTree().GetNodesInGroup("entities"))
 		{
-			if (node is LlmEntity villager && IsInstanceValid(villager) && player.GlobalPosition.DistanceTo(villager.GlobalPosition) <= villager.InteractionRange)
+			if (node is Entity villager && IsInstanceValid(villager) && villager.AiControlled && player.GlobalPosition.DistanceTo(villager.GlobalPosition) <= villager.InteractionRange)
 				return true;
 		}
 		return false;

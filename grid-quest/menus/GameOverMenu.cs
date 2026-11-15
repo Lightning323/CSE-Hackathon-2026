@@ -1,5 +1,5 @@
 using Godot;
-using GridQuest.Entities.Player;
+using GridQuest.Entities;
 
 public partial class GameOverMenu : Control
 {
@@ -11,6 +11,8 @@ public partial class GameOverMenu : Control
 	private PanelContainer _controlsPanel;
 	private RichTextLabel _controlsLabel;
 	private PanelContainer _mainPanel;
+	private ItemList _entityList;
+	private Label _entityStatusLabel;
 	private bool _isGameOver;
 	private bool _openedAsStartupControls;
 
@@ -37,22 +39,102 @@ public partial class GameOverMenu : Control
 		if (_controlsBackButton != null) _controlsBackButton.Pressed += OnControlsBackPressed;
 		PopulateControlsText();
 
-		CallDeferred(nameof(ConnectToPlayer));
+		BuildEntitySelectorUi();
+		CallDeferred(nameof(ConnectToControlledEntity));
 		CallDeferred(nameof(ShowStartupControlsIfRequested));
 	}
 
-	private void ConnectToPlayer()
+	private void ConnectToControlledEntity()
 	{
-		var player = GetTree().GetFirstNodeInGroup("player") as PlayerEntity;
-		if (player != null && !player.IsConnected(PlayerEntity.SignalName.Died, Callable.From(OnPlayerDied)))
-			player.Died += OnPlayerDied;
+		var entity = GetTree().GetFirstNodeInGroup("controlled_entity") as Entity ?? GetTree().GetFirstNodeInGroup("player") as Entity;
+		if (entity != null && !entity.IsConnected(Entity.SignalName.Died, Callable.From(OnControlledEntityDied)))
+			entity.Died += OnControlledEntityDied;
 	}
 
-	private void OnPlayerDied()
+	private void OnControlledEntityDied()
 	{
 		WorldProgress.RegisterResetHighScoreProgress();
 		_isGameOver = true;
 		ShowMenu("Game Over");
+	}
+
+	private void BuildEntitySelectorUi()
+	{
+		var mainPanel = _mainPanel;
+		if (mainPanel == null) return;
+		var vbox = mainPanel.GetNodeOrNull<VBoxContainer>("VBox");
+		if (vbox == null) return;
+
+		var header = new Label { Text = "Entities (click to control, Deselect for AI)" };
+		header.AddThemeFontSizeOverride("font_size", 14);
+		vbox.AddChild(header);
+
+		_entityList = new ItemList { CustomMinimumSize = new Vector2(360, 120), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		_entityList.ItemSelected += OnEntitySelected;
+		vbox.AddChild(_entityList);
+
+		var row = new HBoxContainer();
+		var deselect = new Button { Text = "Deselect (AI controls all)" };
+		deselect.Pressed += OnDeselectEntityPressed;
+		row.AddChild(deselect);
+		var refresh = new Button { Text = "Refresh" };
+		refresh.Pressed += RefreshEntityList;
+		row.AddChild(refresh);
+		vbox.AddChild(row);
+
+		_entityStatusLabel = new Label { Text = "", AutowrapMode = TextServer.AutowrapMode.Word };
+		_entityStatusLabel.AddThemeFontSizeOverride("font_size", 12);
+		vbox.AddChild(_entityStatusLabel);
+	}
+
+	private void RefreshEntityList()
+	{
+		if (_entityList == null) return;
+		_entityList.Clear();
+		var controller = GetTree().GetFirstNodeInGroup("player_controller") as PlayerController;
+		var controlled = controller?.ControlledEntity;
+		int selectedIndex = -1;
+		int i = 0;
+		foreach (Node node in GetTree().GetNodesInGroup("entities"))
+		{
+			if (node is not Entity entity || !IsInstanceValid(entity)) continue;
+			string label = $"{entity.Name} {(entity.IsDead ? "[Dead]" : entity.AiControlled ? "[AI]" : "[Controlled]")}";
+			_entityList.AddItem(label);
+			_entityList.SetItemMetadata(i, entity.GetPath());
+			if (controlled == entity) selectedIndex = i;
+			i++;
+		}
+		if (selectedIndex >= 0) _entityList.Select(selectedIndex);
+		if (_entityStatusLabel != null)
+			_entityStatusLabel.Text = controlled != null ? $"Controlling: {controlled.Name}" : "No entity controlled. All entities use AI.";
+	}
+
+	private void OnEntitySelected(long index)
+	{
+		if (_entityList == null) return;
+		var path = _entityList.GetItemMetadata((int)index).AsNodePath();
+		var entity = GetNodeOrNull<Entity>(path);
+		var controller = GetTree().GetFirstNodeInGroup("player_controller") as PlayerController;
+		if (entity != null && controller != null)
+		{
+			controller.Control(entity);
+			ReconnectControlledEntitySignals();
+			RefreshEntityList();
+		}
+	}
+
+	private void OnDeselectEntityPressed()
+	{
+		var controller = GetTree().GetFirstNodeInGroup("player_controller") as PlayerController;
+		controller?.ReleaseControl();
+		ReconnectControlledEntitySignals();
+		RefreshEntityList();
+	}
+
+	private void ReconnectControlledEntitySignals()
+	{
+		// keep death handling on currently controlled entity
+		CallDeferred(nameof(ConnectToControlledEntity));
 	}
 
 	public override void _Input(InputEvent @event)
@@ -98,15 +180,12 @@ public partial class GameOverMenu : Control
 	private void ShowMenu(string title)
 	{
 		_titleLabel.Text = title;
-		if (_restartButton != null)
-			_restartButton.Visible = true;
-		if (_controlsButton != null)
-			_controlsButton.Visible = true;
-		if (_exitButton != null)
-			_exitButton.Visible = true;
-		if (_mainPanel != null)
-			_mainPanel.Visible = true;
+		if (_restartButton != null) _restartButton.Visible = true;
+		if (_controlsButton != null) _controlsButton.Visible = true;
+		if (_exitButton != null) _exitButton.Visible = true;
+		if (_mainPanel != null) _mainPanel.Visible = true;
 		HideControlsView();
+		RefreshEntityList();
 		Visible = true;
 		GetTree().Paused = true;
 		(_isGameOver ? _restartButton : _exitButton ?? _restartButton)?.GrabFocus();
@@ -204,7 +283,9 @@ public partial class GameOverMenu : Control
 			"  Attack: Space / J / Controller A\n" +
 			"  Interact (chest, villager, monument): F / Controller X\n\n" +
 			"[b]Inventory & UI[/b]\n" +
-			"  Toggle Inventory: E / Tab / I / Controller Y\n" +
+			"  Toggle Inventory: E / I / Controller Y\n" +
+			"  Switch Observed Entity: Tab (cycles viewed entity; camera follows viewed entity)\n" +
+			"  Toggle Control of Observed Entity: Ctrl (take/release control of the viewed entity)\n" +
 			"  UI Navigate: Arrow Keys / D-pad / Left Stick\n" +
 			"  UI Confirm/Select: Enter / Space / Controller A\n" +
 			"  UI Back/Close (contextual): Esc / Controller B / Start\n\n" +

@@ -1,12 +1,12 @@
 using Godot;
-using GridQuest.Entities.Player;
+using GridQuest.Entities;
 using GridQuest.PlayerUpgrades;
 using System;
 using System.Collections.Generic;
 
 public partial class SkillsUi : Control
 {
-	private PlayerEntity _player;
+	private Entity _player;
 	private Label _coinsLabel;
 	private VBoxContainer _list;
 	private Label _statusLabel;
@@ -96,7 +96,7 @@ public partial class SkillsUi : Control
 	private void ResolvePlayer()
 	{
 		if (_player == null || !GodotObject.IsInstanceValid(_player))
-			_player = GetTree().GetFirstNodeInGroup("player") as PlayerEntity;
+			_player = GetTree().GetFirstNodeInGroup("controlled_entity") as Entity ?? GetTree().GetFirstNodeInGroup("player") as Entity;
 	}
 
 	public void Open()

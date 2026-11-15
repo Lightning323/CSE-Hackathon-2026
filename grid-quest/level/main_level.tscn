@@ -1,55 +1,61 @@
 [gd_scene format=3 uid="uid://ddxtte0xls8ph"]
 
 [ext_resource type="Script" uid="uid://c7dqdoq22nup6" path="res://level/MainLevel.cs" id="1_fcrcf"]
-[ext_resource type="PackedScene" uid="uid://dasd1exc7g0m2" path="res://entities/player/player.tscn" id="2_0hvbd"]
+[ext_resource type="PackedScene" path="res://entities/entity.tscn" id="2_entity"]
 [ext_resource type="PackedScene" uid="uid://dodf7orbhnbtu" path="res://map/map.tscn" id="9_m5bjr"]
 [ext_resource type="PackedScene" path="res://menus/inventory_ui.tscn" id="10_inv"]
 [ext_resource type="PackedScene" path="res://menus/skills_ui.tscn" id="11_skills"]
 [ext_resource type="Script" uid="uid://c74cnkcp6js0e" path="res://menus/MonumentIndicator.cs" id="14_monument_indicator"]
+[ext_resource type="PackedScene" uid="uid://clykvvumotj32" path="res://level/PlayerController.tscn" id="15_ftnrv"]
+[ext_resource type="Script" uid="uid://d04eakyrwrvy8" path="res://menus/ObservationHud.cs" id="15_observation_hud"]
 [ext_resource type="PackedScene" path="res://menus/cheat_menu.tscn" id="17_cheat_menu"]
 [ext_resource type="Script" uid="uid://cs3c8qnp75u1p" path="res://level/DayNightCycle.cs" id="19_daynight"]
-[ext_resource type="Script" uid="uid://mng3wvo7m3p4" path="res://level/SurvivalStats.cs" id="20_survival_stats"]
-[ext_resource type="Script" uid="uid://coujx33u1wy5x" path="res://menus/SurvivalTimerUi.cs" id="21_survival_timer"]
-[ext_resource type="PackedScene" path="res://menus/game_over_menu.tscn" id="22_game_over"]
+[ext_resource type="PackedScene" uid="uid://cs0ivcr7vil5y" path="res://menus/game_over_menu.tscn" id="22_game_over"]
 [ext_resource type="PackedScene" path="res://menus/villager_chat_ui.tscn" id="23_villager_chat"]
 [ext_resource type="Script" uid="uid://vrg2y4ftl3qa" path="res://level/WorldResetManager.cs" id="25_world_reset"]
-[ext_resource type="Script" uid="uid://dhefo2i6qvlb4" path="res://entities/EntityPopulationManager.cs" id="29_entity_population"]
 
-[node name="Level" type="Node2D" unique_id=426259724]
+[node name="Level" type="Node2D" unique_id=1969291453]
 y_sort_enabled = true
 script = ExtResource("1_fcrcf")
 
-[node name="Player" parent="." unique_id=1496126262 groups=["player"] instance=ExtResource("2_0hvbd")]
-position = Vector2(160, 160)
+[node name="Map" parent="." unique_id=1052490645 instance=ExtResource("9_m5bjr")]
 
-[node name="EntityPopulationManager" type="Node" parent="."]
-script = ExtResource("29_entity_population")
-
-[node name="SurvivalStats" type="Node" parent="."]
-script = ExtResource("20_survival_stats")
-
-[node name="WorldResetManager" type="Node" parent="."]
+[node name="WorldResetManager" type="Node" parent="." unique_id=1016567106]
 script = ExtResource("25_world_reset")
 
-[node name="Map" parent="." unique_id=1437051292 instance=ExtResource("9_m5bjr")]
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=2144280034]
 
-[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1127083425]
-
-[node name="MonumentIndicator" type="TextureRect" parent="CanvasLayer"]
+[node name="MonumentIndicator" type="TextureRect" parent="CanvasLayer" unique_id=1890075522]
 script = ExtResource("14_monument_indicator")
 
-[node name="SurvivalTimer" type="Label" parent="CanvasLayer"]
-script = ExtResource("21_survival_timer")
+[node name="ObservationHud" type="Label" parent="CanvasLayer" unique_id=1851826565]
+offset_left = 16.0
+offset_top = 36.0
+offset_right = 420.0
+offset_bottom = 60.0
+text = "Viewing: None"
+script = ExtResource("15_observation_hud")
 
-[node name="InventoryUi" parent="CanvasLayer" unique_id=1849161941 instance=ExtResource("10_inv")]
+[node name="InventoryUi" parent="CanvasLayer" unique_id=692049492 instance=ExtResource("10_inv")]
 
-[node name="SkillsUi" parent="CanvasLayer" instance=ExtResource("11_skills")]
+[node name="SkillsUi" parent="CanvasLayer" unique_id=628097153 instance=ExtResource("11_skills")]
 
-[node name="CheatMenu" parent="CanvasLayer" instance=ExtResource("17_cheat_menu")]
+[node name="CheatMenu" parent="CanvasLayer" unique_id=193849832 instance=ExtResource("17_cheat_menu")]
 
-[node name="VillagerChatUi" parent="CanvasLayer" instance=ExtResource("23_villager_chat")]
+[node name="VillagerChatUi" parent="CanvasLayer" unique_id=331694220 instance=ExtResource("23_villager_chat")]
 
-[node name="GameOverMenu" parent="CanvasLayer" instance=ExtResource("22_game_over")]
+[node name="GameOverMenu" parent="CanvasLayer" unique_id=76833022 instance=ExtResource("22_game_over")]
 
-[node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=394873551]
+[node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=2124869142]
 script = ExtResource("19_daynight")
+
+[node name="PlayerController" parent="." unique_id=801183958 instance=ExtResource("15_ftnrv")]
+
+[node name="Entity" parent="." unique_id=1058814562 instance=ExtResource("2_entity")]
+position = Vector2(160, 160)
+
+[node name="Entity2" parent="." unique_id=157686867 instance=ExtResource("2_entity")]
+position = Vector2(320, 320)
+
+[node name="Entity3" parent="." unique_id=898236258 instance=ExtResource("2_entity")]
+position = Vector2(160, 160)
