@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://c7dqdoq22nup6" path="res://level/MainLevel.cs" id="1_fcrcf"]
 [ext_resource type="PackedScene" path="res://entities/entity.tscn" id="2_entity"]
+[ext_resource type="Theme" uid="uid://b2tdhwtjuqch5" path="res://assets/main_theme.tres" id="5_rw325"]
 [ext_resource type="PackedScene" uid="uid://dodf7orbhnbtu" path="res://map/map.tscn" id="9_m5bjr"]
 [ext_resource type="PackedScene" path="res://menus/inventory_ui.tscn" id="10_inv"]
 [ext_resource type="PackedScene" path="res://menus/skills_ui.tscn" id="11_skills"]
@@ -26,27 +27,38 @@ script = ExtResource("25_world_reset")
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=2144280034]
 
 [node name="MonumentIndicator" type="TextureRect" parent="CanvasLayer" unique_id=1890075522]
+visible = false
 script = ExtResource("14_monument_indicator")
 
 [node name="ObservationHud" type="Label" parent="CanvasLayer" unique_id=1851826565]
-offset_left = 16.0
-offset_top = 36.0
-offset_right = 420.0
-offset_bottom = 60.0
+offset_left = 5.0
+offset_top = 4.0
+offset_right = 221.0
+offset_bottom = 28.0
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme = ExtResource("5_rw325")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 7
 text = "Viewing: None"
 script = ExtResource("15_observation_hud")
 
 [node name="InventoryUi" parent="CanvasLayer" unique_id=692049492 instance=ExtResource("10_inv")]
+visible = false
 
 [node name="SkillsUi" parent="CanvasLayer" unique_id=628097153 instance=ExtResource("11_skills")]
+visible = false
 
 [node name="CheatMenu" parent="CanvasLayer" unique_id=193849832 instance=ExtResource("17_cheat_menu")]
+visible = false
 
 [node name="VillagerChatUi" parent="CanvasLayer" unique_id=331694220 instance=ExtResource("23_villager_chat")]
 
 [node name="GameOverMenu" parent="CanvasLayer" unique_id=76833022 instance=ExtResource("22_game_over")]
+visible = false
 
 [node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=2124869142]
+visible = false
 script = ExtResource("19_daynight")
 
 [node name="PlayerController" parent="." unique_id=801183958 instance=ExtResource("15_ftnrv")]
@@ -58,4 +70,4 @@ position = Vector2(160, 160)
 position = Vector2(320, 320)
 
 [node name="Entity3" parent="." unique_id=898236258 instance=ExtResource("2_entity")]
-position = Vector2(160, 160)
+position = Vector2(183, 128)
