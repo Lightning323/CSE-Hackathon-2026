@@ -4,7 +4,7 @@ namespace GridQuest.Menus.MainMenu;
 
 public partial class MainMenu : Control
 {
-	private const string LevelScenePath = "res://level/character_dev/main_level.tscn";
+	private const string LevelScenePath = "res://level/main_level.tscn";
 	private const string SettingsScenePath = "res://menus/mainMenu/SettingsMenu.tscn";
 
 	private Button _startGameButton;
