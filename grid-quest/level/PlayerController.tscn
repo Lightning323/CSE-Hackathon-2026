@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://clykvvumotj32"]
+
+[ext_resource type="Script" uid="uid://c88iwwec0bqx1" path="res://entities/PlayerController.cs" id="1_n3e1q"]
+
+[node name="PlayerController" type="Node" unique_id=801183958]
+script = ExtResource("1_n3e1q")
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1606170354]
+zoom = Vector2(2, 2)
+limit_left = 0
+limit_top = 0
+limit_right = 4800
+limit_bottom = 4800
+position_smoothing_enabled = true
+position_smoothing_speed = 8.0
